@@ -1,0 +1,42 @@
+# Health Check
+GET http://localhost:3000/health HTTP/1.1
+
+###
+
+# Get all events
+GET http://localhost:3000/api/events HTTP/1.1
+
+###
+
+# Get events filtered by DV
+GET http://localhost:3000/api/events?dv=K%C3%B6ln HTTP/1.1
+
+###
+
+# Create a new event
+POST http://localhost:3000/api/events HTTP/1.1
+Content-Type: application/json
+
+{
+  "title": "Pfadfinder Treffen",
+  "description": "Ein Event in Köln für alle.",
+  "startDate": "2026-08-15T10:00:00Z",
+  "endDate": "2026-08-15T15:00:00Z",
+  "location": "Köln",
+  "dv": "Köln"
+}
+
+###
+
+# Create a new event
+POST http://localhost:3000/api/events HTTP/1.1
+Content-Type: application/json
+
+{
+  "title": "Pfadfinder Treffen",
+  "description": "Ein Event in Hamburg für alle.",
+  "startDate": "2026-08-15T10:00:00Z",
+  "endDate": "2026-08-15T15:00:00Z",
+  "location": "Hamburg",
+  "dv": "Hamburg"
+}
