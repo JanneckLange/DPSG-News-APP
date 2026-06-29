@@ -1,13 +1,26 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-cd "$(dirname "$0")/../.."
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+REPO_ROOT="${CI_PRIMARY_REPOSITORY_PATH:-$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)}"
+APP_ROOT="$REPO_ROOT/app"
 
-if [ -f "pubspec.yaml" ]; then
-  flutter pub get
+echo "Stage: PRE-Xcode Build is activated ...."
+echo "Using repository root: $REPO_ROOT"
+cd "$REPO_ROOT" || exit 1
+
+if [ -f .env.example ]; then
+  cp .env.example .env
+  echo "Created .env from .env.example"
+else
+  echo "No .env.example found; skipping .env preparation"
 fi
 
-if [ -f "ios/Podfile" ]; then
-  cd ios
-  pod install --repo-update
+if [ -d "$APP_ROOT" ]; then
+  echo "Flutter app root: $APP_ROOT"
+else
+  echo "Flutter app directory not found at $APP_ROOT"
+  exit 1
 fi
+
+echo "Stage: PRE-Xcode Build is DONE ...."

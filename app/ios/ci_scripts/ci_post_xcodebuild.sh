@@ -1,6 +1,8 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
-if [ -d "build/ios/iphoneos" ]; then
-  echo "Archive artifacts are available in build/ios/iphoneos"
-fi
+echo "Stage: POST-Xcode Build is activated ...."
+
+echo "Archive artifacts are available in build/ios/iphoneos when present"
+
+echo "Stage: POST-Xcode Build is DONE ...."
