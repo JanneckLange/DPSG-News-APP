@@ -94,8 +94,8 @@ flutter doctor -v
 
 install_cocoapods
 
-echo "Calling flutter pub get with lockfile enforcement"
-flutter pub get --enforce-lockfile
+echo "Calling flutter pub get"
+flutter pub get
 
 pod_install_with_retry
 
