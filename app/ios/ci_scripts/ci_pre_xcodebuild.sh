@@ -11,6 +11,9 @@ cd "$REPO_ROOT" || exit 1
 
 if [ -f .env.example ]; then
   cp .env.example .env
+  if [ -n "${API_BASE_URL:-}" ]; then
+    printf 'API_BASE_URL=%s\n' "$API_BASE_URL" >> .env
+  fi
   echo "Created .env from .env.example"
 else
   echo "No .env.example found; skipping .env preparation"

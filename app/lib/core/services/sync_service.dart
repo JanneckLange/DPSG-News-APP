@@ -1,14 +1,21 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/events/data/event_repository.dart';
 import '../../features/events/data/remote_event_source.dart';
+import '../../features/settings/data/settings_repository.dart';
+import 'hive_service.dart';
 import 'logging_service.dart';
+import '../config/app_config.dart';
+
+final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  return SettingsRepository(HiveService.getSettingsBox());
+});
 
 final remoteEventSourceProvider = Provider<RemoteEventSource>((ref) {
-  final host = Platform.isAndroid ? '10.0.2.2' : 'localhost';
-  return RemoteEventSource(baseUrl: Uri.parse('http://$host:3000'));
+  final settingsRepository = ref.watch(settingsRepositoryProvider);
+  final configuredUrl = settingsRepository.getApiBaseUrl();
+  final baseUrl = configuredUrl ?? AppConfig.defaultApiBaseUrl;
+  return RemoteEventSource(baseUrl: Uri.parse(baseUrl));
 });
 
 final syncServiceProvider = Provider<SyncService>((ref) {
