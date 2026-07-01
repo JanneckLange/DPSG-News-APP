@@ -12,7 +12,6 @@
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
-		7C38363A2FF51F2200AF52EE /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7C3836392FF51F2200AF52EE /* GoogleService-Info.plist */; };
 		7C90637D2FF2FBB300732BDA /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 7C90637C2FF2FBB300732BDA /* AppIcon.icon */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
@@ -73,7 +72,6 @@
 		D1E000061CF9000F007C117D /* Profile-dev.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Profile-dev.xcconfig"; path = Flutter/Profile-dev.xcconfig; sourceTree = "<group>"; };
 		D1E000071CF9000F007C117D /* Profile-prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Profile-prod.xcconfig"; path = Flutter/Profile-prod.xcconfig; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
-		7C3836392FF51F2200AF52EE /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		7C8DE9F12FF4F4A9005EBA9C /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		7C90637C2FF2FBB300732BDA /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		94C8775A7F42DD27A65685A8 /* libPods-RunnerTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-RunnerTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -183,7 +181,6 @@
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				7C90637C2FF2FBB300732BDA /* AppIcon.icon */,
-				7C3836392FF51F2200AF52EE /* GoogleService-Info.plist */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -314,7 +311,6 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				7C90637D2FF2FBB300732BDA /* AppIcon.icon in Resources */,
-				7C38363A2FF51F2200AF52EE /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -403,7 +399,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\n\nFLAVOR_NAME=\"${FLAVOR:-}\"\nif [ -z \"$FLAVOR_NAME\" ]; then\n  case \"$CONFIGURATION\" in\n    *-prod) FLAVOR_NAME=\"prod\" ;;\n    *-dev) FLAVOR_NAME=\"dev\" ;;\n    *) FLAVOR_NAME=\"dev\" ;;\n  esac\nfi\n\nSRC_PLIST=\"${PROJECT_DIR}/firebase/${FLAVOR_NAME}/GoogleService-Info.plist\"\nDST_PLIST=\"${PROJECT_DIR}/Runner/GoogleService-Info.plist\"\n\nif [ ! -f \"$SRC_PLIST\" ]; then\n  echo \"Missing Firebase plist for flavor '${FLAVOR_NAME}' at ${SRC_PLIST}\" >&2\n  exit 1\nfi\n\ncp \"$SRC_PLIST\" \"$DST_PLIST\"\n";
+			shellScript = "set -euo pipefail\n\nFLAVOR_NAME=\"${FLAVOR:-}\"\nif [ -z \"$FLAVOR_NAME\" ]; then\n  case \"$CONFIGURATION\" in\n    *-prod) FLAVOR_NAME=\"prod\" ;;\n    *-dev) FLAVOR_NAME=\"dev\" ;;\n    *) FLAVOR_NAME=\"dev\" ;;\n  esac\nfi\n\nSRC_PLIST=\"${PROJECT_DIR}/firebase/${FLAVOR_NAME}/GoogleService-Info.plist\"\nDST_PROJECT_PLIST=\"${PROJECT_DIR}/Runner/GoogleService-Info.plist\"\nDST_BUNDLE_PLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\n\nif [ ! -f \"$SRC_PLIST\" ]; then\n  echo \"Missing Firebase plist for flavor '${FLAVOR_NAME}' at ${SRC_PLIST}\" >&2\n  exit 1\nfi\n\ncp \"$SRC_PLIST\" \"$DST_PROJECT_PLIST\"\nmkdir -p \"$(dirname \"$DST_BUNDLE_PLIST\")\"\ncp \"$SRC_PLIST\" \"$DST_BUNDLE_PLIST\"\n";
 			showEnvVarsInLog = 0;
 		};
 		E6599C065C6E77F029168FAF /* [CP] Check Pods Manifest.lock */ = {
