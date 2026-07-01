@@ -1,10 +1,16 @@
 import 'dart:developer';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wiredash/wiredash.dart';
 
+import 'core/config/app_config.dart';
+import 'core/services/app_navigation_service.dart';
+import 'core/services/logging_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/sync_service.dart';
+import 'core/services/usage_tracking_service.dart';
 import 'features/author/presentation/author_screen.dart';
 import 'features/calendar/presentation/calendar_screen.dart';
 import 'features/events/presentation/events_screen.dart';
@@ -20,10 +26,23 @@ class App extends ConsumerStatefulWidget {
   ConsumerState<App> createState() => _AppState();
 }
 
-class _AppState extends ConsumerState<App> {
+class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
+  late final LoggingService _logger;
+  late final UsageTrackingService _usageTracking;
+  bool _isPaused = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    _logger = ref.read(loggingServiceProvider);
+    _usageTracking = UsageTrackingService(logger: _logger);
+
+    unawaited(_logger.logInfo('lifecycle', 'app_started'));
+    unawaited(_usageTracking.flushPendingSession());
+    _usageTracking.startSession();
+
     Future.microtask(() async {
       log('App initState: starting notification initialization');
       await ref.read(notificationServiceProvider)
@@ -39,9 +58,36 @@ class _AppState extends ConsumerState<App> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_logger.logInfo('lifecycle', 'app_resumed'));
+      unawaited(_usageTracking.resume());
+      _isPaused = false;
+    } else if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      if (!_isPaused) {
+        _isPaused = true;
+        unawaited(_usageTracking.pause());
+      }
+      unawaited(_logger.logInfo('lifecycle', 'app_${state.name}'));
+    }
+    super.didChangeAppLifecycleState(state);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_usageTracking.endSession());
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentIndexProvider);
     final authorMode = ref.watch(authorModeProvider);
+    final appThemeMode = ref.watch(appThemeModeProvider);
+    final navigatorKey = ref.watch(appNavigatorKeyProvider);
 
     final pages = <Widget>[
       const EventsScreen(),
@@ -62,9 +108,33 @@ class _AppState extends ConsumerState<App> {
       Future.microtask(() => ref.read(currentIndexProvider.notifier).state = safeIndex);
     }
 
-    return MaterialApp(
+    final effectiveThemeMode = switch (appThemeMode) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+
+    final materialApp = MaterialApp(
       title: 'DPSG News APP',
       theme: ThemeData(primarySwatch: Colors.blue),
+      darkTheme: ThemeData(brightness: Brightness.dark, colorSchemeSeed: Colors.blue),
+      themeMode: effectiveThemeMode,
+      navigatorKey: navigatorKey,
+      navigatorObservers: [
+        AppNavigationLoggingObserver(logger: _logger),
+      ],
+      builder: (context, child) {
+        if (child == null) {
+          return const SizedBox.shrink();
+        }
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (event) {
+            unawaited(_logger.logTap(x: event.position.dx, y: event.position.dy));
+          },
+          child: child,
+        );
+      },
       home: Scaffold(
         body: pages[safeIndex],
         bottomNavigationBar: NavigationBar(
@@ -75,6 +145,16 @@ class _AppState extends ConsumerState<App> {
           destinations: destinations,
         ),
       ),
+    );
+
+    if (!AppConfig.hasWiredashConfig) {
+      return materialApp;
+    }
+
+    return Wiredash(
+      projectId: AppConfig.wiredashProjectId,
+      secret: AppConfig.wiredashSecret,
+      child: materialApp,
     );
   }
 }

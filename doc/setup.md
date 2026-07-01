@@ -24,5 +24,5 @@ npm start
 
 ## Lokale Konfiguration
 
-1. Kopiere `/.env.example` nach `.env`, falls du globale Variablen nutzen willst.
-2. Backend-spezifische Variablen kopiere in `server/.env.example` oder `server/.env`.
+1. Kopiere `app/.env.example` nach `app/.env` fuer App-spezifische Variablen.
+2. Backend-spezifische Variablen bleiben in `server/.env.example` oder `server/.env`.

@@ -145,6 +145,18 @@ class NotificationService {
   Future<void> refreshTopicSubscriptions() async {
     log('Refreshing notification topic subscriptions');
     final settingsRepository = _ref.read(settingsRepositoryProvider);
+    final notificationsEnabled = settingsRepository.getNotificationsEnabled();
+    final newEventPushEnabled = settingsRepository.getNewEventPushEnabled();
+    final currentTopics = settingsRepository.getSubscribedTopics();
+
+    if (!notificationsEnabled || !newEventPushEnabled) {
+      if (currentTopics.isNotEmpty) {
+        await _unsubscribeFromTopics(currentTopics);
+      }
+      await settingsRepository.setSubscribedTopics(<String>[]);
+      return;
+    }
+
     final selectedDvs = settingsRepository.getSelectedDvs();
     final selectedTopicsByDv = settingsRepository.getSelectedTopicsByDv();
     final topics = <String>{'events'};
@@ -158,7 +170,6 @@ class NotificationService {
     }
 
     final newTopics = topics.toList();
-    final currentTopics = settingsRepository.getSubscribedTopics();
     final removeTopics = currentTopics.where((topic) => !newTopics.contains(topic)).toList();
     final addTopics = newTopics.where((topic) => !currentTopics.contains(topic)).toList();
 

@@ -13,9 +13,10 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
 
 final remoteEventSourceProvider = Provider<RemoteEventSource>((ref) {
   final settingsRepository = ref.watch(settingsRepositoryProvider);
+  final logger = ref.watch(loggingServiceProvider);
   final configuredUrl = settingsRepository.getApiBaseUrl();
   final baseUrl = configuredUrl ?? AppConfig.defaultApiBaseUrl;
-  return RemoteEventSource(baseUrl: Uri.parse(baseUrl));
+  return RemoteEventSource(baseUrl: Uri.parse(baseUrl), logger: logger);
 });
 
 final eventSyncStatusProvider = StateProvider<String?>((_) => null);

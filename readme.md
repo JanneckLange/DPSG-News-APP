@@ -33,7 +33,7 @@ npm start
 
 ## Konfiguration
 
-- `/.env.example` zeigt die gemeinsame lokale Konfiguration
+- `app/.env.example` zeigt die App-spezifische lokale Konfiguration
 - `server/.env.example` zeigt Backend-spezifische Umgebungsvariablen
 
 ## Ohne CI

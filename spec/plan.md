@@ -155,37 +155,64 @@ Filter nach:
 
 ## Einstellungen
 
-Der Nutzer wählt:
+Der Nutzer verwaltet seine Einstellungen zentral über einen überarbeiteten Settings-Bereich.
 
-### Diözesanverband
+### Profilbereich
 
-z.B.
+- Oberer Profil-Block mit Standardwert „Anonym“
+- späterer Login-Mechanismus als erweiterbarer Punkt
+- DV-Auswahl direkt im Profilbereich
+- Autor-Modus als Entwickler-/Support-Bereich sichtbar
 
-- Hamburg
-- Köln
-- Münster
-- ...
+### Hauptkategorien
 
-### Kategorien
+- App-Einstellungen
+- Benachrichtigungseinstellungen
+- Debug & Tools
+- Impressum
+- Datenschutz
 
-Mehrfachauswahl.
+### App-Einstellungen
 
-Beispiele:
+- Darstellung
+  - Dark Mode
+- Sprache
+  - zunächst nur Deutsch verfügbar
+  - Nutzer-Strings sollen bereits als Translation-Variablen angelegt sein
+- Nutzeranalyse / Tracking
+  - optionaler Toggle für Nutzungs-/Analyse-Tracking
+  - Wiredash-Opt-in
 
-- Allgemein
-- Wölflinge
-- Jungpfadfinder
-- Pfadfinder
-- Rover
-- Leitende
-- Ausbildung
-- International
-- Spiritualität
+### Benachrichtigungseinstellungen
 
-Diese Auswahl bestimmt:
+- Auswahl von Diözesanverbänden und relevanten Topics
+- zentrale Verwaltung der Push-Präferenzen
 
-- sichtbare Veranstaltungen
-- Push-Benachrichtigungen
+### Debug & Tools
+
+- API-URL
+- API-Status
+- APNS-Token
+- App-Logs und Request-Logs
+- DV-Tree aktualisieren
+- Feedback und Bewertung
+- Changelog
+- Externe Benachrichtigungen
+
+### Rechtliches
+
+- Impressum
+- Datenschutz
+
+### Designrichtlinie
+
+- Die Settings-Ansicht soll sich optisch an der Nami-App orientieren
+- Kartenlayout, klare Section-Header, ruhige Farben und einheitliche Icons
+
+### Lokalisierung
+
+- Alle Nutzer-Strings werden als Translation-Variablen gepflegt
+- Die UI soll später einfach um weitere Sprachen erweiterbar sein
 
 ---
 

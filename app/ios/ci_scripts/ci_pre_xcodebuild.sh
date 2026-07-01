@@ -9,14 +9,20 @@ echo "Stage: PRE-Xcode Build is activated ...."
 echo "Using repository root: $REPO_ROOT"
 cd "$REPO_ROOT" || exit 1
 
-if [ -f .env.example ]; then
-  cp .env.example .env
+if [ -f "$APP_ROOT/.env.example" ]; then
+  cp "$APP_ROOT/.env.example" "$APP_ROOT/.env"
   if [ -n "${API_BASE_URL:-}" ]; then
-    printf 'API_BASE_URL=%s\n' "$API_BASE_URL" >> .env
+    printf 'API_BASE_URL=%s\n' "$API_BASE_URL" >> "$APP_ROOT/.env"
   fi
-  echo "Created .env from .env.example"
+  if [ -n "${WIREDASH_PROJECT_ID:-}" ]; then
+    printf 'WIREDASH_PROJECT_ID=%s\n' "$WIREDASH_PROJECT_ID" >> "$APP_ROOT/.env"
+  fi
+  if [ -n "${WIREDASH_SECRET:-}" ]; then
+    printf 'WIREDASH_SECRET=%s\n' "$WIREDASH_SECRET" >> "$APP_ROOT/.env"
+  fi
+  echo "Created app/.env from app/.env.example"
 else
-  echo "No .env.example found; skipping .env preparation"
+  echo "No app/.env.example found; skipping app env preparation"
 fi
 
 if [ -d "$APP_ROOT" ]; then

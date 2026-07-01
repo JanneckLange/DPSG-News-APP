@@ -16,6 +16,6 @@ Beschreibe die technische Struktur der Basisimplementierung.
 
 ## Projektorganisation
 
-- Konfiguration: Root-`.env.example` für gemeinsame Variablen
+- Konfiguration: getrennte Env-Vorlagen unter `app/.env.example` und `server/.env.example`
 - Dokumentation: `doc/`
 - Spezifikation: `spec/`

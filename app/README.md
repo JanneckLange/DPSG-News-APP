@@ -24,3 +24,8 @@ flutter run
 ```bash
 flutter test
 ```
+
+## Konfiguration
+
+- `app/.env.example` nach `app/.env` kopieren und Werte lokal setzen.
+- Es gibt keine globale Root-Env mehr; App und Server werden getrennt konfiguriert.
