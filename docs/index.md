@@ -4,6 +4,7 @@ title: DPSG News - Rechtliches
 permalink: /
 ---
 
-Diese Seite wird ueber GitHub Pages bereitgestellt und enthaelt die Datenschutzinformationen zur App.
+Diese Seite wird ueber GitHub Pages bereitgestellt und enthaelt die rechtlichen Dokumente zur App.
 
-- [Zur Datenschutzerklaerung](/datenschutz/)
+- [App Privacy Policy](/privacy-policy/)
+- [App Terms & Conditions](/terms-conditions/)
