@@ -19,7 +19,6 @@ import UserNotifications
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
     let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-    print("AppDelegate: didRegisterForRemoteNotificationsWithDeviceToken length=\(deviceToken.count) token=\(tokenString)")
     print("AppDelegate: APNS token is available")
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }

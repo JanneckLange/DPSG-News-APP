@@ -31,14 +31,14 @@ class EventsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsAsync = ref.watch(eventsProvider);
     final settingsRepo = ref.watch(settingsRepositoryProvider);
-    final selectedDv = settingsRepo.getSelectedDv();
+    final selectedDvs = settingsRepo.getSelectedDvs();
 
     final syncError = ref.watch(sync_service.eventSyncStatusProvider);
 
     Widget buildContent(List<Map<String, dynamic>> events) {
-      final filteredEvents = selectedDv == null
+      final filteredEvents = selectedDvs.isEmpty
           ? events
-          : events.where((event) => event['dv'] == selectedDv).toList();
+          : events.where((event) => selectedDvs.contains(event['dv'] as String)).toList();
 
       final listView = filteredEvents.isEmpty
           ? ListView(

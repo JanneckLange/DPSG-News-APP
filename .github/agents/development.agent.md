@@ -14,6 +14,7 @@ You are the development agent for the DPSG News APP repository.
 ## Constraints
 - DO NOT invent new architecture beyond the current repo scaffold.
 - DO NOT remove the existing minimal starter app or server setup.
+- ALWAYS use `flutter analyze` for Flutter app changes and validation.
 - ONLY make changes that improve startability, correctness, and documentation.
 
 ## Approach

@@ -87,6 +87,40 @@ class RemoteEventSource {
     }
   }
 
+  Future<Map<String, dynamic>> fetchDvTree() async {
+    try {
+      final response = await _client
+          .get(baseUrl.replace(path: '/api/dvs'))
+          .timeout(timeout);
+
+      if (response.statusCode != 200) {
+        throw RemoteEventSourceException(
+          'Failed to fetch DV tree: ${response.statusCode}',
+        );
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } on TimeoutException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Timed out while fetching DV tree',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    } on SocketException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Unable to reach the event server',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    } on http.ClientException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Network error while fetching DV tree',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> createEvent(Map<String, dynamic> event) async {
     try {
       final response = await _client

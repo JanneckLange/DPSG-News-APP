@@ -11,6 +11,7 @@ type EventRow = {
   end_date: string;
   location: string;
   dv: string;
+  topic?: string;
   created_at: string;
   updated_at: string;
 };
@@ -23,6 +24,7 @@ export type Event = {
   endDate: string;
   location: string;
   dv: string;
+  topic?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -34,6 +36,7 @@ export type EventInput = {
   endDate: string;
   location: string;
   dv: string;
+  topic?: string;
 };
 
 let client: Client | null = null;
@@ -66,10 +69,12 @@ export async function connect(): Promise<void> {
       end_date TIMESTAMPTZ NOT NULL,
       location TEXT NOT NULL,
       dv TEXT NOT NULL,
+      topic TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS topic TEXT;`);
 }
 
 export function mapEventRow(row: EventRow): Event {
@@ -81,6 +86,7 @@ export function mapEventRow(row: EventRow): Event {
     endDate: row.end_date,
     location: row.location,
     dv: row.dv,
+    topic: row.topic ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -96,10 +102,10 @@ export async function getEvents(dv?: string): Promise<Event[]> {
 
 export async function createEvent(event: EventInput): Promise<Event> {
   const result = await ensureClient().query<EventRow>(
-    `INSERT INTO events (title, description, start_date, end_date, location, dv)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO events (title, description, start_date, end_date, location, dv, topic)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [event.title, event.description, event.startDate, event.endDate, event.location, event.dv]
+    [event.title, event.description, event.startDate, event.endDate, event.location, event.dv, event.topic ?? null]
   );
   return mapEventRow(result.rows[0]);
 }

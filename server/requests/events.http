@@ -3,6 +3,11 @@ GET http://localhost:3000/health HTTP/1.1
 
 ###
 
+# Get DVs
+GET http://localhost:3000/api/dvs HTTP/1.1
+
+###
+
 # Get all events
 GET http://localhost:3000/api/events HTTP/1.1
 

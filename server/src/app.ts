@@ -2,15 +2,62 @@ import express, { Request, Response } from 'express';
 import { createEvent, deleteAllEvents, deleteEventById, getEvents, EventInput } from './db';
 import { sendEventNotification } from './fcm';
 
+const DV_TREE = {
+  lastTreeChange: '2026-07-01T00:00:00Z',
+  dvs: [
+    { name: 'Aachen', url: 'http://www.dpsg-ac.de/' },
+    { name: 'Augsburg', url: 'http://www.dpsg-augsburg.de/' },
+    { name: 'Bamberg', url: 'http://www.dpsg-bamberg.de/' },
+    { name: 'Berlin', url: 'http://www.dpsg-dv-berlin.de/' },
+    { name: 'Eichstätt', url: 'http://www.dpsg-eichstaett.de/' },
+    { name: 'Essen', url: 'http://www.dpsg-essen.de/' },
+    { name: 'Erfurt', url: 'https://dpsg-thueringen.de/' },
+    { name: 'Freiburg', url: 'http://www.dpsg-freiburg.de/' },
+    { name: 'Fulda', url: 'http://www.dpsg-fulda.de/' },
+    { name: 'Hamburg', url: 'http://www.dpsg-hamburg.de/', groups: ['Wölflinge', 'Jungpfadfinder', 'Pfadfinder', 'Rover', 'AK Aus-& Weiterbildung'] },
+    { name: 'Hildesheim', url: 'http://www.dpsg-hildesheim.de/' },
+    { name: 'Köln', url: 'http://www.dpsg-koeln.de/' },
+    { name: 'Limburg', url: 'http://www.dpsg-limburg.de/' },
+    { name: 'Magdeburg', url: 'http://www.dpsg-dv-magdeburg.de/' },
+    { name: 'Mainz', url: 'http://www.dpsg-mainz.de/' },
+    { name: 'München-Freising', url: 'http://www.dpsg1300.de/' },
+    { name: 'Münster', url: 'https://dpsgmuenster.de/' },
+    { name: 'Osnabrück', url: 'https://dpsg-os.de/' },
+    { name: 'Paderborn', url: 'http://www.dpsg-paderborn.de/' },
+    { name: 'Passau', url: 'http://www.dpsg-passau.de/' },
+    { name: 'Regensburg', url: 'http://www.dpsg-regensburg.de/' },
+    { name: 'Rottenburg-Stuttgart', url: 'http://www.dpsg-rottenburg.de/' },
+    { name: 'Speyer', url: 'http://www.dpsg-speyer.org/' },
+    { name: 'Trier', url: 'http://www.dpsg-trier.de/' },
+    { name: 'Würzburg', url: 'http://www.dpsg-wuerzburg.de/' },
+  ],
+};
+
+function normalizeTopicName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 const app = express();
 app.use(express.json());
-app.use((req: Request, _res: Response, next) => {
-  console.log(`${req.method} ${req.originalUrl}`);
+app.use((req: Request, res: Response, next) => {
+  res.on('finish', () => {
+    console.log(`${req.method} ${req.originalUrl} -> ${res.statusCode}`);
+  });
   next();
 });
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok' });
+  res.json({ treeVersion: DV_TREE.lastTreeChange });
+});
+
+app.get('/api/dvs', (_req: Request, res: Response) => {
+  res.json({
+    lastTreeChange: DV_TREE.lastTreeChange,
+    dvs: DV_TREE.dvs,
+  });
 });
 
 app.get('/api/events', async (req: Request, res: Response) => {
@@ -26,18 +73,19 @@ app.get('/api/events', async (req: Request, res: Response) => {
 
 app.post('/api/events', async (req: Request, res: Response) => {
   try {
-    const { title, description, startDate, endDate, location, dv } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
     if (!title || !description || !startDate || !endDate || !location || !dv) {
       return res.status(400).json({ error: 'Missing required event fields' });
     }
 
-    const event = await createEvent({ title, description, startDate, endDate, location, dv });
+    const event = await createEvent({ title, description, startDate, endDate, location, dv, topic });
 
     console.log('Created event, sending push notification', {
       eventId: event.id,
       title,
       location,
       dv,
+      topic,
     });
 
     try {
@@ -45,6 +93,8 @@ app.post('/api/events', async (req: Request, res: Response) => {
         title,
         description,
         eventId: event.id,
+        dv,
+        topic,
       });
       console.log('Push notification request completed for event', { eventId: event.id });
     } catch (notificationError) {

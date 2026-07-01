@@ -4,6 +4,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/settings/data/settings_repository.dart';
+
 final apnsTokenProvider = StateProvider<String?>((ref) => null);
 
 final notificationServiceProvider = Provider<NotificationService>((ref) {
@@ -76,8 +78,6 @@ class NotificationService {
         log('APNS token not available before fetching FCM token');
       }
 
-      await _logDeviceTokens();
-
       String? fcmToken;
       try {
         fcmToken = await messaging.getToken();
@@ -88,7 +88,7 @@ class NotificationService {
       log('FCM token: $fcmToken');
 
       if (fcmToken != null && fcmToken.isNotEmpty) {
-        await _subscribeToTopic();
+        await refreshTopicSubscriptions();
       } else {
         log('Skipping topic subscription because FCM token is not available yet');
       }
@@ -116,31 +116,67 @@ class NotificationService {
     return false;
   }
 
-  Future<void> _subscribeToTopic() async {
-    await FirebaseMessaging.instance.subscribeToTopic('events');
-    log('Subscribed to topic: events');
+  Future<void> _subscribeToTopics(List<String> topics) async {
+    final messaging = FirebaseMessaging.instance;
+    for (final topic in topics) {
+      try {
+        await messaging.subscribeToTopic(topic);
+        log('Subscribed to topic: $topic');
+      } catch (error, stack) {
+        log('Failed to subscribe to topic $topic: $error');
+        log('$stack');
+      }
+    }
   }
 
-  Future<void> _logDeviceTokens() async {
+  Future<void> _unsubscribeFromTopics(List<String> topics) async {
     final messaging = FirebaseMessaging.instance;
-
-    try {
-      final fcmToken = await messaging.getToken();
-      log('Device FCM token: $fcmToken');
-    } catch (error, stack) {
-      log('Failed to read device FCM token: $error');
-      log('$stack');
-    }
-
-    try {
-      final apnsToken = await messaging.getAPNSToken();
-      if (apnsToken != null && apnsToken.isNotEmpty) {
-        _ref.read(apnsTokenProvider.notifier).state = apnsToken;
+    for (final topic in topics) {
+      try {
+        await messaging.unsubscribeFromTopic(topic);
+        log('Unsubscribed from topic: $topic');
+      } catch (error, stack) {
+        log('Failed to unsubscribe from topic $topic: $error');
+        log('$stack');
       }
-    } catch (error, stack) {
-      log('Failed to read device APNS token: $error');
-      log('$stack');
     }
+  }
+
+  Future<void> refreshTopicSubscriptions() async {
+    log('Refreshing notification topic subscriptions');
+    final settingsRepository = _ref.read(settingsRepositoryProvider);
+    final selectedDvs = settingsRepository.getSelectedDvs();
+    final selectedTopicsByDv = settingsRepository.getSelectedTopicsByDv();
+    final topics = <String>{'events'};
+
+    for (final dv in selectedDvs) {
+      topics.add('events_${_normalizeTopicName(dv)}');
+      final selectedTopics = selectedTopicsByDv[dv] ?? <String>[];
+      for (final topic in selectedTopics) {
+        topics.add('events_${_normalizeTopicName(dv)}_${_normalizeTopicName(topic)}');
+      }
+    }
+
+    final newTopics = topics.toList();
+    final currentTopics = settingsRepository.getSubscribedTopics();
+    final removeTopics = currentTopics.where((topic) => !newTopics.contains(topic)).toList();
+    final addTopics = newTopics.where((topic) => !currentTopics.contains(topic)).toList();
+
+    if (removeTopics.isNotEmpty) {
+      await _unsubscribeFromTopics(removeTopics);
+    }
+    if (addTopics.isNotEmpty) {
+      await _subscribeToTopics(addTopics);
+    }
+
+    await settingsRepository.setSubscribedTopics(newTopics);
+  }
+
+  String _normalizeTopicName(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_+|_+$'), '');
   }
 
   Future<void> _handleInitialMessage() async {
@@ -161,7 +197,7 @@ class NotificationService {
     FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
       log('FCM token refreshed: $token');
       if (token.isNotEmpty) {
-        await _subscribeToTopic();
+        await refreshTopicSubscriptions();
       }
     }, onError: (error, stack) {
       log('Failed to refresh FCM token: $error');

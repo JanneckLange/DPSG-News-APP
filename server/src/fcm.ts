@@ -24,9 +24,18 @@ export type EventNotificationPayload = {
   title: string;
   description: string;
   eventId?: number | string;
+  dv?: string;
+  topic?: string;
 };
 
-export async function sendEventNotification({ title, description, eventId }: EventNotificationPayload): Promise<string> {
+function normalizeTopicName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+export async function sendEventNotification({ title, description, eventId, dv, topic }: EventNotificationPayload): Promise<string> {
   const body = typeof description === 'string'
     ? description
     : description != null
@@ -34,8 +43,13 @@ export async function sendEventNotification({ title, description, eventId }: Eve
       : '';
   const shortBody = body.length > 120 ? `${body.substring(0, 117)}...` : body;
 
+  const topicName = topic != null && topic.trim().length > 0
+    ? `events_${normalizeTopicName(dv ?? '')}_${normalizeTopicName(topic)}`
+    : dv != null && dv.trim().length > 0
+      ? `events_${normalizeTopicName(dv)}`
+      : 'events';
   const message: Message = {
-    topic: 'events',
+    topic: topicName,
     notification: {
       title: `Neues Event: ${title}`,
       body: shortBody,
@@ -43,6 +57,7 @@ export async function sendEventNotification({ title, description, eventId }: Eve
     data: {
       eventId: eventId?.toString() ?? '',
       type: 'event_created',
+      dv: dv ?? '',
     },
   };
 
