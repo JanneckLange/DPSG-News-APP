@@ -36,13 +36,6 @@ const DV_TREE = {
   ],
 };
 
-function normalizeTopicName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
 const app = express();
 app.use(express.json());
 app.use((req: Request, res: Response, next) => {

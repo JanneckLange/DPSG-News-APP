@@ -10,8 +10,8 @@
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'npm run build && node dist/index.js'",
     "lint": "eslint './src/**/*.ts' './test/**/*.ts'",
     "lint:fix": "eslint './src/**/*.ts' './test/**/*.ts' --fix",
-    "test:unit": "jest --runInBand test/events.unit.test.ts",
-    "test:e2e": "cross-env TEST_DATABASE_URL=postgres://dpsg:dpsg@localhost:5433/dpsg_news_test jest --runInBand test/events.e2e.test.ts",
+    "test:unit": "jest --runInBand --coverage=false test/events.unit.test.ts",
+    "test:e2e": "cross-env TEST_DATABASE_URL=postgres://dpsg:dpsg@localhost:5433/dpsg_news_test jest --runInBand --coverage=false test/events.e2e.test.ts",
     "test:coverage": "cross-env TEST_DATABASE_URL=postgres://dpsg:dpsg@localhost:5433/dpsg_news_test jest --runInBand --coverage",
     "verify": "npm run lint && npm run test:coverage",
     "test": "npm run test:unit && npm run test:e2e"
