@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/services/hive_service.dart';
+import 'core/services/notification_service.dart';
 import 'core/services/sync_service.dart';
 import 'features/author/presentation/author_screen.dart';
 import 'features/calendar/presentation/calendar_screen.dart';
@@ -22,6 +22,7 @@ class _AppState extends ConsumerState<App> {
   void initState() {
     super.initState();
     Future.microtask(() {
+      ref.read(notificationServiceProvider).initialize();
       ref.read(syncServiceProvider).syncEvents();
     });
   }

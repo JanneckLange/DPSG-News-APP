@@ -17,6 +17,7 @@
 ## Tests und Validierung
 
 - Fuehre nach relevanten Aenderungen passende Tests aus, bevorzugt gezielt fuer den betroffenen Bereich.
+- Pruefe App und Server nach Aenderungen immer auf Startbarkeit, Build und Syntaxfehler.
 - Wenn Verhalten geaendert wird, ergaenze oder aktualisiere Tests im test-Verzeichnis.
 - Behandle Storybook als Teil der UI-Absicherung und nicht als losgeloeste Demo.
 

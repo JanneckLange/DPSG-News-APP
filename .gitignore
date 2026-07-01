@@ -27,3 +27,5 @@
 .vscode/
 .idea/
 *.iml
+
+*.p8

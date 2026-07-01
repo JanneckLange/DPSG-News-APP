@@ -1,1 +1,1 @@
-module.exports = require('./src/db');
+module.exports = require('./dist/db');

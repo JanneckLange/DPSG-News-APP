@@ -13,9 +13,10 @@ npm install
 
 1. Eine lokale Postgres-Instanz starten (z. B. mit Docker Compose oder lokal installiertem Postgres)
 2. Umgebungsvariablen in `.env` konfigurieren oder `DATABASE_URL` setzen
-3. Server starten:
+3. Server bauen und starten:
 
 ```bash
+npm run build
 npm start
 ```
 

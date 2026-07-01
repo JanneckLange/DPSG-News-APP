@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/event_repository.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../core/services/hive_service.dart';
 

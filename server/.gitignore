@@ -1,3 +1,5 @@
 node_modules/
 .env
 npm-debug.log*
+dpsg-news-dev-firebase-adminsdk-fbsvc-6523e23f5c.json
+dist/

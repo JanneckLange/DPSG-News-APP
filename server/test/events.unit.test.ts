@@ -1,4 +1,4 @@
-const { mapEventRow } = require('../src/db');
+import { mapEventRow } from '../src/db';
 
 describe('Event DB mapping', () => {
   it('maps row fields to camelCase event object', () => {

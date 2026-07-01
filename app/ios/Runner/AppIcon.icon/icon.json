@@ -16,20 +16,13 @@
           "fill-specializations" : [
             {
               "value" : {
-                "linear-gradient" : [
-                  "display-p3:0.05836,0.11178,0.29436,1.00000",
-                  "display-p3:0.03137,0.09802,0.21960,1.00000"
-                ],
-                "orientation" : {
-                  "start" : {
-                    "x" : 0.4999999999999997,
-                    "y" : 0
-                  },
-                  "stop" : {
-                    "x" : 0.5,
-                    "y" : 1
-                  }
-                }
+                "solid" : "display-p3:0.05836,0.11178,0.29436,1.00000"
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "display-p3:0.05836,0.11178,0.39218,1.00000"
               }
             },
             {
@@ -107,7 +100,9 @@
             },
             {
               "appearance" : "tinted",
-              "value" : "none"
+              "value" : {
+                "solid" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+              }
             }
           ],
           "image-name" : "Kreis.png",
@@ -121,6 +116,12 @@
           }
         },
         {
+          "blend-mode-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : "plus-lighter"
+            }
+          ],
           "fill-specializations" : [
             {
               "value" : {
@@ -129,7 +130,9 @@
             },
             {
               "appearance" : "tinted",
-              "value" : "none"
+              "value" : {
+                "solid" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+              }
             }
           ],
           "image-name" : "Kreis.png",
@@ -172,7 +175,9 @@
           ],
           "fill-specializations" : [
             {
-              "value" : "automatic"
+              "value" : {
+                "solid" : "extended-gray:0.75000,1.00000"
+              }
             },
             {
               "appearance" : "dark",
