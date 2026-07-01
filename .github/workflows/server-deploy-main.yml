@@ -51,12 +51,21 @@ jobs:
           image="${DOCKER_IMAGE_REPO}:${GITHUB_SHA}"
           echo "image=${image}" >> "$GITHUB_OUTPUT"
 
+      - name: Prepare build metadata
+        id: build_meta
+        run: |
+          echo "build_time_utc=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: ./server
           file: ./server/Dockerfile
           push: true
+          build-args: |
+            BUILD_TIME_UTC=${{ steps.build_meta.outputs.build_time_utc }}
+            GIT_SHA=${{ github.sha }}
+            GIT_REF=${{ github.ref_name }}
           tags: |
             ${{ steps.meta.outputs.image }}
             ${{ env.DOCKER_IMAGE_REPO }}:latest

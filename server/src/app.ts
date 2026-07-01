@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { createEvent, deleteAllEvents, deleteEventById, getEvents, EventInput } from './db';
 import { sendEventNotification } from './fcm';
+import { getBuildInfo } from './buildInfo';
+import { logInfo, logRequest, logRequestError } from './logger';
 
 const DV_TREE = {
   lastTreeChange: '2026-07-01T00:00:00Z',
@@ -43,14 +46,33 @@ function normalizeTopicName(value: string): string {
 const app = express();
 app.use(express.json());
 app.use((req: Request, res: Response, next) => {
+  const startedAt = Date.now();
+  const headerRequestId = req.header('x-request-id');
+  const requestId = headerRequestId && headerRequestId.trim() ? headerRequestId.trim() : randomUUID();
+  res.locals.requestId = requestId;
+  res.setHeader('x-request-id', requestId);
+
   res.on('finish', () => {
-    console.log(`${req.method} ${req.originalUrl} -> ${res.statusCode}`);
+    logRequest({
+      requestId,
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - startedAt,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
   });
+
   next();
 });
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ treeVersion: DV_TREE.lastTreeChange });
+  res.json({
+    status: 'ok',
+    treeVersion: DV_TREE.lastTreeChange,
+    build: getBuildInfo(),
+  });
 });
 
 app.get('/api/dvs', (_req: Request, res: Response) => {
@@ -66,7 +88,7 @@ app.get('/api/events', async (req: Request, res: Response) => {
     const events = await getEvents(dv);
     res.json({ events });
   } catch (error) {
-    console.error(error);
+    logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load events' });
   }
 });
@@ -80,7 +102,8 @@ app.post('/api/events', async (req: Request, res: Response) => {
 
     const event = await createEvent({ title, description, startDate, endDate, location, dv, topic });
 
-    console.log('Created event, sending push notification', {
+    logInfo('Created event, sending push notification', {
+      requestId: res.locals.requestId,
       eventId: event.id,
       title,
       location,
@@ -96,14 +119,17 @@ app.post('/api/events', async (req: Request, res: Response) => {
         dv,
         topic,
       });
-      console.log('Push notification request completed for event', { eventId: event.id });
+      logInfo('Push notification request completed for event', {
+        requestId: res.locals.requestId,
+        eventId: event.id,
+      });
     } catch (notificationError) {
-      console.error('Failed to send event notification', notificationError);
+      logRequestError(notificationError, res.locals.requestId);
     }
 
     res.status(201).json({ event });
   } catch (error) {
-    console.error(error);
+    logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to create event' });
   }
 });
@@ -122,7 +148,7 @@ app.delete('/api/events/:id', async (req: Request, res: Response) => {
 
     res.status(204).end();
   } catch (error) {
-    console.error(error);
+    logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to delete event' });
   }
 });
@@ -132,7 +158,7 @@ app.delete('/api/events', async (_req: Request, res: Response) => {
     const deletedCount = await deleteAllEvents();
     res.json({ deletedCount });
   } catch (error) {
-    console.error(error);
+    logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to delete events' });
   }
 });

@@ -1,10 +1,12 @@
 import { initializeApp, cert, getApps, ServiceAccount } from 'firebase-admin/app';
 import { getMessaging, Message } from 'firebase-admin/messaging';
-import path from 'path';
 import fs from 'fs';
 
-const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-  path.join(__dirname, '..', 'firebase', 'dpsg-news-dev-firebase-adminsdk-fbsvc-6523e23f5c.json');
+const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+if (!serviceAccountPath) {
+  throw new Error('GOOGLE_APPLICATION_CREDENTIALS is not set. Configure an absolute path to a Firebase service account JSON file.');
+}
 
 if (!fs.existsSync(serviceAccountPath)) {
   throw new Error(`Firebase service account file not found: ${serviceAccountPath}`);
