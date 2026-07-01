@@ -6,5 +6,5 @@ permalink: /
 
 Diese Seite wird ueber GitHub Pages bereitgestellt und enthaelt die rechtlichen Dokumente zur App.
 
-- [App Privacy Policy](/privacy-policy/)
-- [App Terms & Conditions](/terms-conditions/)
+- [App Privacy Policy](./privacy-policy/)
+- [App Terms & Conditions](./terms-conditions/)
