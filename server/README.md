@@ -30,6 +30,44 @@ docker compose up --build
 
 Der Server ist dann auf `http://localhost:3000` erreichbar.
 
+## Deployment (Linux + Docker)
+
+Automatisierter Ablauf:
+
+- Bei jedem Push auf `main` baut GitHub Actions ein neues Server-Image.
+- Das Image wird nach Docker Hub (`sapza/dpsgnews`) gepusht.
+- Anschliessend erfolgt Deployment per SSH auf den Linux-Host.
+- Deployment-Dateien (`docker-compose.server.yml`, `Caddyfile`) werden dabei automatisch auf den Host synchronisiert.
+
+Workflow-Datei:
+
+- `.github/workflows/server-deploy-main.yml`
+
+Voraussetzungen auf dem Host:
+
+- `/opt/dpsg-news/docker-compose.server.yml`
+- `/opt/dpsg-news/Caddyfile`
+- `/opt/dpsg-news/.env`
+- `/opt/dpsg-news/secrets/`
+
+Ein Compose-Template liegt unter:
+
+- `server/deploy/docker-compose.server.yml`
+
+Benoetigte GitHub Secrets:
+
+- `DOCKERHUB_TOKEN`
+- `SSH_HOST`
+- `SSH_USER`
+- `SSH_PRIVATE_KEY`
+- `SSH_PORT`
+
+Wichtig:
+
+- Runtime-Secrets gehoeren auf den Linux-Host, nicht in das Docker-Image.
+- Secret-Dateien nur read-only mounten.
+- HTTPS laeuft automatisch ueber Caddy (Let's Encrypt), wenn die Domain auf die Server-IP zeigt.
+
 ## Testen
 
 Für Unit- und E2E-Tests nutzt der Server `jest` und `supertest`.

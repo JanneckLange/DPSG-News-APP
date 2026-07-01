@@ -12,6 +12,7 @@
 **/.flutter-plugins-dependencies
 **/.dart_tool/
 **/pubspec.lock
+**/coverage/
 
 # Node
 **/node_modules/

@@ -20,6 +20,12 @@ if [ -f "$APP_ROOT/.env.example" ]; then
   if [ -n "${WIREDASH_SECRET:-}" ]; then
     printf 'WIREDASH_SECRET=%s\n' "$WIREDASH_SECRET" >> "$APP_ROOT/.env"
   fi
+  if [ -n "${LOG_MAX_DAYS:-}" ]; then
+    printf 'LOG_MAX_DAYS=%s\n' "$LOG_MAX_DAYS" >> "$APP_ROOT/.env"
+  fi
+  if [ -n "${LOG_MAX_SIZE_MB:-}" ]; then
+    printf 'LOG_MAX_SIZE_MB=%s\n' "$LOG_MAX_SIZE_MB" >> "$APP_ROOT/.env"
+  fi
   echo "Created app/.env from app/.env.example"
 else
   echo "No app/.env.example found; skipping app env preparation"

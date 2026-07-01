@@ -18,8 +18,19 @@ Diese App ist jetzt für die Integration mit App Store Connect und Xcode Cloud v
 
 ## Xcode Cloud
 
-- Das Skript in ios/ci_scripts/ci_pre_xcodebuild.sh installiert Flutter-Abhängigkeiten und CocoaPods.
-- Das Skript in ios/ci_scripts/ci_post_xcodebuild.sh markiert den Build-Ordner als Artefakt-Checkpoint.
+- Das Skript in ios/ci_scripts/ci_post_clone.sh installiert Flutter, fuehrt `flutter pub get` aus und macht `pod install`.
+- Das Skript in ios/ci_scripts/ci_pre_xcodebuild.sh erstellt `app/.env` auf Basis von `app/.env.example` und uebernimmt gesetzte Xcode-Cloud-Variablen.
+- Das Skript in ios/ci_scripts/ci_post_xcodebuild.sh gibt Build-Artefakt-Hinweise aus.
+
+### Xcode-Cloud-Variablen fuer app/.env
+
+Die folgenden optionalen Variablen werden aus Xcode Cloud in `app/.env` geschrieben, wenn sie gesetzt sind:
+
+- `API_BASE_URL`
+- `WIREDASH_PROJECT_ID`
+- `WIREDASH_SECRET`
+- `LOG_MAX_DAYS`
+- `LOG_MAX_SIZE_MB`
 
 ## Nächste Schritte in App Store Connect
 

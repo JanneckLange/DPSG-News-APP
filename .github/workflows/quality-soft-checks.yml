@@ -1,0 +1,129 @@
+name: Quality Soft Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  app_quality:
+    name: App Analyze, Tests and Coverage (soft)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Flutter analyze
+        id: analyze
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Flutter tests with coverage
+        id: tests
+        continue-on-error: true
+        run: flutter test --coverage
+
+      - name: Enforce app coverage threshold (80%)
+        id: coverage
+        continue-on-error: true
+        run: |
+          set -eu
+          if [ ! -f coverage/lcov.info ]; then
+            echo "coverage/lcov.info missing"
+            exit 1
+          fi
+
+          total_lines=$(awk -F: '/^LF:/{sum+=$2} END{print sum+0}' coverage/lcov.info)
+          covered_lines=$(awk -F: '/^LH:/{sum+=$2} END{print sum+0}' coverage/lcov.info)
+
+          if [ "$total_lines" -le 0 ]; then
+            echo "No lines found in coverage report"
+            exit 1
+          fi
+
+          coverage_pct=$(awk -v lh="$covered_lines" -v lf="$total_lines" 'BEGIN{printf "%.2f", (lh/lf)*100}')
+          echo "App coverage: ${coverage_pct}%"
+          echo "coverage_pct=${coverage_pct}" >> "$GITHUB_OUTPUT"
+
+          awk -v c="$coverage_pct" 'BEGIN{exit (c < 80.0)}'
+
+      - name: Job summary
+        if: always()
+        run: |
+          coverage_value="${{ steps.coverage.outputs.coverage_pct }}"
+          if [ -z "$coverage_value" ]; then
+            coverage_value="n/a"
+          fi
+          {
+            echo "## App Quality (soft)"
+            echo "- Analyze: ${{ steps.analyze.outcome }}"
+            echo "- Tests: ${{ steps.tests.outcome }}"
+            echo "- Coverage >= 80%: ${{ steps.coverage.outcome }}"
+            echo "- Coverage value: ${coverage_value}%"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  server_quality:
+    name: Server Lint and Coverage (soft)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: server
+    services:
+      postgres-test:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dpsg
+          POSTGRES_PASSWORD: dpsg
+          POSTGRES_DB: dpsg_news_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U dpsg -d dpsg_news_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify (lint + coverage)
+        id: verify
+        continue-on-error: true
+        run: npm run verify
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Server Quality (soft)"
+            echo "- Verify: ${{ steps.verify.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"

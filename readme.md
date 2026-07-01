@@ -36,6 +36,12 @@ npm start
 - `app/.env.example` zeigt die App-spezifische lokale Konfiguration
 - `server/.env.example` zeigt Backend-spezifische Umgebungsvariablen
 
-## Ohne CI
+## CI/CD
 
-Dieses Setup enthält noch keine CI-Konfiguration. Der Fokus liegt auf einer lokal startbaren Basisstruktur.
+Das Repository nutzt getrennte Automatisierung:
+
+- iOS-Builds laufen in Xcode Cloud mit den Skripten unter `app/ios/ci_scripts`.
+- GitHub Actions pruefen Qualitaet fuer App und Server (Analyze/Lint/Tests/Coverage) als Warnungen.
+- GitHub Actions bauen und deployen den Server bei jedem Push auf `main` per Docker Hub + SSH.
+
+Hinweis: Android-Pipeline wird spaeter ergaenzt.
