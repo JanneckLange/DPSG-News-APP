@@ -14,7 +14,7 @@ class AppConfig {
       return compileTimeValue;
     }
 
-    return Platform.environment['API_BASE_URL'] ?? 'http://localhost:3000';
+    return Platform.environment['API_BASE_URL'] ?? 'https://dpsgnews.scout-link.de';
   }
 
   static String get wiredashProjectId {
