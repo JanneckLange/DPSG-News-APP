@@ -11,7 +11,7 @@ Diese App ist jetzt für die Integration mit App Store Connect und Xcode Cloud v
 
 ## Wichtige Werte
 
-- Bundle Identifier: de.jlange.dpsgnews.app
+- Bundle Identifier: de.jlange.dpsgnews
 - Team: 6WMJR3R823
 - iOS Deployment Target: 13.0
 - Flutter Build-Nummer: wird über die Build-Umgebung gesetzt.
@@ -24,7 +24,7 @@ Diese App ist jetzt für die Integration mit App Store Connect und Xcode Cloud v
 ## Nächste Schritte in App Store Connect
 
 - Neue App anlegen.
-- Bundle Identifier mit de.jlange.dpsgnews.app verknüpfen.
+- Bundle Identifier mit de.jlange.dpsgnews verknüpfen.
 - Signierung mit dem passenden Apple-Developer-Team konfigurieren.
 - Erste Version und Build in App Store Connect hochladen.
 

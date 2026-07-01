@@ -4,6 +4,10 @@ import { sendEventNotification } from './fcm';
 
 const app = express();
 app.use(express.json());
+app.use((req: Request, _res: Response, next) => {
+  console.log(`${req.method} ${req.originalUrl}`);
+  next();
+});
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
@@ -29,12 +33,20 @@ app.post('/api/events', async (req: Request, res: Response) => {
 
     const event = await createEvent({ title, description, startDate, endDate, location, dv });
 
+    console.log('Created event, sending push notification', {
+      eventId: event.id,
+      title,
+      location,
+      dv,
+    });
+
     try {
       await sendEventNotification({
         title,
         description,
         eventId: event.id,
       });
+      console.log('Push notification request completed for event', { eventId: event.id });
     } catch (notificationError) {
       console.error('Failed to send event notification', notificationError);
     }

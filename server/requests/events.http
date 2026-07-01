@@ -13,6 +13,11 @@ GET http://localhost:3000/api/events?dv=K%C3%B6ln HTTP/1.1
 
 ###
 
+# Delete events 
+DELETE  http://localhost:3000/api/events HTTP/1.1
+
+###
+
 # Create a new event
 POST http://localhost:3000/api/events HTTP/1.1
 Content-Type: application/json

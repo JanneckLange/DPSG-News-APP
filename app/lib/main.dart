@@ -9,8 +9,15 @@ import 'core/services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    rethrow;
+  }
+
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   await HiveService.initialize();
+
   runApp(const ProviderScope(child: App()));
 }

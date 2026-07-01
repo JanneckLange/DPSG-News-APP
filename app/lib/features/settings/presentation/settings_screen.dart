@@ -1,14 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/settings_repository.dart';
-import '../../../core/services/hive_service.dart';
 import '../../../core/services/logging_service.dart';
+import '../../../core/services/notification_service.dart';
+import '../../../features/events/data/remote_event_source.dart';
 import '../../../core/config/app_config.dart';
 
-final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
-  return SettingsRepository(HiveService.getSettingsBox());
+final apiHealthProvider = StateNotifierProvider<ApiHealthNotifier, ApiHealthStatus?>((ref) {
+  return ApiHealthNotifier();
 });
+
+class ApiHealthNotifier extends StateNotifier<ApiHealthStatus?> {
+  ApiHealthNotifier() : super(null);
+
+  Future<void> refresh(String baseUrl) async {
+    state = ApiHealthStatus(false, 'Prüfe Verbindung...');
+    try {
+      final uri = Uri.parse(baseUrl);
+      final status = await RemoteEventSource(baseUrl: uri).checkHealth();
+      state = status;
+    } catch (error) {
+      state = ApiHealthStatus(false, 'Server nicht erreichbar');
+    }
+  }
+}
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -18,9 +35,12 @@ class SettingsScreen extends ConsumerWidget {
     final repository = ref.watch(settingsRepositoryProvider);
     final logger = ref.watch(loggingServiceProvider);
     final selectedDv = repository.getSelectedDv();
-    final authorMode = repository.getAuthorMode();
+    final authorMode = ref.watch(authorModeProvider);
     final configuredUrl = repository.getApiBaseUrl();
     final effectiveUrl = configuredUrl ?? AppConfig.defaultApiBaseUrl;
+
+    final apnsToken = ref.watch(apnsTokenProvider);
+    final healthStatus = ref.watch(apiHealthProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Einstellungen')),
@@ -45,11 +65,45 @@ class SettingsScreen extends ConsumerWidget {
               await _showApiUrlDialog(context, repository);
             },
           ),
+          ListTile(
+            title: const Text('API-Status'),
+            subtitle: Text(
+              healthStatus?.message ?? 'Nicht geprüft',
+              style: TextStyle(
+                color: healthStatus?.healthy == true ? Colors.green : Colors.red,
+              ),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () async {
+                await ref.read(apiHealthProvider.notifier).refresh(effectiveUrl);
+              },
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            title: const Text('APNS-Token'),
+            subtitle: Text(apnsToken ?? 'Noch nicht verfügbar'),
+            isThreeLine: true,
+            trailing: IconButton(
+              icon: const Icon(Icons.copy),
+              onPressed: apnsToken == null || apnsToken.isEmpty
+                  ? null
+                  : () async {
+                      await Clipboard.setData(ClipboardData(text: apnsToken));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('APNS-Token kopiert')),
+                        );
+                      }
+                    },
+            ),
+          ),
           SwitchListTile(
             title: const Text('Autor-Modus'),
             value: authorMode,
             onChanged: (value) async {
-              await repository.setAuthorMode(value);
+              await ref.read(authorModeProvider.notifier).setAuthorMode(value);
               logger.logEvent('author_mode_toggled', properties: {'enabled': value});
             },
           ),

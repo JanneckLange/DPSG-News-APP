@@ -1,12 +1,13 @@
 import 'dart:developer';
-import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+final apnsTokenProvider = StateProvider<String?>((ref) => null);
+
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService();
+  return NotificationService(ref);
 });
 
 const AndroidNotificationChannel _channel = AndroidNotificationChannel(
@@ -25,12 +26,19 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class NotificationService {
+  NotificationService(this._ref);
+
+  final Ref _ref;
+
   Future<void> initialize() async {
+    log('NotificationService: initialize started');
     await _initializeLocalNotifications();
     await _requestPermission();
     await _handleInitialMessage();
     _listenToForegroundMessages();
     _listenToMessageOpenedApp();
+    _listenToTokenRefresh();
+    log('NotificationService: initialize finished');
   }
 
   Future<void> _initializeLocalNotifications() async {
@@ -63,16 +71,26 @@ class NotificationService {
     log('Notification permission status: ${settings.authorizationStatus}');
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      await messaging.registerForRemoteNotifications();
-      final hasApnsToken = await _ensureApnsTokenAvailable();
+      final apnsAvailable = await _ensureApnsTokenAvailable();
+      if (!apnsAvailable) {
+        log('APNS token not available before fetching FCM token');
+      }
 
-      final fcmToken = await messaging.getToken();
+      await _logDeviceTokens();
+
+      String? fcmToken;
+      try {
+        fcmToken = await messaging.getToken();
+      } catch (error, stack) {
+        log('Failed to fetch FCM token: $error');
+        log('$stack');
+      }
       log('FCM token: $fcmToken');
 
-      if (hasApnsToken) {
+      if (fcmToken != null && fcmToken.isNotEmpty) {
         await _subscribeToTopic();
       } else {
-        log('Skipping topic subscription because APNS token is not available yet');
+        log('Skipping topic subscription because FCM token is not available yet');
       }
     }
   }
@@ -80,11 +98,17 @@ class NotificationService {
   Future<bool> _ensureApnsTokenAvailable() async {
     const maxRetries = 5;
     for (var attempt = 0; attempt < maxRetries; attempt++) {
-      final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-      if (apnsToken != null && apnsToken.isNotEmpty) {
-        log('APNS token: $apnsToken');
-        return true;
+      try {
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken != null && apnsToken.isNotEmpty) {
+          _ref.read(apnsTokenProvider.notifier).state = apnsToken;
+          return true;
+        }
+      } catch (error, stack) {
+        log('Failed to read APNS token: $error');
+        log('$stack');
       }
+
       log('APNS token not yet available, retrying (${attempt + 1}/$maxRetries)');
       await Future.delayed(const Duration(seconds: 1));
     }
@@ -95,6 +119,28 @@ class NotificationService {
   Future<void> _subscribeToTopic() async {
     await FirebaseMessaging.instance.subscribeToTopic('events');
     log('Subscribed to topic: events');
+  }
+
+  Future<void> _logDeviceTokens() async {
+    final messaging = FirebaseMessaging.instance;
+
+    try {
+      final fcmToken = await messaging.getToken();
+      log('Device FCM token: $fcmToken');
+    } catch (error, stack) {
+      log('Failed to read device FCM token: $error');
+      log('$stack');
+    }
+
+    try {
+      final apnsToken = await messaging.getAPNSToken();
+      if (apnsToken != null && apnsToken.isNotEmpty) {
+        _ref.read(apnsTokenProvider.notifier).state = apnsToken;
+      }
+    } catch (error, stack) {
+      log('Failed to read device APNS token: $error');
+      log('$stack');
+    }
   }
 
   Future<void> _handleInitialMessage() async {
@@ -108,6 +154,18 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen((message) {
       log('Foreground message received: ${message.messageId}');
       _showLocalNotification(message);
+    });
+  }
+
+  void _listenToTokenRefresh() {
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+      log('FCM token refreshed: $token');
+      if (token.isNotEmpty) {
+        await _subscribeToTopic();
+      }
+    }, onError: (error, stack) {
+      log('Failed to refresh FCM token: $error');
+      log('$stack');
     });
   }
 

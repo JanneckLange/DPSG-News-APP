@@ -55,6 +55,83 @@ class RemoteEventSource {
       );
     }
   }
+
+  Future<ApiHealthStatus> checkHealth() async {
+    try {
+      final response = await _client
+          .get(baseUrl.replace(path: '/health'))
+          .timeout(timeout);
+
+      if (response.statusCode == 200) {
+        return ApiHealthStatus(true, 'Server erreichbar');
+      }
+      return ApiHealthStatus(false, 'Server antwortet mit ${response.statusCode}');
+    } on TimeoutException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Health check timed out',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    } on SocketException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Unable to reach health endpoint',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    } on http.ClientException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Network error during health check',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> createEvent(Map<String, dynamic> event) async {
+    try {
+      final response = await _client
+          .post(
+            baseUrl.replace(path: '/api/events'),
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+            body: jsonEncode(event),
+          )
+          .timeout(timeout);
+
+      if (response.statusCode != 201) {
+        throw RemoteEventSourceException(
+          'Failed to create event: ${response.statusCode} ${response.body}',
+        );
+      }
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return decoded['event'] as Map<String, dynamic>;
+    } on TimeoutException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Timed out while creating event',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    } on SocketException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Unable to reach the event server',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    } on http.ClientException catch (error, stackTrace) {
+      throw RemoteEventSourceException(
+        'Network error while creating event',
+        exception: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+}
+
+class ApiHealthStatus {
+  ApiHealthStatus(this.healthy, this.message);
+
+  final bool healthy;
+  final String message;
 }
 
 class RemoteEventSourceException implements Exception {

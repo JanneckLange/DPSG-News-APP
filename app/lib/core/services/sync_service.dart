@@ -18,28 +18,33 @@ final remoteEventSourceProvider = Provider<RemoteEventSource>((ref) {
   return RemoteEventSource(baseUrl: Uri.parse(baseUrl));
 });
 
+final eventSyncStatusProvider = StateProvider<String?>((_) => null);
+
 final syncServiceProvider = Provider<SyncService>((ref) {
   final repository = ref.read(eventRepositoryProvider);
   final remoteSource = ref.read(remoteEventSourceProvider);
   final logger = ref.read(loggingServiceProvider);
-  return SyncService(repository, remoteSource, logger);
+  return SyncService(repository, remoteSource, logger, ref);
 });
 
 class SyncService {
-  SyncService(this._repository, this._remoteSource, this._logger);
+  SyncService(this._repository, this._remoteSource, this._logger, this._ref);
 
   final EventRepository _repository;
   final RemoteEventSource _remoteSource;
   final LoggingService _logger;
+  final Ref _ref;
 
   Future<void> syncEvents() async {
     _logger.logEvent('events_sync_started');
+    _ref.read(eventSyncStatusProvider.notifier).state = null;
     try {
       final events = await _remoteSource.fetchEvents();
       await _repository.saveEvents(events);
       _logger.logEvent('events_synced', properties: {'count': events.length});
     } catch (error, stackTrace) {
       _logger.logError('events_sync_failed', error: error, stackTrace: stackTrace);
+      _ref.read(eventSyncStatusProvider.notifier).state = 'Server nicht erreichbar';
     }
   }
 }

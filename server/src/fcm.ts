@@ -46,5 +46,14 @@ export async function sendEventNotification({ title, description, eventId }: Eve
     },
   };
 
-  return getMessaging().send(message);
+  console.log('Sending FCM event notification', {
+    topic: message.topic,
+    title: message.notification?.title,
+    body: message.notification?.body,
+    eventId,
+  });
+
+  const result = await getMessaging().send(message);
+  console.log('FCM event notification sent successfully', { messageId: result });
+  return result;
 }
