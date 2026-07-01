@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBw5liHczD6UI1r3yFq8GpEQE3-lbe-qLk</string>
+	<key>GCM_SENDER_ID</key>
+	<string>894043753690</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>de.jlange.dpsgnews</string>
+	<key>PROJECT_ID</key>
+	<string>dpsg-news</string>
+	<key>STORAGE_BUCKET</key>
+	<string>dpsg-news.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:894043753690:ios:e436d399ade9a244b1e9e3</string>
+</dict>
+</plist>

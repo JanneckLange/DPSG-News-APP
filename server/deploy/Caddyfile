@@ -1,4 +1,4 @@
-scout-link.de {
+dpsgnews.scout-link.de {
   encode zstd gzip
 
   reverse_proxy server:3000
