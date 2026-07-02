@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../author/data/author_auth_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
 import 'app_settings_screen.dart';
 import 'confetti_overlay.dart';
 import 'debug_tools_screen.dart';
 import 'notification_settings_screen.dart';
+import 'dv_selection_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -79,6 +81,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   );
                 },
               ),
+              _buildNavigationTile(
+                context,
+                icon: Icons.map_outlined,
+                title: 'DV-Auswahl',
+                subtitle: 'Diözesanverbände und Favoriten',
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const DvSelectionScreen()),
+                  );
+                },
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -140,6 +153,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildProfileCard(BuildContext context) {
+    final authorAuth = ref.watch(authorAuthProvider);
     return Card(
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -164,11 +178,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Profil', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                    Text(
+                      authorAuth.isLoggedIn ? (authorAuth.username ?? 'Autor') : 'Profil',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    ),
                     const SizedBox(height: 4),
-                    Text('Anonym', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                    Text(
+                      authorAuth.isLoggedIn ? 'Accounts und Rechte' : 'Anonym',
+                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                    ),
                     const SizedBox(height: 2),
-                    const Text('Login später verfügbar', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(
+                      authorAuth.isLoggedIn ? 'Passwort, Logout und Admin-Bereich hier' : 'Login über Profil verfügbar',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ],
                 ),
               ),

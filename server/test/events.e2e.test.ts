@@ -7,8 +7,14 @@ jest.mock('../src/fcm', () => ({
 
 import request from 'supertest';
 import app from '../src/app';
-import { connect, clearEvents, close } from '../src/db';
+import { clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
 import { sendEventNotification } from '../src/fcm';
+
+async function loginAuthor(username: string, password: string): Promise<string> {
+  const response = await request(app).post('/api/auth/login').send({ username, password });
+  expect(response.status).toBe(200);
+  return response.body.token as string;
+}
 
 beforeAll(async () => {
   process.env.TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
@@ -17,24 +23,28 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await clearEvents();
-});
-
-afterAll(async () => {
-  await close();
-});
-
-afterEach(async () => {
-  await clearEvents();
+  await clearAuthorData();
 });
 
 describe('Events API e2e', () => {
-  it('returns empty list when no events exist', async () => {
-    const response = await request(app).get('/api/events');
-    expect(response.status).toBe(200);
-    expect(response.body.events).toEqual([]);
+  it('requires authentication for author event writes', async () => {
+    const response = await request(app).post('/api/events').send({
+      title: 'Unauthorized',
+      description: 'No token',
+      startDate: '2026-01-01T10:00:00Z',
+      endDate: '2026-01-01T12:00:00Z',
+      location: 'Ort',
+      dv: 'Köln',
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'Unauthorized' });
   });
 
-  it('creates an event and returns it', async () => {
+  it('creates and returns own events for authenticated author', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    const token = await loginAuthor('author-a', 'secret-123');
+
     const eventBody = {
       title: 'Test Event',
       description: 'Beschreibung',
@@ -44,123 +54,333 @@ describe('Events API e2e', () => {
       dv: 'Köln',
     };
 
-    const response = await request(app).post('/api/events').send(eventBody);
-    expect(response.status).toBe(201);
-    expect(response.body.event).toMatchObject({
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send(eventBody);
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.event).toMatchObject({
       title: eventBody.title,
       description: eventBody.description,
       location: eventBody.location,
       dv: eventBody.dv,
-    });
-    expect(new Date(response.body.event.startDate).toISOString()).toBe(new Date(eventBody.startDate).toISOString());
-    expect(new Date(response.body.event.endDate).toISOString()).toBe(new Date(eventBody.endDate).toISOString());
-  });
-
-  it('returns 400 when event payload is incomplete', async () => {
-    const response = await request(app).post('/api/events').send({
-      title: 'Incomplete Event',
-      description: 'Missing fields',
-      startDate: '2026-01-01T10:00:00Z',
+      authorId: expect.any(Number),
     });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: 'Missing required event fields' });
+    const ownResponse = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${token}`);
+    expect(ownResponse.status).toBe(200);
+    expect(ownResponse.body.events).toHaveLength(1);
+    expect(ownResponse.body.events[0].title).toBe('Test Event');
   });
 
-  it('returns 400 for invalid delete id and 404 when event is not found', async () => {
-    const invalidResponse = await request(app).delete('/api/events/abc');
-    expect(invalidResponse.status).toBe(400);
-    expect(invalidResponse.body).toEqual({ error: 'Invalid event id' });
+  it('shows all events in public endpoint but only own events in author endpoint', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-b', password: 'secret-456' });
+    const tokenA = await loginAuthor('author-a', 'secret-123');
+    const tokenB = await loginAuthor('author-b', 'secret-456');
 
-    const notFoundResponse = await request(app).delete('/api/events/123');
-    expect(notFoundResponse.status).toBe(404);
-    expect(notFoundResponse.body).toEqual({ error: 'Event not found' });
+    await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${tokenA}`)
+      .send({
+        title: 'Event A',
+        description: 'A',
+        startDate: '2026-01-01T10:00:00Z',
+        endDate: '2026-01-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${tokenB}`)
+      .send({
+        title: 'Event B',
+        description: 'B',
+        startDate: '2026-02-01T10:00:00Z',
+        endDate: '2026-02-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Hamburg',
+      });
+
+    const publicResponse = await request(app).get('/api/events');
+    expect(publicResponse.status).toBe(200);
+    expect(publicResponse.body.events).toHaveLength(2);
+
+    const ownResponse = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${tokenA}`);
+    expect(ownResponse.status).toBe(200);
+    expect(ownResponse.body.events).toHaveLength(1);
+    expect(ownResponse.body.events[0].title).toBe('Event A');
+  });
+
+  it('updates and deletes own event only', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-b', password: 'secret-456' });
+    const tokenA = await loginAuthor('author-a', 'secret-123');
+    const tokenB = await loginAuthor('author-b', 'secret-456');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${tokenA}`)
+      .send({
+        title: 'Original',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    const eventId = createResponse.body.event.id as number;
+
+    const foreignUpdate = await request(app)
+      .put(`/api/author/events/${eventId}`)
+      .set('authorization', `Bearer ${tokenB}`)
+      .send({
+        title: 'Updated',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(foreignUpdate.status).toBe(404);
+
+    const ownUpdate = await request(app)
+      .put(`/api/author/events/${eventId}`)
+      .set('authorization', `Bearer ${tokenA}`)
+      .send({
+        title: 'Updated',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(ownUpdate.status).toBe(200);
+    expect(ownUpdate.body.event.title).toBe('Updated');
+
+    const foreignDelete = await request(app)
+      .delete(`/api/author/events/${eventId}`)
+      .set('authorization', `Bearer ${tokenB}`);
+    expect(foreignDelete.status).toBe(404);
+
+    const ownDelete = await request(app)
+      .delete(`/api/author/events/${eventId}`)
+      .set('authorization', `Bearer ${tokenA}`);
+    expect(ownDelete.status).toBe(204);
+  });
+
+  it('requires password change after one-time password login', async () => {
+    await createAuthorForTesting({
+      username: 'author-otp',
+      password: 'secret-123',
+      oneTimePassword: 'otp-123456',
+      mustChangePassword: false,
+    });
+
+    const token = await loginAuthor('author-otp', 'otp-123456');
+    const meResponse = await request(app)
+      .get('/api/auth/me')
+      .set('authorization', `Bearer ${token}`);
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body.requiresPasswordChange).toBe(true);
+
+    const createBlocked = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Blocked',
+        description: 'Blocked',
+        startDate: '2026-01-01T10:00:00Z',
+        endDate: '2026-01-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(createBlocked.status).toBe(403);
+    expect(createBlocked.body).toEqual({ error: 'Password change required' });
+
+    const changeResponse = await request(app)
+      .post('/api/auth/change-password')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        newPassword: 'new-secret-123',
+      });
+    expect(changeResponse.status).toBe(204);
+
+    const createAllowed = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Allowed',
+        description: 'Allowed',
+        startDate: '2026-01-01T10:00:00Z',
+        endDate: '2026-01-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(createAllowed.status).toBe(201);
+
+    const loginWithOtpFails = await request(app).post('/api/auth/login').send({
+      username: 'author-otp',
+      password: 'otp-123456',
+    });
+    expect(loginWithOtpFails.status).toBe(401);
+  });
+
+  it('changes password with old password for regular login', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    const token = await loginAuthor('author-a', 'secret-123');
+
+    const invalidOldPassword = await request(app)
+      .post('/api/auth/change-password')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        oldPassword: 'wrong-password',
+        newPassword: 'new-secret-123',
+      });
+    expect(invalidOldPassword.status).toBe(400);
+
+    const changeResponse = await request(app)
+      .post('/api/auth/change-password')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        oldPassword: 'secret-123',
+        newPassword: 'new-secret-123',
+      });
+    expect(changeResponse.status).toBe(204);
+
+    const oldLogin = await request(app).post('/api/auth/login').send({
+      username: 'author-a',
+      password: 'secret-123',
+    });
+    expect(oldLogin.status).toBe(401);
   });
 
   it('continues when notification sending fails', async () => {
     (sendEventNotification as jest.Mock).mockRejectedValueOnce(new Error('FCM down'));
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    const token = await loginAuthor('author-a', 'secret-123');
 
-    const response = await request(app).post('/api/events').send({
-      title: 'Notification Test',
-      description: 'Should still create event',
-      startDate: '2026-05-01T10:00:00Z',
-      endDate: '2026-05-01T12:00:00Z',
-      location: 'Ort',
-      dv: 'Köln',
-    });
+    const response = await request(app)
+      .post('/api/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Notification Test',
+        description: 'Should still create event',
+        startDate: '2026-05-01T10:00:00Z',
+        endDate: '2026-05-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
 
     expect(response.status).toBe(201);
     expect(response.body.event).toMatchObject({ title: 'Notification Test' });
   });
 
-  it('filters events by dv', async () => {
-    const eventA = {
-      title: 'Event A',
-      description: 'A',
-      startDate: '2026-01-01T10:00:00Z',
-      endDate: '2026-01-01T12:00:00Z',
-      location: 'Ort',
-      dv: 'Köln',
-    };
-    const eventB = {
-      title: 'Event B',
-      description: 'B',
-      startDate: '2026-02-01T10:00:00Z',
-      endDate: '2026-02-01T12:00:00Z',
-      location: 'Ort',
-      dv: 'Hamburg',
-    };
+  it('exposes creator metadata and edit rights to admins', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'admin', password: 'admin-123', isAdmin: true });
+    const authorToken = await loginAuthor('author-a', 'secret-123');
+    const adminToken = await loginAuthor('admin', 'admin-123');
 
-    await request(app).post('/api/events').send(eventA);
-    await request(app).post('/api/events').send(eventB);
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${authorToken}`)
+      .send({
+        title: 'Editable',
+        description: 'Body',
+        startDate: '2026-06-01T10:00:00Z',
+        endDate: '2026-06-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    const eventId = createResponse.body.event.id as number;
 
-    const response = await request(app).get('/api/events').query({ dv: 'Köln' });
-    expect(response.status).toBe(200);
-    expect(response.body.events).toHaveLength(1);
-    expect(response.body.events[0]).toMatchObject({ title: 'Event A', dv: 'Köln' });
+    const publicResponse = await request(app).get('/api/events');
+    expect(publicResponse.status).toBe(200);
+    expect(publicResponse.body.events[0].canEdit).toBe(false);
+    expect(publicResponse.body.events[0].createdBy).toBeUndefined();
+
+    const adminResponse = await request(app)
+      .get('/api/events')
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(adminResponse.status).toBe(200);
+    expect(adminResponse.body.events[0].canEdit).toBe(true);
+    expect(adminResponse.body.events[0].createdBy).toBe('author-a');
+
+    const adminUpdate = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Edited by admin',
+        description: 'Body',
+        startDate: '2026-06-01T10:00:00Z',
+        endDate: '2026-06-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(adminUpdate.status).toBe(200);
+    expect(adminUpdate.body.event.title).toBe('Edited by admin');
   });
 
-  it('deletes an event by id', async () => {
-    const eventResponse = await request(app).post('/api/events').send({
-      title: 'Delete Event',
-      description: 'Delete this event',
-      startDate: '2026-03-01T10:00:00Z',
-      endDate: '2026-03-01T12:00:00Z',
-      location: 'Ort',
-      dv: 'Köln',
-    });
+  it('lets admins manage users from the admin area', async () => {
+    await createAuthorForTesting({ username: 'admin', password: 'admin-123', isAdmin: true });
+    const adminToken = await loginAuthor('admin', 'admin-123');
 
-    const eventId = eventResponse.body.event.id;
-    const deleteResponse = await request(app).delete(`/api/events/${eventId}`);
-    expect(deleteResponse.status).toBe(204);
+    const createUserResponse = await request(app)
+      .post('/api/admin/users')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ username: 'new-user' });
+    expect(createUserResponse.status).toBe(201);
+    expect(createUserResponse.body.author.username).toBe('new-user');
+    expect(createUserResponse.body.oneTimePassword).toEqual(expect.any(String));
 
-    const listResponse = await request(app).get('/api/events');
-    expect(listResponse.body.events).toEqual([]);
+    const listResponse = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.users.map((user: { username: string }) => user.username)).toContain('new-user');
+
+    const newUser = listResponse.body.users.find((user: { username: string }) => user.username === 'new-user');
+    const deactivateResponse = await request(app)
+      .patch(`/api/admin/users/${newUser.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false });
+    expect(deactivateResponse.status).toBe(204);
+
+    const resetResponse = await request(app)
+      .post(`/api/admin/users/${newUser.id}/reset-password`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(resetResponse.status).toBe(200);
+    expect(resetResponse.body.oneTimePassword).toEqual(expect.any(String));
+
+    const deleteActiveResponse = await request(app)
+      .delete(`/api/admin/users/${newUser.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteActiveResponse.status).toBe(409);
+
+    const deleteResponse = await request(app)
+      .delete(`/api/admin/users/${newUser.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send();
+    expect(deleteResponse.status).toBe(409);
+
+    const deactivateAgainResponse = await request(app)
+      .patch(`/api/admin/users/${newUser.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false });
+    expect(deactivateAgainResponse.status).toBe(204);
+
+    const deleteInactiveResponse = await request(app)
+      .delete(`/api/admin/users/${newUser.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteInactiveResponse.status).toBe(204);
   });
+});
 
-  it('deletes all events', async () => {
-    await request(app).post('/api/events').send({
-      title: 'Event 1',
-      description: 'A',
-      startDate: '2026-03-01T10:00:00Z',
-      endDate: '2026-03-01T12:00:00Z',
-      location: 'Ort',
-      dv: 'Köln',
-    });
-    await request(app).post('/api/events').send({
-      title: 'Event 2',
-      description: 'B',
-      startDate: '2026-04-01T10:00:00Z',
-      endDate: '2026-04-01T12:00:00Z',
-      location: 'Ort',
-      dv: 'Hamburg',
-    });
-
-    const deleteResponse = await request(app).delete('/api/events');
-    expect(deleteResponse.status).toBe(200);
-    expect(deleteResponse.body).toEqual({ deletedCount: 2 });
-
-    const listResponse = await request(app).get('/api/events');
-    expect(listResponse.body.events).toEqual([]);
-  });
+afterAll(async () => {
+  await close();
 });

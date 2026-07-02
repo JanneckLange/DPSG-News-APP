@@ -111,6 +111,14 @@ und nutzen dann die lokale Server-Implementierung mit `TEST_DATABASE_URL=postgre
 - `GET /health` — Health-Check inkl. Build-Metadaten (`buildTimeUtc`, `gitShaShort`, `gitRef`)
 - `GET /api/events` — Events abrufen
 - `GET /api/events?dv=...` — Events nach Diözesanverband filtern
+- `POST /api/auth/login` — Autoren-Login
+- `POST /api/auth/logout` — Autoren-Session beenden
+- `GET /api/auth/me` — Aktive Autoren-Session laden
+- `POST /api/auth/change-password` — Passwort aendern
+- `GET /api/author/events` — Eigene Events abrufen
+- `POST /api/author/events` — Eigenes Event anlegen
+- `PUT /api/author/events/:id` — Eigenes Event bearbeiten
+- `DELETE /api/author/events/:id` — Eigenes Event loeschen
 - `POST /api/events` — Event anlegen
 
 ## Build-Stand in Logs

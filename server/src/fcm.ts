@@ -3,23 +3,36 @@ import { getMessaging, Message } from 'firebase-admin/messaging';
 import fs from 'fs';
 
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+let firebaseMessagingEnabled = false;
 
 if (!serviceAccountPath) {
-  throw new Error('GOOGLE_APPLICATION_CREDENTIALS is not set. Configure an absolute path to a Firebase service account JSON file.');
-}
+  console.warn(
+    [
+      '============================================================',
+      'WARNING: Firebase is disabled because GOOGLE_APPLICATION_CREDENTIALS is not set.',
+      'The server will start without push notifications.',
+      '============================================================',
+    ].join('\n'),
+  );
+} else if (!fs.existsSync(serviceAccountPath)) {
+  console.warn(
+    [
+      '============================================================',
+      `WARNING: Firebase is disabled because the service account file was not found: ${serviceAccountPath}`,
+      'The server will start without push notifications.',
+      '============================================================',
+    ].join('\n'),
+  );
+} else {
+  const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8')) as ServiceAccount;
 
-if (!fs.existsSync(serviceAccountPath)) {
-  throw new Error(`Firebase service account file not found: ${serviceAccountPath}`);
-}
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
+  }
 
-const serviceAccount = JSON.parse(
-  fs.readFileSync(serviceAccountPath, 'utf8')
-) as ServiceAccount;
-
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount),
-  });
+  firebaseMessagingEnabled = true;
 }
 
 export type EventNotificationPayload = {
@@ -38,6 +51,11 @@ function normalizeTopicName(value: string): string {
 }
 
 export async function sendEventNotification({ title, description, eventId, dv, topic }: EventNotificationPayload): Promise<string> {
+  if (!firebaseMessagingEnabled) {
+    console.warn('Skipping FCM event notification because Firebase is disabled.');
+    return 'firebase-disabled';
+  }
+
   const body = typeof description === 'string'
     ? description
     : description != null

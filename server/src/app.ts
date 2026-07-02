@@ -1,6 +1,25 @@
 import express, { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
-import { createEvent, deleteAllEvents, deleteEventById, getEvents, EventInput } from './db';
+import {
+  changeAuthorPassword,
+  createAuthor,
+  createAuthorEvent,
+  deleteAllEvents,
+  deleteAuthorEventById,
+  deleteAuthorById,
+  deleteEventById,
+  getAuthorEvents,
+  getAuthorSession,
+  getEvents,
+  loginAuthor,
+  logoutAuthor,
+  listAuthors,
+  resetAuthorPassword,
+  setAuthorActive,
+  updateAuthorEventById,
+  updateEventById,
+  EventInput,
+} from './db';
 import { sendEventNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
 import { logInfo, logRequest, logRequestError } from './logger';
@@ -60,6 +79,63 @@ app.use((req: Request, res: Response, next) => {
   next();
 });
 
+function getBearerToken(req: Request): string | null {
+  const authorization = req.header('authorization');
+  if (!authorization) {
+    return null;
+  }
+  const [scheme, value] = authorization.split(' ');
+  if (scheme?.toLowerCase() !== 'bearer' || !value?.trim()) {
+    return null;
+  }
+  return value.trim();
+}
+
+async function requireAuthorAuth(req: Request, res: Response): Promise<boolean> {
+  const token = getBearerToken(req);
+  if (!token) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+  }
+
+  const session = await getAuthorSession(token);
+  if (!session) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+  }
+
+  res.locals.author = session.author;
+  res.locals.authorSession = session;
+  res.locals.authToken = token;
+  return true;
+}
+
+async function getViewerSession(req: Request) {
+  const token = getBearerToken(req);
+  if (!token) {
+    return null;
+  }
+  return getAuthorSession(token);
+}
+
+function requireAdminSession(res: Response): boolean {
+  const author = res.locals.author as { isAdmin?: boolean } | undefined;
+  if (!author?.isAdmin) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  return true;
+}
+
+function requirePasswordChangeCompleted(res: Response): boolean {
+  const session = res.locals.authorSession as { requiresPasswordChange: boolean } | undefined;
+  if (session?.requiresPasswordChange) {
+    res.status(403).json({ error: 'Password change required' });
+    return false;
+  }
+  return true;
+}
+
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
@@ -79,21 +155,139 @@ app.get('/api/events', async (req: Request, res: Response) => {
   try {
     const dv = typeof req.query.dv === 'string' ? req.query.dv : undefined;
     const events = await getEvents(dv);
-    res.json({ events });
+    const viewer = await getViewerSession(req);
+    const authorMap = viewer?.author.isAdmin ? new Map((await listAuthors()).map((author) => [author.id, author.username])) : null;
+    const currentAuthorId = viewer?.author.id ?? null;
+
+    res.json({
+      events: events.map((event) => ({
+        ...event,
+        canEdit: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
+        canDelete: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
+        createdBy: authorMap && event.authorId != null ? authorMap.get(event.authorId) ?? null : undefined,
+      })),
+    });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load events' });
   }
 });
 
+app.post('/api/auth/login', async (req: Request, res: Response) => {
+  try {
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    const session = await loginAuthor(username, password);
+    if (!session) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    res.json(session);
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to login' });
+  }
+});
+
+app.post('/api/auth/logout', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    await logoutAuthor(res.locals.authToken as string);
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to logout' });
+  }
+});
+
+app.get('/api/auth/me', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    const session = res.locals.authorSession as {
+      author: { id: number; username: string };
+      requiresPasswordChange: boolean;
+      expiresAt: string;
+    };
+    res.json({
+      author: session.author,
+      requiresPasswordChange: session.requiresPasswordChange,
+      expiresAt: session.expiresAt,
+    });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load author session' });
+  }
+});
+
+app.post('/api/auth/change-password', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+
+    const newPassword = typeof req.body.newPassword === 'string' ? req.body.newPassword : '';
+    const oldPassword = typeof req.body.oldPassword === 'string' ? req.body.oldPassword : undefined;
+    if (newPassword.trim().length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters long' });
+    }
+
+    const author = res.locals.author as { id: number; username: string };
+    const changed = await changeAuthorPassword(author.id, newPassword, oldPassword);
+    if (changed === 'invalid_old_password') {
+      return res.status(400).json({ error: 'Invalid old password' });
+    }
+    if (changed === 'author_not_found') {
+      return res.status(404).json({ error: 'Author not found' });
+    }
+
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to change password' });
+  }
+});
+
+app.get('/api/author/events', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const author = res.locals.author as { id: number };
+    const events = await getAuthorEvents(author.id);
+    res.json({ events });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load own events' });
+  }
+});
+
 app.post('/api/events', async (req: Request, res: Response) => {
   try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+
     const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
     if (!title || !description || !startDate || !endDate || !location || !dv) {
       return res.status(400).json({ error: 'Missing required event fields' });
     }
 
-    const event = await createEvent({ title, description, startDate, endDate, location, dv, topic });
+    const author = res.locals.author as { id: number };
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
 
     logInfo('Created event, sending push notification', {
       requestId: res.locals.requestId,
@@ -127,11 +321,136 @@ app.post('/api/events', async (req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/events/:id', async (req: Request, res: Response) => {
+app.post('/api/author/events', async (req: Request, res: Response) => {
   try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    if (!title || !description || !startDate || !endDate || !location || !dv) {
+      return res.status(400).json({ error: 'Missing required event fields' });
+    }
+
+    const author = res.locals.author as { id: number };
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
+    res.status(201).json({ event });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to create own event' });
+  }
+});
+
+async function requireEditableEvent(req: Request, res: Response, eventAuthorId: number | null): Promise<boolean> {
+  const author = res.locals.author as { id: number; isAdmin?: boolean } | undefined;
+  if (!author) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+  }
+  if (!author.isAdmin && eventAuthorId !== author.id) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  return true;
+}
+
+app.put('/api/events/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
       return res.status(400).json({ error: 'Invalid event id' });
+    }
+    const events = await getEvents();
+    const current = events.find((event) => event.id === id);
+    if (!current) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (!await requireEditableEvent(req, res, current.authorId)) {
+      return;
+    }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    if (!title || !description || !startDate || !endDate || !location || !dv) {
+      return res.status(400).json({ error: 'Missing required event fields' });
+    }
+    const updated = await updateEventById(id, {
+      title,
+      description,
+      startDate,
+      endDate,
+      location,
+      dv,
+      topic,
+    });
+    if (!updated) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    res.json({ event: updated });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to update event' });
+  }
+});
+
+app.put('/api/author/events/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid event id' });
+    }
+
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    if (!title || !description || !startDate || !endDate || !location || !dv) {
+      return res.status(400).json({ error: 'Missing required event fields' });
+    }
+
+    const author = res.locals.author as { id: number };
+    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    res.json({ event });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to update own event' });
+  }
+});
+
+app.delete('/api/events/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid event id' });
+    }
+
+    const events = await getEvents();
+    const current = events.find((event) => event.id === id);
+    if (!current) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (!await requireEditableEvent(req, res, current.authorId)) {
+      return;
     }
 
     const deleted = await deleteEventById(id);
@@ -146,13 +465,168 @@ app.delete('/api/events/:id', async (req: Request, res: Response) => {
   }
 });
 
-app.delete('/api/events', async (_req: Request, res: Response) => {
+app.delete('/api/author/events/:id', async (req: Request, res: Response) => {
   try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid event id' });
+    }
+
+    const author = res.locals.author as { id: number };
+    const deleted = await deleteAuthorEventById(id, author.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to delete own event' });
+  }
+});
+
+app.delete('/api/events', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
     const deletedCount = await deleteAllEvents();
     res.json({ deletedCount });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to delete events' });
+  }
+});
+
+app.get('/api/admin/users', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    res.json({ users: await listAuthors() });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load users' });
+  }
+});
+
+app.post('/api/admin/users', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const isAdmin = req.body.isAdmin === true;
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+    const result = await createAuthor({ username, isAdmin });
+    res.status(201).json(result);
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to create user' });
+  }
+});
+
+app.patch('/api/admin/users/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    if (typeof req.body.isActive !== 'boolean') {
+      return res.status(400).json({ error: 'isActive is required' });
+    }
+    const updated = await setAuthorActive(id, req.body.isActive);
+    if (!updated) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to update user' });
+  }
+});
+
+app.delete('/api/admin/users/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    const deleted = await deleteAuthorById(id);
+    if (!deleted) {
+      return res.status(409).json({ error: 'User must be deactivated before deletion' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to delete user' });
+  }
+});
+
+app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    const oneTimePassword = await resetAuthorPassword(id);
+    if (!oneTimePassword) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ oneTimePassword });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to reset password' });
   }
 });
 
