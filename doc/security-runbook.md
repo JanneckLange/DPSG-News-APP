@@ -51,6 +51,7 @@ Nicht in GitHub speichern:
 - DB runtime secrets
 - Firebase service account JSON
 - APNs private keys
+- Bootstrap-Admin-Secrets (`AUTHOR_BOOTSTRAP_USERNAME`, `AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD`)
 
 Ablage auf dem Host:
 

@@ -13,6 +13,7 @@ npm install
 
 1. Eine lokale Postgres-Instanz starten (z. B. mit Docker Compose oder lokal installiertem Postgres)
 2. Umgebungsvariablen in `.env` konfigurieren oder `DATABASE_URL` setzen
+   - `AUTHOR_BOOTSTRAP_USERNAME` und `AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD` sind Pflicht
 3. Firebase Admin Key lokal ausserhalb des Repos ablegen und `GOOGLE_APPLICATION_CREDENTIALS` auf den absoluten Pfad setzen
 4. Server bauen und starten:
 
@@ -25,6 +26,8 @@ Beispiel in `.env`:
 
 ```bash
 GOOGLE_APPLICATION_CREDENTIALS=/Users/<you>/secrets/firebase-dev.json
+AUTHOR_BOOTSTRAP_USERNAME=admin
+AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD=<secure-one-time-password>
 ```
 
 ## Docker Compose
@@ -140,6 +143,8 @@ Der Server nutzt ein Dual-Format fuer Logs:
 - Production: JSON-Logs fuer Monitoring und zentrale Auswertung
 
 Der Service-Name ist fest auf `dpsg-news-server` gesetzt.
+
+Request-Logs werden nur fuer bekannte API-Endpunkte geschrieben. Unbekannte Endpunkte werden zur Reduktion von Log-Overflow nur als stuendlicher Warnzaehler aggregiert.
 
 ## Request ID
 

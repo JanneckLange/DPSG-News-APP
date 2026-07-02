@@ -18,6 +18,8 @@ async function loginAuthor(username: string, password: string): Promise<string> 
 
 beforeAll(async () => {
   process.env.TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+  process.env.AUTHOR_BOOTSTRAP_USERNAME = process.env.AUTHOR_BOOTSTRAP_USERNAME || 'bootstrap-admin';
+  process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD = process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD || 'bootstrap-one-time-password';
   await connect();
 });
 
@@ -345,6 +347,11 @@ describe('Events API e2e', () => {
     expect(listResponse.body.users.map((user: { username: string }) => user.username)).toContain('new-user');
 
     const newUser = listResponse.body.users.find((user: { username: string }) => user.username === 'new-user');
+    const deleteActiveResponse = await request(app)
+      .delete(`/api/admin/users/${newUser.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteActiveResponse.status).toBe(409);
+
     const deactivateResponse = await request(app)
       .patch(`/api/admin/users/${newUser.id}`)
       .set('authorization', `Bearer ${adminToken}`)
@@ -356,23 +363,6 @@ describe('Events API e2e', () => {
       .set('authorization', `Bearer ${adminToken}`);
     expect(resetResponse.status).toBe(200);
     expect(resetResponse.body.oneTimePassword).toEqual(expect.any(String));
-
-    const deleteActiveResponse = await request(app)
-      .delete(`/api/admin/users/${newUser.id}`)
-      .set('authorization', `Bearer ${adminToken}`);
-    expect(deleteActiveResponse.status).toBe(409);
-
-    const deleteResponse = await request(app)
-      .delete(`/api/admin/users/${newUser.id}`)
-      .set('authorization', `Bearer ${adminToken}`)
-      .send();
-    expect(deleteResponse.status).toBe(409);
-
-    const deactivateAgainResponse = await request(app)
-      .patch(`/api/admin/users/${newUser.id}`)
-      .set('authorization', `Bearer ${adminToken}`)
-      .send({ isActive: false });
-    expect(deactivateAgainResponse.status).toBe(204);
 
     const deleteInactiveResponse = await request(app)
       .delete(`/api/admin/users/${newUser.id}`)

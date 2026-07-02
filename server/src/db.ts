@@ -68,9 +68,6 @@ export type AuthSession = {
 
 let client: Client | null = null;
 
-const DEFAULT_BOOTSTRAP_ADMIN_USERNAME = 'badenpowell';
-const DEFAULT_BOOTSTRAP_ADMIN_PASSWORD = '22021857London';
-
 function getDatabaseUrl(): string {
   return process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || '';
 }
@@ -140,32 +137,20 @@ export async function connect(): Promise<void> {
 async function ensureBootstrapAuthor(): Promise<void> {
   const bootstrapUsername = process.env.AUTHOR_BOOTSTRAP_USERNAME?.trim();
   const bootstrapOneTimePassword = process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD?.trim();
-  if (bootstrapUsername && bootstrapOneTimePassword) {
-    await ensureClient().query(
-      `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
-       VALUES ($1, $2, $3, TRUE, TRUE, TRUE)
-       ON CONFLICT (username)
-       DO UPDATE SET one_time_password_hash = EXCLUDED.one_time_password_hash,
-                     must_change_password = TRUE,
-                     is_active = TRUE,
-                     is_admin = TRUE,
-                     updated_at = NOW()`,
-      [bootstrapUsername, hashPassword(randomUUID()), hashPassword(bootstrapOneTimePassword)]
-    );
-    return;
+  if (!bootstrapUsername || !bootstrapOneTimePassword) {
+    throw new Error('AUTHOR_BOOTSTRAP_USERNAME and AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD must be set');
   }
 
   await ensureClient().query(
     `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
-     VALUES ($1, $2, NULL, FALSE, TRUE, TRUE)
+     VALUES ($1, $2, $3, TRUE, TRUE, TRUE)
      ON CONFLICT (username)
-     DO UPDATE SET password_hash = EXCLUDED.password_hash,
-                   one_time_password_hash = NULL,
-                   must_change_password = FALSE,
+     DO UPDATE SET one_time_password_hash = EXCLUDED.one_time_password_hash,
+                   must_change_password = TRUE,
                    is_active = TRUE,
                    is_admin = TRUE,
                    updated_at = NOW()`,
-    [DEFAULT_BOOTSTRAP_ADMIN_USERNAME, hashPassword(DEFAULT_BOOTSTRAP_ADMIN_PASSWORD)]
+    [bootstrapUsername, hashPassword(randomUUID()), hashPassword(bootstrapOneTimePassword)]
   );
 }
 

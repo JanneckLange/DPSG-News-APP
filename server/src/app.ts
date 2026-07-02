@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import {
   changeAuthorPassword,
@@ -22,7 +22,7 @@ import {
 } from './db';
 import { sendEventNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
-import { logInfo, logRequest, logRequestError } from './logger';
+import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError } from './logger';
 
 const DV_TREE = {
   lastTreeChange: '2026-07-01T00:00:00Z',
@@ -56,7 +56,94 @@ const DV_TREE = {
 };
 
 const app = express();
+app.disable('x-powered-by');
+const trustProxyHops = process.env.TRUST_PROXY_HOPS?.trim();
+if (trustProxyHops) {
+  const parsedTrustProxyHops = Number(trustProxyHops);
+  if (!Number.isInteger(parsedTrustProxyHops) || parsedTrustProxyHops <= 0) {
+    throw new Error('TRUST_PROXY_HOPS must be a positive integer');
+  }
+  app.set('trust proxy', parsedTrustProxyHops);
+} else {
+  app.set('trust proxy', 1);
+}
 app.use(express.json());
+
+function positiveIntegerFromEnv(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) {
+    return fallback;
+  }
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
+type RateLimiterOptions = {
+  windowMs: number;
+  maxRequests: number;
+  errorMessage: string;
+  keyFactory: (req: Request) => string;
+};
+
+function createRateLimiter(options: RateLimiterOptions) {
+  const counters = new Map<string, { count: number; resetAtMs: number }>();
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const nowMs = Date.now();
+    const key = options.keyFactory(req);
+    const current = counters.get(key);
+    if (!current || current.resetAtMs <= nowMs) {
+      counters.set(key, { count: 1, resetAtMs: nowMs + options.windowMs });
+      next();
+      return;
+    }
+
+    if (current.count >= options.maxRequests) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAtMs - nowMs) / 1000));
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      res.status(429).json({ error: options.errorMessage });
+      return;
+    }
+
+    current.count += 1;
+
+    if (counters.size > 10_000) {
+      for (const [entryKey, entry] of counters.entries()) {
+        if (entry.resetAtMs <= nowMs) {
+          counters.delete(entryKey);
+        }
+      }
+    }
+
+    next();
+  };
+}
+
+const globalRateLimitWindowMs = positiveIntegerFromEnv('GLOBAL_RATE_LIMIT_WINDOW_MS', 60_000);
+const globalRateLimitMax = positiveIntegerFromEnv('GLOBAL_RATE_LIMIT_MAX_REQUESTS', 300);
+const authRateLimitWindowMs = positiveIntegerFromEnv('AUTH_RATE_LIMIT_WINDOW_MS', 60_000);
+const authRateLimitMax = positiveIntegerFromEnv('AUTH_RATE_LIMIT_MAX_REQUESTS', 10);
+
+const globalRateLimiter = createRateLimiter({
+  windowMs: globalRateLimitWindowMs,
+  maxRequests: globalRateLimitMax,
+  errorMessage: 'Too many requests',
+  keyFactory: (req) => req.ip || 'unknown',
+});
+
+const authRateLimiter = createRateLimiter({
+  windowMs: authRateLimitWindowMs,
+  maxRequests: authRateLimitMax,
+  errorMessage: 'Too many login attempts',
+  keyFactory: (req) => {
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim().toLowerCase() : '';
+    return `${req.ip || 'unknown'}:${username}`;
+  },
+});
+
 app.use((req: Request, res: Response, next) => {
   const startedAt = Date.now();
   const headerRequestId = req.header('x-request-id');
@@ -65,19 +152,25 @@ app.use((req: Request, res: Response, next) => {
   res.setHeader('x-request-id', requestId);
 
   res.on('finish', () => {
-    logRequest({
-      requestId,
-      method: req.method,
-      path: req.originalUrl,
-      statusCode: res.statusCode,
-      durationMs: Date.now() - startedAt,
-      ip: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+    if (isKnownEndpoint(req.method, req.path)) {
+      logRequest({
+        requestId,
+        method: req.method,
+        path: req.originalUrl,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - startedAt,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      return;
+    }
+
+    incrementUnknownEndpointCounter();
   });
 
   next();
 });
+app.use(globalRateLimiter);
 
 function getBearerToken(req: Request): string | null {
   const authorization = req.header('authorization');
@@ -173,7 +266,7 @@ app.get('/api/events', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/auth/login', async (req: Request, res: Response) => {
+app.post('/api/auth/login', authRateLimiter, async (req: Request, res: Response) => {
   try {
     const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
     const password = typeof req.body.password === 'string' ? req.body.password : '';
@@ -628,6 +721,18 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to reset password' });
   }
+});
+
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  logRequestError(error, res.locals.requestId as string | undefined);
+  if (res.headersSent) {
+    return;
+  }
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 export default app;

@@ -63,4 +63,18 @@ describe('Health endpoint', () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
     );
   });
+
+  it('does not expose x-powered-by header', async () => {
+    const response = await request(app).get('/health');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['x-powered-by']).toBeUndefined();
+  });
+
+  it('returns json for unknown endpoints', async () => {
+    const response = await request(app).get('/not-existing-endpoint');
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: 'Not found' });
+  });
 });

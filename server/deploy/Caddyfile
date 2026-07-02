@@ -1,12 +1,29 @@
 dpsgnews.scout-link.de {
   encode zstd gzip
 
-  reverse_proxy server:3000
+  @robots path /robots.txt
+  handle @robots {
+    root * /usr/share/caddy
+    file_server
+  }
+
+  @blocked_public_paths path /.env /.git /.git/* /.dockerignore /docker-compose.yml /docker-compose.server.yml /Caddyfile
+  respond @blocked_public_paths 404
+
+  @disallowed_methods {
+    not method GET HEAD POST PUT PATCH DELETE OPTIONS
+  }
+  respond @disallowed_methods "Method Not Allowed" 405
 
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     X-Content-Type-Options "nosniff"
     X-Frame-Options "DENY"
     Referrer-Policy "strict-origin-when-cross-origin"
+    X-Robots-Tag "noindex, nofollow, noarchive"
+  }
+
+  reverse_proxy server:3000 {
+    header_up X-Real-IP {remote_host}
   }
 }
