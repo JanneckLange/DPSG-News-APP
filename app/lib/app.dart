@@ -12,6 +12,7 @@ import 'core/services/notification_service.dart';
 import 'core/services/sync_service.dart';
 import 'core/services/usage_tracking_service.dart';
 import 'features/author/presentation/author_screen.dart';
+import 'features/author/data/author_auth_provider.dart';
 import 'features/calendar/presentation/calendar_screen.dart';
 import 'features/events/presentation/events_screen.dart';
 import 'features/settings/data/settings_repository.dart';
@@ -59,9 +60,11 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final authorAuth = ref.read(authorAuthProvider.notifier);
     if (state == AppLifecycleState.resumed) {
       unawaited(_logger.logInfo('lifecycle', 'app_resumed'));
       unawaited(_usageTracking.resume());
+      unawaited(authorAuth.onAppResumed());
       _isPaused = false;
     } else if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused ||
@@ -69,6 +72,7 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       if (!_isPaused) {
         _isPaused = true;
         unawaited(_usageTracking.pause());
+        unawaited(authorAuth.onAppBackgrounded());
       }
       unawaited(_logger.logInfo('lifecycle', 'app_${state.name}'));
     }
@@ -85,21 +89,21 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentIndexProvider);
-    final authorMode = ref.watch(authorModeProvider);
+    final authorAuth = ref.watch(authorAuthProvider);
     final appThemeMode = ref.watch(appThemeModeProvider);
     final navigatorKey = ref.watch(appNavigatorKeyProvider);
 
     final pages = <Widget>[
       const EventsScreen(),
       const CalendarScreen(),
-      if (authorMode) const AuthorScreen(),
+      if (authorAuth.isLoggedIn) const AuthorScreen(),
       const SettingsScreen(),
     ];
 
     final destinations = <NavigationDestination>[
       const NavigationDestination(icon: Icon(Icons.event), label: 'Events'),
       const NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Kalender'),
-      if (authorMode) const NavigationDestination(icon: Icon(Icons.edit), label: 'Autor'),
+      if (authorAuth.isLoggedIn) const NavigationDestination(icon: Icon(Icons.edit), label: 'Autor'),
       const NavigationDestination(icon: Icon(Icons.settings), label: 'Einstellungen'),
     ];
 

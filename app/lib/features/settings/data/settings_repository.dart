@@ -208,6 +208,12 @@ class SettingsRepository {
   static const String deadlineReminderDaysBeforeKey = 'deadline_reminder_days_before';
   static const String dvTreeKey = 'dv_tree';
   static const String dvTreeLastChangeKey = 'dv_tree_last_change';
+  static const String authorAuthTokenKey = 'author_auth_token';
+  static const String authorIdKey = 'author_id';
+  static const String authorUsernameKey = 'author_username';
+  static const String authorIsAdminKey = 'author_is_admin';
+  static const String authorRequiresPasswordChangeKey = 'author_requires_password_change';
+  static const String authorLastBackgroundedAtKey = 'author_last_backgrounded_at';
 
   SettingsRepository(this._box);
 
@@ -369,4 +375,67 @@ class SettingsRepository {
   }
 
   String? getDvTreeLastChange() => _box.get(dvTreeLastChangeKey) as String?;
+
+  String? getAuthorAuthToken() => _box.get(authorAuthTokenKey) as String?;
+
+  int? getAuthorId() => _box.get(authorIdKey) as int?;
+
+  String? getAuthorUsername() => _box.get(authorUsernameKey) as String?;
+
+  bool getAuthorIsAdmin() => _box.get(authorIsAdminKey, defaultValue: false) as bool;
+
+  bool getAuthorRequiresPasswordChange() =>
+      _box.get(authorRequiresPasswordChangeKey, defaultValue: false) as bool;
+
+  DateTime? getAuthorLastBackgroundedAt() {
+    final raw = _box.get(authorLastBackgroundedAtKey) as String?;
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> setAuthorLastBackgroundedAt(DateTime? value) async {
+    if (value == null) {
+      await _box.delete(authorLastBackgroundedAtKey);
+      return;
+    }
+    await _box.put(authorLastBackgroundedAtKey, value.toUtc().toIso8601String());
+  }
+
+  Future<void> saveAuthorSession({
+    required String token,
+    required int authorId,
+    required String username,
+    required bool isAdmin,
+    required bool requiresPasswordChange,
+  }) async {
+    await Future.wait([
+      _box.put(authorAuthTokenKey, token),
+      _box.put(authorIdKey, authorId),
+      _box.put(authorUsernameKey, username),
+      _box.put(authorIsAdminKey, isAdmin),
+      _box.put(authorRequiresPasswordChangeKey, requiresPasswordChange),
+      _box.delete(authorLastBackgroundedAtKey),
+    ]);
+  }
+
+  Future<void> setAuthorRequiresPasswordChange(bool value) async {
+    await _box.put(authorRequiresPasswordChangeKey, value);
+  }
+
+  Future<void> setAuthorIsAdmin(bool value) async {
+    await _box.put(authorIsAdminKey, value);
+  }
+
+  Future<void> clearAuthorSession() async {
+    await Future.wait([
+      _box.delete(authorAuthTokenKey),
+      _box.delete(authorIdKey),
+      _box.delete(authorUsernameKey),
+      _box.delete(authorIsAdminKey),
+      _box.delete(authorRequiresPasswordChangeKey),
+      _box.delete(authorLastBackgroundedAtKey),
+    ]);
+  }
 }

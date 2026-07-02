@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Basis-Endpoints für ein Express-Backend, das Eventdaten bereitstellt.
+Express-Backend für Events und Autoren-Login.
 
 ## Endpunkte
 
@@ -23,21 +23,66 @@ Returns:
 - JSON
   - `events`: Array von Event-Objekten
 
-### POST /api/events
+### Auth
 
-Request Body:
-- `title`: String
-- `description`: String
-- `startDate`: ISO-8601 String
-- `endDate`: ISO-8601 String
-- `location`: String
-- `dv`: String
+#### POST /api/auth/login
+
+Body:
+- `username`
+- `password`
 
 Returns:
-- `201 Created`
-- JSON
-  - `event`: das angelegte Event
+- `200 OK`
+- `token`
+- `author`
+- `requiresPasswordChange`
+
+#### POST /api/auth/logout
+
+Header:
+- `Authorization: Bearer <token>`
+
+Returns:
+- `204 No Content`
+
+#### GET /api/auth/me
+
+Header:
+- `Authorization: Bearer <token>`
+
+Returns:
+- `200 OK`
+- `author`
+- `requiresPasswordChange`
+
+#### POST /api/auth/change-password
+
+Header:
+- `Authorization: Bearer <token>`
+
+Body:
+- `oldPassword` optional bei Erstpasswort
+- `newPassword`
+
+Returns:
+- `204 No Content`
+
+### Autoren-Events
+
+#### GET /api/author/events
+#### POST /api/author/events
+#### PUT /api/author/events/:id
+#### DELETE /api/author/events/:id
+
+Alle Endpunkte nutzen den Bearer-Token und betreffen nur eigene Events.
+
+### Öffentliche Events
+
+#### POST /api/events
+#### DELETE /api/events
+
+Diese Endpunkte verlangen ebenfalls einen Autoren-Token.
 
 ## Hinweise
 
-Die API nutzt PostgreSQL als persistente Datenbank. Der Server initialisiert bei Start die Tabelle `events`, falls sie nicht existiert.
+Die API nutzt PostgreSQL als persistente Datenbank. Der Server initialisiert `authors`, `author_sessions` und `events` beim Start.

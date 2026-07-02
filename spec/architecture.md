@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Beschreibe die technische Struktur der Basisimplementierung.
+Beschreibe die technische Struktur der aktuellen Implementierung.
 
 ## Bereiche
 
@@ -11,8 +11,15 @@ Beschreibe die technische Struktur der Basisimplementierung.
 
 ## Schnittstelle
 
-- `app/` konsumiert später `server/` über REST-API-Endpunkte wie `GET /api/events`.
-- Der Server bietet heute nur einen `GET /health`-Endpunkt und einen Platzhalter für `GET /api/events`.
+- `app/` konsumiert `server/` über REST-API-Endpunkte wie `GET /api/events`, `POST /api/auth/login` und `GET /api/author/events`.
+- Der Server bietet Health-Checks, Autoren-Login und eigene Event-CRUD-Endpunkte.
+
+## Autoren-Flow
+
+- Login erfolgt mit Username und Passwort.
+- Einmalpasswörter sind für den Erstzugang vorgesehen.
+- Passwortwechsel kann in der App erfolgen.
+- Nach Inaktivität von 60 Sekunden wird der Autorenbereich per Biometrie neu entsperrt.
 
 ## Projektorganisation
 

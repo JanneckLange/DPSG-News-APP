@@ -10,8 +10,9 @@ describe('Event DB mapping', () => {
       end_date: '2026-01-01T12:00:00Z',
       location: 'Ort',
       dv: 'Köln',
+      author_id: 42,
       created_at: '2026-01-01T00:00:00Z',
-      updated_at: '2026-01-01T00:00:00Z',
+      modified_at: '2026-01-02T00:00:00Z',
     };
 
     const event = mapEventRow(row);
@@ -23,8 +24,9 @@ describe('Event DB mapping', () => {
       endDate: '2026-01-01T12:00:00Z',
       location: 'Ort',
       dv: 'Köln',
+      authorId: 42,
       createdAt: '2026-01-01T00:00:00Z',
-      updatedAt: '2026-01-01T00:00:00Z',
+      modifiedAt: '2026-01-02T00:00:00Z',
     });
   });
 });

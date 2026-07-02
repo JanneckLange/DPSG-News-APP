@@ -40,7 +40,8 @@ class SyncService {
     _logger.logEvent('events_sync_started');
     _ref.read(eventSyncStatusProvider.notifier).state = null;
     try {
-      final events = await _remoteSource.fetchEvents();
+      final token = _ref.read(settingsRepositoryProvider).getAuthorAuthToken();
+      final events = await _remoteSource.fetchEvents(token: token);
       await _repository.saveEvents(events);
       _logger.logEvent('events_synced', properties: {'count': events.length});
     } catch (error, stackTrace) {
