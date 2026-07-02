@@ -28,7 +28,8 @@ class RemoteEventSource {
       if (token != null && token.isNotEmpty) {
         headers[HttpHeaders.authorizationHeader] = 'Bearer $token';
       }
-      final response = await _client.get(uri, headers: headers).timeout(timeout);
+      final response =
+          await _client.get(uri, headers: headers).timeout(timeout);
       stopwatch.stop();
 
       await logger?.logHttpRequestResult(
@@ -37,7 +38,9 @@ class RemoteEventSource {
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
         statusCode: response.statusCode,
-        error: response.statusCode == 200 ? null : StateError('http_status_${response.statusCode}'),
+        error: response.statusCode == 200
+            ? null
+            : StateError('http_status_${response.statusCode}'),
         responseBody: response.statusCode == 200 ? null : response.body,
       );
 
@@ -122,14 +125,17 @@ class RemoteEventSource {
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
         statusCode: response.statusCode,
-        error: response.statusCode == 200 ? null : StateError('http_status_${response.statusCode}'),
+        error: response.statusCode == 200
+            ? null
+            : StateError('http_status_${response.statusCode}'),
         responseBody: response.statusCode == 200 ? null : response.body,
       );
 
       if (response.statusCode == 200) {
         return ApiHealthStatus(true, 'Server erreichbar');
       }
-      return ApiHealthStatus(false, 'Server antwortet mit ${response.statusCode}');
+      return ApiHealthStatus(
+          false, 'Server antwortet mit ${response.statusCode}');
     } on TimeoutException catch (error, stackTrace) {
       if (stopwatch.isRunning) stopwatch.stop();
       await logger?.logHttpRequestResult(
@@ -189,7 +195,9 @@ class RemoteEventSource {
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
         statusCode: response.statusCode,
-        error: response.statusCode == 200 ? null : StateError('http_status_${response.statusCode}'),
+        error: response.statusCode == 200
+            ? null
+            : StateError('http_status_${response.statusCode}'),
         responseBody: response.statusCode == 200 ? null : response.body,
       );
 
@@ -265,7 +273,9 @@ class RemoteEventSource {
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
         statusCode: response.statusCode,
-        error: response.statusCode == 201 ? null : StateError('http_status_${response.statusCode}'),
+        error: response.statusCode == 201
+            ? null
+            : StateError('http_status_${response.statusCode}'),
         responseBody: response.statusCode == 201 ? null : response.body,
       );
 
@@ -337,53 +347,93 @@ class RemoteEventSource {
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to login author: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
       );
     }
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final author = decoded['author'] as Map<String, dynamic>;
+    final accessToken =
+        (decoded['accessToken'] as String?) ?? (decoded['token'] as String);
     return AuthorLoginSession(
-      token: decoded['token'] as String,
+      accessToken: accessToken,
+      refreshToken: decoded['refreshToken'] as String,
+      accessExpiresAt: decoded['expiresAt'] as String? ?? '',
+      refreshExpiresAt: decoded['refreshExpiresAt'] as String? ?? '',
       authorId: (author['id'] as num).toInt(),
       username: author['username'] as String,
       isAdmin: author['isAdmin'] as bool? ?? false,
-      requiresPasswordChange: decoded['requiresPasswordChange'] as bool? ?? false,
+      requiresPasswordChange:
+          decoded['requiresPasswordChange'] as bool? ?? false,
+    );
+  }
+
+  Future<AuthorLoginSession> refreshAuthorSession(
+      {required String refreshToken}) async {
+    final uri = baseUrl.replace(path: '/api/auth/refresh');
+    final response = await _client
+        .post(
+          uri,
+          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+          body: jsonEncode({'refreshToken': refreshToken}),
+        )
+        .timeout(timeout);
+    if (response.statusCode != 200) {
+      throw RemoteEventSourceException(
+        'Failed to refresh author session: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
+      );
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final author = decoded['author'] as Map<String, dynamic>;
+    final accessToken =
+        (decoded['accessToken'] as String?) ?? (decoded['token'] as String);
+    return AuthorLoginSession(
+      accessToken: accessToken,
+      refreshToken: decoded['refreshToken'] as String,
+      accessExpiresAt: decoded['expiresAt'] as String? ?? '',
+      refreshExpiresAt: decoded['refreshExpiresAt'] as String? ?? '',
+      authorId: (author['id'] as num).toInt(),
+      username: author['username'] as String,
+      isAdmin: author['isAdmin'] as bool? ?? false,
+      requiresPasswordChange:
+          decoded['requiresPasswordChange'] as bool? ?? false,
     );
   }
 
   Future<void> logoutAuthor({required String token}) async {
     final uri = baseUrl.replace(path: '/api/auth/logout');
-    final response = await _client
-        .post(
-          uri,
-          headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-        )
-        .timeout(timeout);
+    final response = await _client.post(
+      uri,
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+    ).timeout(timeout);
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to logout author: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
       );
     }
   }
 
   Future<AuthorSessionState> fetchAuthorSession({required String token}) async {
     final uri = baseUrl.replace(path: '/api/auth/me');
-    final response = await _client
-        .get(
-          uri,
-          headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-        )
-        .timeout(timeout);
+    final response = await _client.get(
+      uri,
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+    ).timeout(timeout);
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch author session: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
       );
     }
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     return AuthorSessionState(
       isAdmin: decoded['author'] is Map<String, dynamic>
-          ? (decoded['author'] as Map<String, dynamic>)['isAdmin'] as bool? ?? false
+          ? (decoded['author'] as Map<String, dynamic>)['isAdmin'] as bool? ??
+              false
           : false,
-      requiresPasswordChange: decoded['requiresPasswordChange'] as bool? ?? false,
+      requiresPasswordChange:
+          decoded['requiresPasswordChange'] as bool? ?? false,
     );
   }
 
@@ -410,15 +460,17 @@ class RemoteEventSource {
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to change password: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
       );
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchOwnEvents({required String token}) async {
+  Future<List<Map<String, dynamic>>> fetchOwnEvents(
+      {required String token}) async {
     final uri = baseUrl.replace(path: '/api/author/events');
-    final response = await _client
-        .get(uri, headers: {HttpHeaders.authorizationHeader: 'Bearer $token'})
-        .timeout(timeout);
+    final response = await _client.get(uri, headers: {
+      HttpHeaders.authorizationHeader: 'Bearer $token'
+    }).timeout(timeout);
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch own events: ${response.statusCode} ${response.body}',
@@ -482,12 +534,10 @@ class RemoteEventSource {
     required int eventId,
   }) async {
     final uri = baseUrl.replace(path: '/api/events/$eventId');
-    final response = await _client
-        .delete(
-          uri,
-          headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-        )
-        .timeout(timeout);
+    final response = await _client.delete(
+      uri,
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+    ).timeout(timeout);
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to delete event: ${response.statusCode} ${response.body}',
@@ -525,12 +575,10 @@ class RemoteEventSource {
     required int eventId,
   }) async {
     final uri = baseUrl.replace(path: '/api/author/events/$eventId');
-    final response = await _client
-        .delete(
-          uri,
-          headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-        )
-        .timeout(timeout);
+    final response = await _client.delete(
+      uri,
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+    ).timeout(timeout);
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to delete own event: ${response.statusCode} ${response.body}',
@@ -538,11 +586,12 @@ class RemoteEventSource {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchAdminUsers({required String token}) async {
+  Future<List<Map<String, dynamic>>> fetchAdminUsers(
+      {required String token}) async {
     final uri = baseUrl.replace(path: '/api/admin/users');
-    final response = await _client
-        .get(uri, headers: {HttpHeaders.authorizationHeader: 'Bearer $token'})
-        .timeout(timeout);
+    final response = await _client.get(uri, headers: {
+      HttpHeaders.authorizationHeader: 'Bearer $token'
+    }).timeout(timeout);
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch admin users: ${response.statusCode} ${response.body}',
@@ -604,12 +653,10 @@ class RemoteEventSource {
     required int userId,
   }) async {
     final uri = baseUrl.replace(path: '/api/admin/users/$userId');
-    final response = await _client
-        .delete(
-          uri,
-          headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-        )
-        .timeout(timeout);
+    final response = await _client.delete(
+      uri,
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+    ).timeout(timeout);
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to delete user: ${response.statusCode} ${response.body}',
@@ -621,13 +668,12 @@ class RemoteEventSource {
     required String token,
     required int userId,
   }) async {
-    final uri = baseUrl.replace(path: '/api/admin/users/$userId/reset-password');
-    final response = await _client
-        .post(
-          uri,
-          headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-        )
-        .timeout(timeout);
+    final uri =
+        baseUrl.replace(path: '/api/admin/users/$userId/reset-password');
+    final response = await _client.post(
+      uri,
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+    ).timeout(timeout);
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to reset password: ${response.statusCode} ${response.body}',
@@ -650,11 +696,13 @@ class RemoteEventSourceException implements Exception {
     this.message, {
     this.exception,
     this.stackTrace,
+    this.statusCode,
   });
 
   final String message;
   final Object? exception;
   final StackTrace? stackTrace;
+  final int? statusCode;
 
   @override
   String toString() => 'RemoteEventSourceException: $message';
@@ -662,14 +710,20 @@ class RemoteEventSourceException implements Exception {
 
 class AuthorLoginSession {
   AuthorLoginSession({
-    required this.token,
+    required this.accessToken,
+    required this.refreshToken,
+    required this.accessExpiresAt,
+    required this.refreshExpiresAt,
     required this.authorId,
     required this.username,
     required this.isAdmin,
     required this.requiresPasswordChange,
   });
 
-  final String token;
+  final String accessToken;
+  final String refreshToken;
+  final String accessExpiresAt;
+  final String refreshExpiresAt;
   final int authorId;
   final String username;
   final bool isAdmin;
@@ -677,7 +731,8 @@ class AuthorLoginSession {
 }
 
 class AuthorSessionState {
-  AuthorSessionState({required this.requiresPasswordChange, required this.isAdmin});
+  AuthorSessionState(
+      {required this.requiresPasswordChange, required this.isAdmin});
 
   final bool requiresPasswordChange;
   final bool isAdmin;

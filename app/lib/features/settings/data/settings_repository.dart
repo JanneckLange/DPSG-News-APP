@@ -7,53 +7,63 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return SettingsRepository(HiveService.getSettingsBox());
 });
 
-final authorModeProvider = StateNotifierProvider<AuthorModeNotifier, bool>((ref) {
+final authorModeProvider =
+    StateNotifierProvider<AuthorModeNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return AuthorModeNotifier(repository);
 });
 
-final appThemeModeProvider = StateNotifierProvider<AppThemeModeNotifier, String>((ref) {
+final appThemeModeProvider =
+    StateNotifierProvider<AppThemeModeNotifier, String>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return AppThemeModeNotifier(repository);
 });
 
-final analyticsTrackingProvider = StateNotifierProvider<AnalyticsTrackingNotifier, bool>((ref) {
+final analyticsTrackingProvider =
+    StateNotifierProvider<AnalyticsTrackingNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return AnalyticsTrackingNotifier(repository);
 });
 
-final appLanguageProvider = StateNotifierProvider<AppLanguageNotifier, String>((ref) {
+final appLanguageProvider =
+    StateNotifierProvider<AppLanguageNotifier, String>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return AppLanguageNotifier(repository);
 });
 
-final notificationsEnabledProvider = StateNotifierProvider<NotificationsEnabledNotifier, bool>((ref) {
+final notificationsEnabledProvider =
+    StateNotifierProvider<NotificationsEnabledNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return NotificationsEnabledNotifier(repository);
 });
 
-final newEventPushEnabledProvider = StateNotifierProvider<NewEventPushEnabledNotifier, bool>((ref) {
+final newEventPushEnabledProvider =
+    StateNotifierProvider<NewEventPushEnabledNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return NewEventPushEnabledNotifier(repository);
 });
 
-final subscribedEventsReminderProvider = StateNotifierProvider<SubscribedEventsReminderNotifier, bool>((ref) {
+final subscribedEventsReminderProvider =
+    StateNotifierProvider<SubscribedEventsReminderNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return SubscribedEventsReminderNotifier(repository);
 });
 
-final deadlineReminderProvider = StateNotifierProvider<DeadlineReminderNotifier, bool>((ref) {
+final deadlineReminderProvider =
+    StateNotifierProvider<DeadlineReminderNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return DeadlineReminderNotifier(repository);
 });
 
-final weeklyPushSummaryProvider = StateNotifierProvider<WeeklyPushSummaryNotifier, bool>((ref) {
+final weeklyPushSummaryProvider =
+    StateNotifierProvider<WeeklyPushSummaryNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return WeeklyPushSummaryNotifier(repository);
 });
 
 final subscribedEventsReminderDaysBeforeProvider =
-    StateNotifierProvider<SubscribedEventsReminderDaysBeforeNotifier, int>((ref) {
+    StateNotifierProvider<SubscribedEventsReminderDaysBeforeNotifier, int>(
+        (ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return SubscribedEventsReminderDaysBeforeNotifier(repository);
 });
@@ -87,7 +97,8 @@ class AppThemeModeNotifier extends StateNotifier<String> {
 }
 
 class AnalyticsTrackingNotifier extends StateNotifier<bool> {
-  AnalyticsTrackingNotifier(this._repository) : super(_repository.getAnalyticsTracking());
+  AnalyticsTrackingNotifier(this._repository)
+      : super(_repository.getAnalyticsTracking());
 
   final SettingsRepository _repository;
 
@@ -109,7 +120,8 @@ class AppLanguageNotifier extends StateNotifier<String> {
 }
 
 class NotificationsEnabledNotifier extends StateNotifier<bool> {
-  NotificationsEnabledNotifier(this._repository) : super(_repository.getNotificationsEnabled());
+  NotificationsEnabledNotifier(this._repository)
+      : super(_repository.getNotificationsEnabled());
 
   final SettingsRepository _repository;
 
@@ -120,7 +132,8 @@ class NotificationsEnabledNotifier extends StateNotifier<bool> {
 }
 
 class NewEventPushEnabledNotifier extends StateNotifier<bool> {
-  NewEventPushEnabledNotifier(this._repository) : super(_repository.getNewEventPushEnabled());
+  NewEventPushEnabledNotifier(this._repository)
+      : super(_repository.getNewEventPushEnabled());
 
   final SettingsRepository _repository;
 
@@ -131,7 +144,8 @@ class NewEventPushEnabledNotifier extends StateNotifier<bool> {
 }
 
 class SubscribedEventsReminderNotifier extends StateNotifier<bool> {
-  SubscribedEventsReminderNotifier(this._repository) : super(_repository.getSubscribedEventsReminderEnabled());
+  SubscribedEventsReminderNotifier(this._repository)
+      : super(_repository.getSubscribedEventsReminderEnabled());
 
   final SettingsRepository _repository;
 
@@ -142,7 +156,8 @@ class SubscribedEventsReminderNotifier extends StateNotifier<bool> {
 }
 
 class DeadlineReminderNotifier extends StateNotifier<bool> {
-  DeadlineReminderNotifier(this._repository) : super(_repository.getDeadlineReminderEnabled());
+  DeadlineReminderNotifier(this._repository)
+      : super(_repository.getDeadlineReminderEnabled());
 
   final SettingsRepository _repository;
 
@@ -153,7 +168,8 @@ class DeadlineReminderNotifier extends StateNotifier<bool> {
 }
 
 class WeeklyPushSummaryNotifier extends StateNotifier<bool> {
-  WeeklyPushSummaryNotifier(this._repository) : super(_repository.getWeeklyPushSummaryEnabled());
+  WeeklyPushSummaryNotifier(this._repository)
+      : super(_repository.getWeeklyPushSummaryEnabled());
 
   final SettingsRepository _repository;
 
@@ -201,19 +217,26 @@ class SettingsRepository {
   static const String appLanguageKey = 'app_language';
   static const String notificationsEnabledKey = 'notifications_enabled';
   static const String newEventPushEnabledKey = 'new_event_push_enabled';
-  static const String subscribedEventsReminderEnabledKey = 'subscribed_events_reminder_enabled';
+  static const String subscribedEventsReminderEnabledKey =
+      'subscribed_events_reminder_enabled';
   static const String deadlineReminderEnabledKey = 'deadline_reminder_enabled';
-  static const String weeklyPushSummaryEnabledKey = 'weekly_push_summary_enabled';
-  static const String subscribedEventsReminderDaysBeforeKey = 'subscribed_events_reminder_days_before';
-  static const String deadlineReminderDaysBeforeKey = 'deadline_reminder_days_before';
+  static const String weeklyPushSummaryEnabledKey =
+      'weekly_push_summary_enabled';
+  static const String subscribedEventsReminderDaysBeforeKey =
+      'subscribed_events_reminder_days_before';
+  static const String deadlineReminderDaysBeforeKey =
+      'deadline_reminder_days_before';
   static const String dvTreeKey = 'dv_tree';
   static const String dvTreeLastChangeKey = 'dv_tree_last_change';
-  static const String authorAuthTokenKey = 'author_auth_token';
+  static const String authorAuthTokenKey =
+      'author_auth_token'; // legacy migration key
   static const String authorIdKey = 'author_id';
   static const String authorUsernameKey = 'author_username';
   static const String authorIsAdminKey = 'author_is_admin';
-  static const String authorRequiresPasswordChangeKey = 'author_requires_password_change';
-  static const String authorLastBackgroundedAtKey = 'author_last_backgrounded_at';
+  static const String authorRequiresPasswordChangeKey =
+      'author_requires_password_change';
+  static const String authorLastBackgroundedAtKey =
+      'author_last_backgrounded_at';
 
   SettingsRepository(this._box);
 
@@ -228,7 +251,10 @@ class SettingsRepository {
   Future<void> setSelectedDvs(List<String> dvs) async {
     final currentTopics = getSelectedTopicsByDv();
     currentTopics.removeWhere((key, _) => !dvs.contains(key));
-    await Future.wait([_box.put(selectedDvsKey, dvs), _box.put(selectedDvTopicsKey, currentTopics)]);
+    await Future.wait([
+      _box.put(selectedDvsKey, dvs),
+      _box.put(selectedDvTopicsKey, currentTopics)
+    ]);
   }
 
   List<String> getSelectedTopicsForDv(String dv) {
@@ -240,7 +266,8 @@ class SettingsRepository {
     final raw = _box.get(selectedDvTopicsKey) as Map<dynamic, dynamic>?;
     if (raw == null) return <String, List<String>>{};
     return raw.map<String, List<String>>((key, value) {
-      final values = value is List ? value.whereType<String>().toList() : <String>[];
+      final values =
+          value is List ? value.whereType<String>().toList() : <String>[];
       return MapEntry(key as String, values);
     });
   }
@@ -274,27 +301,38 @@ class SettingsRepository {
 
   bool getAuthorMode() => _box.get(authorModeKey, defaultValue: false) as bool;
 
-  Future<void> setAuthorMode(bool enabled) async => _box.put(authorModeKey, enabled);
+  Future<void> setAuthorMode(bool enabled) async =>
+      _box.put(authorModeKey, enabled);
 
-  String getAppThemeMode() => _box.get(appThemeModeKey, defaultValue: 'system') as String;
+  String getAppThemeMode() =>
+      _box.get(appThemeModeKey, defaultValue: 'system') as String;
 
-  Future<void> setAppThemeMode(String mode) async => _box.put(appThemeModeKey, mode);
+  Future<void> setAppThemeMode(String mode) async =>
+      _box.put(appThemeModeKey, mode);
 
-  bool getAnalyticsTracking() => _box.get(analyticsTrackingKey, defaultValue: true) as bool;
+  bool getAnalyticsTracking() =>
+      _box.get(analyticsTrackingKey, defaultValue: true) as bool;
 
-  Future<void> setAnalyticsTracking(bool enabled) async => _box.put(analyticsTrackingKey, enabled);
+  Future<void> setAnalyticsTracking(bool enabled) async =>
+      _box.put(analyticsTrackingKey, enabled);
 
-  String getAppLanguage() => _box.get(appLanguageKey, defaultValue: 'de') as String;
+  String getAppLanguage() =>
+      _box.get(appLanguageKey, defaultValue: 'de') as String;
 
-  Future<void> setAppLanguage(String language) async => _box.put(appLanguageKey, language);
+  Future<void> setAppLanguage(String language) async =>
+      _box.put(appLanguageKey, language);
 
-  bool getNotificationsEnabled() => _box.get(notificationsEnabledKey, defaultValue: true) as bool;
+  bool getNotificationsEnabled() =>
+      _box.get(notificationsEnabledKey, defaultValue: true) as bool;
 
-  Future<void> setNotificationsEnabled(bool enabled) async => _box.put(notificationsEnabledKey, enabled);
+  Future<void> setNotificationsEnabled(bool enabled) async =>
+      _box.put(notificationsEnabledKey, enabled);
 
-  bool getNewEventPushEnabled() => _box.get(newEventPushEnabledKey, defaultValue: true) as bool;
+  bool getNewEventPushEnabled() =>
+      _box.get(newEventPushEnabledKey, defaultValue: true) as bool;
 
-  Future<void> setNewEventPushEnabled(bool enabled) async => _box.put(newEventPushEnabledKey, enabled);
+  Future<void> setNewEventPushEnabled(bool enabled) async =>
+      _box.put(newEventPushEnabledKey, enabled);
 
   bool getSubscribedEventsReminderEnabled() =>
       _box.get(subscribedEventsReminderEnabledKey, defaultValue: true) as bool;
@@ -302,44 +340,48 @@ class SettingsRepository {
   Future<void> setSubscribedEventsReminderEnabled(bool enabled) async =>
       _box.put(subscribedEventsReminderEnabledKey, enabled);
 
-  bool getDeadlineReminderEnabled() => _box.get(deadlineReminderEnabledKey, defaultValue: true) as bool;
+  bool getDeadlineReminderEnabled() =>
+      _box.get(deadlineReminderEnabledKey, defaultValue: true) as bool;
 
   Future<void> setDeadlineReminderEnabled(bool enabled) async =>
       _box.put(deadlineReminderEnabledKey, enabled);
 
-  bool getWeeklyPushSummaryEnabled() => _box.get(weeklyPushSummaryEnabledKey, defaultValue: true) as bool;
+  bool getWeeklyPushSummaryEnabled() =>
+      _box.get(weeklyPushSummaryEnabledKey, defaultValue: true) as bool;
 
   Future<void> setWeeklyPushSummaryEnabled(bool enabled) async =>
       _box.put(weeklyPushSummaryEnabledKey, enabled);
 
-  int getSubscribedEventsReminderDaysBefore() =>
-      _normalizeReminderDays(
+  int getSubscribedEventsReminderDaysBefore() => _normalizeReminderDays(
         _box.get(
           subscribedEventsReminderDaysBeforeKey,
           defaultValue: defaultSubscribedEventsReminderDaysBefore,
         ) as int,
       );
 
-  Future<void> setSubscribedEventsReminderDaysBefore(int days) async =>
-      _box.put(subscribedEventsReminderDaysBeforeKey, _normalizeReminderDays(days));
+  Future<void> setSubscribedEventsReminderDaysBefore(int days) async => _box
+      .put(subscribedEventsReminderDaysBeforeKey, _normalizeReminderDays(days));
 
-  int getDeadlineReminderDaysBefore() =>
-      _normalizeReminderDays(
-        _box.get(deadlineReminderDaysBeforeKey, defaultValue: defaultDeadlineReminderDaysBefore) as int,
+  int getDeadlineReminderDaysBefore() => _normalizeReminderDays(
+        _box.get(deadlineReminderDaysBeforeKey,
+            defaultValue: defaultDeadlineReminderDaysBefore) as int,
       );
 
   Future<void> setDeadlineReminderDaysBefore(int days) async =>
       _box.put(deadlineReminderDaysBeforeKey, _normalizeReminderDays(days));
 
-  Future<void> resetNotificationSettingsToDefaults({required bool notificationsEnabled}) async {
+  Future<void> resetNotificationSettingsToDefaults(
+      {required bool notificationsEnabled}) async {
     await Future.wait([
       _box.put(notificationsEnabledKey, notificationsEnabled),
       _box.put(newEventPushEnabledKey, true),
       _box.put(subscribedEventsReminderEnabledKey, true),
       _box.put(deadlineReminderEnabledKey, true),
       _box.put(weeklyPushSummaryEnabledKey, true),
-      _box.put(subscribedEventsReminderDaysBeforeKey, defaultSubscribedEventsReminderDaysBefore),
-      _box.put(deadlineReminderDaysBeforeKey, defaultDeadlineReminderDaysBefore),
+      _box.put(subscribedEventsReminderDaysBeforeKey,
+          defaultSubscribedEventsReminderDaysBefore),
+      _box.put(
+          deadlineReminderDaysBeforeKey, defaultDeadlineReminderDaysBefore),
     ]);
   }
 
@@ -360,7 +402,8 @@ class SettingsRepository {
     await _box.put(apiBaseUrlKey, url.trim());
   }
 
-  Future<void> setDvTree(List<Map<String, dynamic>> tree, String lastChange) async {
+  Future<void> setDvTree(
+      List<Map<String, dynamic>> tree, String lastChange) async {
     await _box.put(dvTreeKey, tree);
     await _box.put(dvTreeLastChangeKey, lastChange);
   }
@@ -376,13 +419,18 @@ class SettingsRepository {
 
   String? getDvTreeLastChange() => _box.get(dvTreeLastChangeKey) as String?;
 
-  String? getAuthorAuthToken() => _box.get(authorAuthTokenKey) as String?;
+  String? getLegacyAuthorAuthToken() => _box.get(authorAuthTokenKey) as String?;
+
+  Future<void> clearLegacyAuthorAuthToken() async {
+    await _box.delete(authorAuthTokenKey);
+  }
 
   int? getAuthorId() => _box.get(authorIdKey) as int?;
 
   String? getAuthorUsername() => _box.get(authorUsernameKey) as String?;
 
-  bool getAuthorIsAdmin() => _box.get(authorIsAdminKey, defaultValue: false) as bool;
+  bool getAuthorIsAdmin() =>
+      _box.get(authorIsAdminKey, defaultValue: false) as bool;
 
   bool getAuthorRequiresPasswordChange() =>
       _box.get(authorRequiresPasswordChangeKey, defaultValue: false) as bool;
@@ -400,18 +448,17 @@ class SettingsRepository {
       await _box.delete(authorLastBackgroundedAtKey);
       return;
     }
-    await _box.put(authorLastBackgroundedAtKey, value.toUtc().toIso8601String());
+    await _box.put(
+        authorLastBackgroundedAtKey, value.toUtc().toIso8601String());
   }
 
   Future<void> saveAuthorSession({
-    required String token,
     required int authorId,
     required String username,
     required bool isAdmin,
     required bool requiresPasswordChange,
   }) async {
     await Future.wait([
-      _box.put(authorAuthTokenKey, token),
       _box.put(authorIdKey, authorId),
       _box.put(authorUsernameKey, username),
       _box.put(authorIsAdminKey, isAdmin),

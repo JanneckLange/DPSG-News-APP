@@ -223,7 +223,27 @@ describe('Events API e2e', () => {
         location: 'Ort',
         dv: 'Köln',
       });
-    expect(createAllowed.status).toBe(201);
+    expect(createAllowed.status).toBe(401);
+
+    const relogin = await request(app).post('/api/auth/login').send({
+      username: 'author-otp',
+      password: 'new-secret-123',
+    });
+    expect(relogin.status).toBe(200);
+    const refreshedToken = relogin.body.token as string;
+
+    const createAfterRelogin = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${refreshedToken}`)
+      .send({
+        title: 'Allowed after relogin',
+        description: 'Allowed',
+        startDate: '2026-01-01T10:00:00Z',
+        endDate: '2026-01-01T12:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(createAfterRelogin.status).toBe(201);
 
     const loginWithOtpFails = await request(app).post('/api/auth/login').send({
       username: 'author-otp',
@@ -259,6 +279,54 @@ describe('Events API e2e', () => {
       password: 'secret-123',
     });
     expect(oldLogin.status).toBe(401);
+  });
+
+  it('rotates refresh tokens and invalidates reused refresh tokens', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    const loginResponse = await request(app).post('/api/auth/login').send({
+      username: 'author-a',
+      password: 'secret-123',
+    });
+    expect(loginResponse.status).toBe(200);
+    const refreshToken = loginResponse.body.refreshToken as string;
+    expect(refreshToken).toEqual(expect.any(String));
+
+    const refreshResponse = await request(app).post('/api/auth/refresh').send({ refreshToken });
+    expect(refreshResponse.status).toBe(200);
+    expect(refreshResponse.body.token).toEqual(expect.any(String));
+    expect(refreshResponse.body.refreshToken).toEqual(expect.any(String));
+    expect(refreshResponse.body.refreshToken).not.toBe(refreshToken);
+
+    const replayResponse = await request(app).post('/api/auth/refresh').send({ refreshToken });
+    expect(replayResponse.status).toBe(401);
+  });
+
+  it('revokes active sessions and refresh tokens on password change', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    const loginResponse = await request(app).post('/api/auth/login').send({
+      username: 'author-a',
+      password: 'secret-123',
+    });
+    expect(loginResponse.status).toBe(200);
+    const token = loginResponse.body.token as string;
+    const refreshToken = loginResponse.body.refreshToken as string;
+
+    const changeResponse = await request(app)
+      .post('/api/auth/change-password')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        oldPassword: 'secret-123',
+        newPassword: 'new-secret-123',
+      });
+    expect(changeResponse.status).toBe(204);
+
+    const meResponse = await request(app)
+      .get('/api/auth/me')
+      .set('authorization', `Bearer ${token}`);
+    expect(meResponse.status).toBe(401);
+
+    const refreshResponse = await request(app).post('/api/auth/refresh').send({ refreshToken });
+    expect(refreshResponse.status).toBe(401);
   });
 
   it('continues when notification sending fails', async () => {

@@ -41,6 +41,7 @@ const KNOWN_ENDPOINTS: Array<{ method: string; path: RegExp }> = [
   { method: 'DELETE', path: /^\/api\/events\/\d+\/?$/ },
   { method: 'DELETE', path: /^\/api\/events\/?$/ },
   { method: 'POST', path: /^\/api\/auth\/login\/?$/ },
+  { method: 'POST', path: /^\/api\/auth\/refresh\/?$/ },
   { method: 'POST', path: /^\/api\/auth\/logout\/?$/ },
   { method: 'GET', path: /^\/api\/auth\/me\/?$/ },
   { method: 'POST', path: /^\/api\/auth\/change-password\/?$/ },

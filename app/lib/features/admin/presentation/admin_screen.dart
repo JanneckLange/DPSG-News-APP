@@ -26,7 +26,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
 
   Future<void> _loadUsers() async {
     final auth = ref.read(authorAuthProvider);
-    final token = auth.token;
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null || !auth.isAdmin) {
       if (!mounted) return;
       setState(() {
@@ -65,11 +66,15 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       return;
     }
 
-    final auth = ref.read(authorAuthProvider);
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) {
+      return;
+    }
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
       final response = await remote.createAdminUser(
-        token: auth.token!,
+        token: token,
         username: result['username'] as String,
         isAdmin: result['isAdmin'] == true,
       );
@@ -138,12 +143,19 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         child: _loading
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [SizedBox(height: 240), Center(child: CircularProgressIndicator())],
+                children: const [
+                  SizedBox(height: 240),
+                  Center(child: CircularProgressIndicator())
+                ],
               )
             : _error != null
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: [Padding(padding: const EdgeInsets.all(24), child: Text(_error!))],
+                    children: [
+                      Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(_error!))
+                    ],
                   )
                 : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -161,9 +173,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              Chip(label: Text(isActive ? 'Aktiv' : 'Deaktiviert')),
-                              if (user['isAdmin'] == true) const Chip(label: Text('Admin')),
-                              if (user['requiresPasswordChange'] == true) const Chip(label: Text('Reset offen')),
+                              Chip(
+                                  label:
+                                      Text(isActive ? 'Aktiv' : 'Deaktiviert')),
+                              if (user['isAdmin'] == true)
+                                const Chip(label: Text('Admin')),
+                              if (user['requiresPasswordChange'] == true)
+                                const Chip(label: Text('Reset offen')),
                             ],
                           ),
                           trailing: const Icon(Icons.chevron_right),
@@ -220,8 +236,9 @@ class _CreateUserDialogState extends State<_CreateUserDialog> {
                 decoration: const InputDecoration(labelText: 'Username'),
                 autofillHints: const [AutofillHints.username],
                 textInputAction: TextInputAction.done,
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Bitte Username eingeben.' : null,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Bitte Username eingeben.'
+                    : null,
               ),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,

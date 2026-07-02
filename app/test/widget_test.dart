@@ -2,14 +2,17 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dpsg_news_app/core/services/hive_service.dart';
+import 'package:dpsg_news_app/core/services/secure_storage_service.dart';
 import 'package:dpsg_news_app/features/author/data/author_auth_provider.dart';
 import 'package:dpsg_news_app/core/services/sync_service.dart' as sync_service;
 import 'package:dpsg_news_app/features/admin/presentation/admin_screen.dart';
 import 'package:dpsg_news_app/features/profile/presentation/profile_screen.dart';
 import 'package:dpsg_news_app/features/events/data/remote_event_source.dart';
-import 'package:dpsg_news_app/features/settings/data/settings_repository.dart' as settings_repo;
+import 'package:dpsg_news_app/features/settings/data/settings_repository.dart'
+    as settings_repo;
 import 'package:dpsg_news_app/features/settings/presentation/settings_screen.dart';
 
 class FakeRemoteEventSource extends RemoteEventSource {
@@ -43,7 +46,8 @@ class FakeRemoteEventSource extends RemoteEventSource {
 
 class FakeAdminRemoteEventSource extends FakeRemoteEventSource {
   @override
-  Future<List<Map<String, dynamic>>> fetchAdminUsers({required String token}) async {
+  Future<List<Map<String, dynamic>>> fetchAdminUsers(
+      {required String token}) async {
     return const <Map<String, dynamic>>[];
   }
 
@@ -63,14 +67,10 @@ class FakeAdminRemoteEventSource extends FakeRemoteEventSource {
 class FakeSettingsRepository extends settings_repo.SettingsRepository {
   FakeSettingsRepository() : super(HiveService.getSettingsBox());
 
-  String? _token;
   int? _authorId;
   String? _username;
   bool _isAdmin = false;
   bool _requiresPasswordChange = false;
-
-  @override
-  String? getAuthorAuthToken() => _token;
 
   @override
   int? getAuthorId() => _authorId;
@@ -86,13 +86,11 @@ class FakeSettingsRepository extends settings_repo.SettingsRepository {
 
   @override
   Future<void> saveAuthorSession({
-    required String token,
     required int authorId,
     required String username,
     required bool isAdmin,
     required bool requiresPasswordChange,
   }) async {
-    _token = token;
     _authorId = authorId;
     _username = username;
     _isAdmin = isAdmin;
@@ -101,7 +99,6 @@ class FakeSettingsRepository extends settings_repo.SettingsRepository {
 
   @override
   Future<void> clearAuthorSession() async {
-    _token = null;
     _authorId = null;
     _username = null;
     _isAdmin = false;
@@ -116,6 +113,51 @@ class FakeSettingsRepository extends settings_repo.SettingsRepository {
   @override
   Future<void> setAuthorIsAdmin(bool value) async {
     _isAdmin = value;
+  }
+}
+
+class FakeSecureStorageService extends SecureStorageService {
+  FakeSecureStorageService() : super(const FlutterSecureStorage());
+
+  AuthorTokenBundle? _tokens;
+
+  @override
+  Future<void> saveAuthorTokens({
+    required String accessToken,
+    required String refreshToken,
+    required String accessExpiresAt,
+    required String refreshExpiresAt,
+  }) async {
+    _tokens = AuthorTokenBundle(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      accessExpiresAt: accessExpiresAt,
+      refreshExpiresAt: refreshExpiresAt,
+    );
+  }
+
+  @override
+  Future<AuthorTokenBundle?> readAuthorTokens() async => _tokens;
+
+  @override
+  Future<void> clearAuthorTokens() async {
+    _tokens = null;
+  }
+}
+
+class TestAuthorAuthNotifier extends AuthorAuthNotifier {
+  TestAuthorAuthNotifier({
+    required settings_repo.SettingsRepository repository,
+    required RemoteEventSource remote,
+    required SecureStorageService secureStorage,
+    required AuthorAuthState initialState,
+  }) : super(
+          repository: repository,
+          remote: remote,
+          secureStorage: secureStorage,
+          restoreSessionOnInit: false,
+        ) {
+    state = initialState;
   }
 }
 
@@ -146,7 +188,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          sync_service.remoteEventSourceProvider.overrideWithValue(FakeRemoteEventSource()),
+          sync_service.remoteEventSourceProvider
+              .overrideWithValue(FakeRemoteEventSource()),
         ],
         child: const MaterialApp(
           home: SettingsScreen(),
@@ -162,20 +205,41 @@ void main() {
     required AuthorAuthState state,
   }) async {
     final repository = FakeSettingsRepository();
+    final secureStorage = FakeSecureStorageService();
+    final remote = FakeRemoteEventSource();
     if (state.isLoggedIn) {
       await repository.saveAuthorSession(
-        token: 'test-token',
         authorId: 1,
         username: state.username ?? 'author',
         isAdmin: state.isAdmin,
         requiresPasswordChange: state.requiresPasswordChange,
       );
+      await secureStorage.saveAuthorTokens(
+        accessToken: state.token ?? 'test-token',
+        refreshToken: state.refreshToken ?? 'test-refresh-token',
+        accessExpiresAt: (state.expiresAt ??
+                DateTime.now().toUtc().add(const Duration(hours: 1)))
+            .toIso8601String(),
+        refreshExpiresAt: (state.refreshExpiresAt ??
+                DateTime.now().toUtc().add(const Duration(days: 7)))
+            .toIso8601String(),
+      );
     }
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          sync_service.remoteEventSourceProvider.overrideWithValue(FakeRemoteEventSource()),
-          settings_repo.settingsRepositoryProvider.overrideWithValue(repository),
+          sync_service.remoteEventSourceProvider.overrideWithValue(remote),
+          settings_repo.settingsRepositoryProvider
+              .overrideWithValue(repository),
+          secureStorageServiceProvider.overrideWithValue(secureStorage),
+          authorAuthProvider.overrideWith(
+            (ref) => TestAuthorAuthNotifier(
+              repository: repository,
+              remote: remote,
+              secureStorage: secureStorage,
+              initialState: state,
+            ),
+          ),
         ],
         child: const MaterialApp(
           home: ProfileScreen(),
@@ -195,7 +259,8 @@ void main() {
     await HiveService.getEventsBox().clear();
   });
 
-  testWidgets('Settings overview shows the new sections', (WidgetTester tester) async {
+  testWidgets('Settings overview shows the new sections',
+      (WidgetTester tester) async {
     await openSettingsOverview(tester);
 
     expect(find.text('Profil'), findsOneWidget);
@@ -204,7 +269,8 @@ void main() {
     expect(find.text('DV-Auswahl'), findsOneWidget);
   });
 
-  testWidgets('Profile card opens the profile screen', (WidgetTester tester) async {
+  testWidgets('Profile card opens the profile screen',
+      (WidgetTester tester) async {
     await openSettingsOverview(tester);
 
     await tester.ensureVisible(find.text('Profil'));
@@ -217,7 +283,8 @@ void main() {
     expect(find.text('Autoren-Login'), findsOneWidget);
   });
 
-  testWidgets('Profile screen shows admin entry for admins only', (WidgetTester tester) async {
+  testWidgets('Profile screen shows admin entry for admins only',
+      (WidgetTester tester) async {
     await openProfileScreen(
       tester,
       state: const AuthorAuthState(
@@ -232,7 +299,8 @@ void main() {
     expect(find.text('DV-Auswahl'), findsNothing);
   });
 
-  testWidgets('Profile screen hides admin entry for regular users', (WidgetTester tester) async {
+  testWidgets('Profile screen hides admin entry for regular users',
+      (WidgetTester tester) async {
     await openProfileScreen(
       tester,
       state: const AuthorAuthState(
@@ -246,26 +314,59 @@ void main() {
     expect(find.text('Admin-Bereich'), findsNothing);
   });
 
-  testWidgets('Admin screen shows the user management action', (WidgetTester tester) async {
+  testWidgets('Admin screen shows the user management action',
+      (WidgetTester tester) async {
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });
 
     final repository = FakeSettingsRepository();
+    final secureStorage = FakeSecureStorageService();
+    final remote = FakeAdminRemoteEventSource();
     await repository.saveAuthorSession(
-      token: 'test-token',
       authorId: 1,
       username: 'admin',
       isAdmin: true,
       requiresPasswordChange: false,
     );
+    await secureStorage.saveAuthorTokens(
+      accessToken: 'test-token',
+      refreshToken: 'test-refresh-token',
+      accessExpiresAt: DateTime.now()
+          .toUtc()
+          .add(const Duration(hours: 1))
+          .toIso8601String(),
+      refreshExpiresAt:
+          DateTime.now().toUtc().add(const Duration(days: 7)).toIso8601String(),
+    );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          sync_service.remoteEventSourceProvider.overrideWithValue(FakeAdminRemoteEventSource()),
-          settings_repo.settingsRepositoryProvider.overrideWithValue(repository),
+          sync_service.remoteEventSourceProvider.overrideWithValue(remote),
+          settings_repo.settingsRepositoryProvider
+              .overrideWithValue(repository),
+          secureStorageServiceProvider.overrideWithValue(secureStorage),
+          authorAuthProvider.overrideWith(
+            (ref) => TestAuthorAuthNotifier(
+              repository: repository,
+              remote: remote,
+              secureStorage: secureStorage,
+              initialState: AuthorAuthState(
+                isLoggedIn: true,
+                isLocked: false,
+                token: 'test-token',
+                refreshToken: 'test-refresh-token',
+                authorId: 1,
+                username: 'admin',
+                isAdmin: true,
+                requiresPasswordChange: false,
+                expiresAt: DateTime.utc(2099, 1, 1),
+                refreshExpiresAt: DateTime.utc(2099, 2, 1),
+              ),
+            ),
+          ),
         ],
         child: const MaterialApp(
           home: AdminScreen(),
@@ -278,19 +379,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('App settings entry opens app settings screen', (WidgetTester tester) async {
+  testWidgets('App settings entry opens app settings screen',
+      (WidgetTester tester) async {
     await openSettingsOverview(tester);
 
     await tester.ensureVisible(find.text('App-Einstellungen'));
     await tester.tap(find.text('App-Einstellungen'));
     await tester.pump();
-    await expectEventuallyFound(tester, find.text('Nutzungs-/Analyse-Tracking'));
+    await expectEventuallyFound(
+        tester, find.text('Nutzungs-/Analyse-Tracking'));
 
     expect(find.text('Nutzungs-/Analyse-Tracking'), findsOneWidget);
     expect(find.text('Darstellung'), findsOneWidget);
   });
 
-  testWidgets('Notification settings show toggles and DV selector action', (WidgetTester tester) async {
+  testWidgets('Notification settings show toggles and DV selector action',
+      (WidgetTester tester) async {
     await openSettingsOverview(tester);
 
     await tester.ensureVisible(find.text('Benachrichtigungen'));
@@ -300,19 +404,25 @@ void main() {
 
     expect(find.text('Benachrichtigungen aktiv'), findsOneWidget);
     expect(find.text('Neue Veranstaltungen'), findsOneWidget);
-    expect(find.text('Erinnerung für zugesagte Veranstaltungen'), findsOneWidget);
+    expect(
+        find.text('Erinnerung für zugesagte Veranstaltungen'), findsOneWidget);
     expect(find.text('Erinnerung vor Anmeldeschluss'), findsOneWidget);
     expect(find.text('Wochenübersicht'), findsOneWidget);
     expect(find.text('Tage vorher'), findsNWidgets(2));
     expect(find.text('Auswählen'), findsOneWidget);
   });
 
-  testWidgets('Debug & Tools page opens and App Logs card shows direct controls', (WidgetTester tester) async {
+  testWidgets(
+      'Debug & Tools page opens and App Logs card shows direct controls',
+      (WidgetTester tester) async {
     await openSettingsOverview(tester);
 
     final settingsScrollable = find.byType(Scrollable).first;
-    for (var i = 0; i < 8 && find.text('Debug & Tools').evaluate().isEmpty; i++) {
-      await tester.drag(settingsScrollable, const Offset(0, -300), warnIfMissed: false);
+    for (var i = 0;
+        i < 8 && find.text('Debug & Tools').evaluate().isEmpty;
+        i++) {
+      await tester.drag(settingsScrollable, const Offset(0, -300),
+          warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 100));
     }
 
@@ -326,7 +436,8 @@ void main() {
     final debugScrollable = find.byType(Scrollable).first;
 
     for (var i = 0; i < 8 && find.text('App Logs').evaluate().isEmpty; i++) {
-      await tester.drag(debugScrollable, const Offset(0, -250), warnIfMissed: false);
+      await tester.drag(debugScrollable, const Offset(0, -250),
+          warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 100));
     }
 
@@ -336,13 +447,17 @@ void main() {
     expect(find.text('Datei'), findsOneWidget);
     expect(find.text('Logs anzeigen'), findsOneWidget);
 
-    for (var i = 0; i < 8 && find.text('Feedback und Bewertung').evaluate().isEmpty; i++) {
-      await tester.drag(debugScrollable, const Offset(0, -300), warnIfMissed: false);
+    for (var i = 0;
+        i < 8 && find.text('Feedback und Bewertung').evaluate().isEmpty;
+        i++) {
+      await tester.drag(debugScrollable, const Offset(0, -300),
+          warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 100));
     }
 
     for (var i = 0; i < 8 && find.text('Changelog').evaluate().isEmpty; i++) {
-      await tester.drag(debugScrollable, const Offset(0, -300), warnIfMissed: false);
+      await tester.drag(debugScrollable, const Offset(0, -300),
+          warnIfMissed: false);
       await tester.pump(const Duration(milliseconds: 100));
     }
 

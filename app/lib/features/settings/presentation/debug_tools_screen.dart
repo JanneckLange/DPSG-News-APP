@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,8 @@ import '../../../core/services/notification_service.dart';
 import '../../events/data/remote_event_source.dart';
 import '../data/settings_repository.dart';
 
-final apiHealthProvider = StateNotifierProvider<ApiHealthNotifier, ApiHealthStatus?>((ref) {
+final apiHealthProvider =
+    StateNotifierProvider<ApiHealthNotifier, ApiHealthStatus?>((ref) {
   return ApiHealthNotifier(ref.read(loggingServiceProvider));
 });
 
@@ -22,7 +24,8 @@ class ApiHealthNotifier extends StateNotifier<ApiHealthStatus?> {
     state = ApiHealthStatus(false, 'Prüfe Verbindung...');
     try {
       final uri = Uri.parse(baseUrl);
-      final status = await RemoteEventSource(baseUrl: uri, logger: _logger).checkHealth();
+      final status =
+          await RemoteEventSource(baseUrl: uri, logger: _logger).checkHealth();
       state = status;
     } catch (error) {
       state = ApiHealthStatus(false, 'Server nicht erreichbar');
@@ -82,15 +85,16 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
         subtitle: 'Bestehende Entwicklerwerte und Verbindungsstatus',
         child: Column(
           children: [
-            _debugNavTile(
-              context,
-              icon: Icons.language,
-              title: 'API-URL',
-              subtitle: effectiveUrl,
-              onTap: () async {
-                await _showApiUrlDialog(context, repository);
-              },
-            ),
+            if (!kReleaseMode)
+              _debugNavTile(
+                context,
+                icon: Icons.language,
+                title: 'API-URL',
+                subtitle: effectiveUrl,
+                onTap: () async {
+                  await _showApiUrlDialog(context, repository);
+                },
+              ),
             _debugNavTile(
               context,
               icon: Icons.network_check,
@@ -99,11 +103,15 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
               trailing: IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: () async {
-                  await ref.read(apiHealthProvider.notifier).refresh(effectiveUrl);
+                  await ref
+                      .read(apiHealthProvider.notifier)
+                      .refresh(effectiveUrl);
                 },
               ),
               onTap: () async {
-                await ref.read(apiHealthProvider.notifier).refresh(effectiveUrl);
+                await ref
+                    .read(apiHealthProvider.notifier)
+                    .refresh(effectiveUrl);
               },
             ),
             _debugNavTile(
@@ -156,7 +164,8 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
                   Wiredash.of(context).show(inheritMaterialTheme: true);
                 } catch (_) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Feedback derzeit nicht verfügbar.')),
+                    const SnackBar(
+                        content: Text('Feedback derzeit nicht verfügbar.')),
                   );
                 }
               },
@@ -171,7 +180,9 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
                   const <String, Object?>{'action': 'open_app_rating'},
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Bewertung wird später mit Store-Ziel ergänzt.')),
+                  const SnackBar(
+                      content: Text(
+                          'Bewertung wird später mit Store-Ziel ergänzt.')),
                 );
               },
             ),
@@ -191,7 +202,8 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
               title: 'Changelog',
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const ChangelogScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const ChangelogScreen()),
                 );
               },
             ),
@@ -203,7 +215,8 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const ExternalNotificationsPlaceholderScreen(),
+                    builder: (context) =>
+                        const ExternalNotificationsPlaceholderScreen(),
                   ),
                 );
               },
@@ -214,37 +227,40 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
     ];
 
     if (widget.inline) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sections);
+      return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch, children: sections);
     }
 
     return DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
-              colorScheme.surface,
-            ],
-          ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+            colorScheme.surface,
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(5),
-          child: Scrollbar(
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(5),
+        child: Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          child: ListView(
             controller: _scrollController,
-            thumbVisibility: true,
-            child: ListView(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              children: sections,
-            ),
+            padding: const EdgeInsets.all(16),
+            children: sections,
           ),
         ),
+      ),
     );
   }
 
-  Future<void> _showApiUrlDialog(BuildContext context, SettingsRepository repository) async {
-    final controller = TextEditingController(text: repository.getApiBaseUrl() ?? AppConfig.defaultApiBaseUrl);
+  Future<void> _showApiUrlDialog(
+      BuildContext context, SettingsRepository repository) async {
+    final controller = TextEditingController(
+        text: repository.getApiBaseUrl() ?? AppConfig.defaultApiBaseUrl);
     final result = await showDialog<String>(
       context: context,
       builder: (context) {
@@ -298,7 +314,8 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
           color: Theme.of(context).colorScheme.primaryContainer,
           borderRadius: BorderRadius.circular(11),
         ),
-        child: Icon(icon, color: Theme.of(context).colorScheme.onPrimaryContainer, size: 20),
+        child: Icon(icon,
+            color: Theme.of(context).colorScheme.onPrimaryContainer, size: 20),
       ),
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle),
@@ -429,13 +446,16 @@ class _DebugActionButton extends StatelessWidget {
             backgroundColor: colorScheme.error,
             foregroundColor: colorScheme.onError,
             disabledBackgroundColor: colorScheme.error.withValues(alpha: 0.26),
-            disabledForegroundColor: colorScheme.onError.withValues(alpha: 0.72),
+            disabledForegroundColor:
+                colorScheme.onError.withValues(alpha: 0.72),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           )
         : FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           );
 
     return SizedBox(
@@ -454,7 +474,8 @@ class _InlineLogsControls extends ConsumerStatefulWidget {
   const _InlineLogsControls();
 
   @override
-  ConsumerState<_InlineLogsControls> createState() => _InlineLogsControlsState();
+  ConsumerState<_InlineLogsControls> createState() =>
+      _InlineLogsControlsState();
 }
 
 class _InlineLogsControlsState extends ConsumerState<_InlineLogsControls> {
@@ -509,7 +530,8 @@ class _InlineLogsControlsState extends ConsumerState<_InlineLogsControls> {
               ),
               items: const [
                 DropdownMenuItem(value: LogSource.app, child: Text('App-Logs')),
-                DropdownMenuItem(value: LogSource.request, child: Text('Request-Logs')),
+                DropdownMenuItem(
+                    value: LogSource.request, child: Text('Request-Logs')),
               ],
               onChanged: (value) {
                 if (value == null || value == _source) {
@@ -579,9 +601,10 @@ class _InlineLogsControlsState extends ConsumerState<_InlineLogsControls> {
                           if (!context.mounted) {
                             return;
                           }
-                          final title = selectedId == LoggingService.allLogsSelectionId
-                              ? 'Logs'
-                              : 'Logs: $selectedId';
+                          final title =
+                              selectedId == LoggingService.allLogsSelectionId
+                                  ? 'Logs'
+                                  : 'Logs: $selectedId';
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => _LogViewerPage(
@@ -613,7 +636,8 @@ class _InlineLogsControlsState extends ConsumerState<_InlineLogsControls> {
                           if (!context.mounted) {
                             return;
                           }
-                          await _sendLogsEmail(context, logger, _source, selectedId);
+                          await _sendLogsEmail(
+                              context, logger, _source, selectedId);
                         },
                 ),
                 _DebugActionButton(
@@ -732,7 +756,8 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Dateiauswahl', style: theme.textTheme.titleMedium),
+                          Text('Dateiauswahl',
+                              style: theme.textTheme.titleMedium),
                           const SizedBox(height: 6),
                           Text(
                             hasLogs
@@ -750,8 +775,12 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                               border: OutlineInputBorder(),
                             ),
                             items: const [
-                              DropdownMenuItem(value: LogSource.app, child: Text('App-Logs')),
-                              DropdownMenuItem(value: LogSource.request, child: Text('Request-Logs')),
+                              DropdownMenuItem(
+                                  value: LogSource.app,
+                                  child: Text('App-Logs')),
+                              DropdownMenuItem(
+                                  value: LogSource.request,
+                                  child: Text('Request-Logs')),
                             ],
                             onChanged: (value) {
                               if (value == null || value == _selectedSource) {
@@ -759,7 +788,8 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                               }
                               setState(() {
                                 _source = value;
-                                _selectionId = LoggingService.allLogsSelectionId;
+                                _selectionId =
+                                    LoggingService.allLogsSelectionId;
                                 _revision++;
                               });
                             },
@@ -790,7 +820,8 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                             ],
                             onChanged: (value) {
                               setState(() {
-                                _selectionId = value ?? LoggingService.allLogsSelectionId;
+                                _selectionId =
+                                    value ?? LoggingService.allLogsSelectionId;
                               });
                             },
                           ),
@@ -820,7 +851,8 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                                   if (!context.mounted) {
                                     return;
                                   }
-                                  await _sendLogsEmail(context, logger, source, selectedId);
+                                  await _sendLogsEmail(
+                                      context, logger, source, selectedId);
                                 },
                         ),
                         _DebugActionButton(
@@ -847,7 +879,8 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                                   if (!context.mounted) {
                                     return;
                                   }
-                                  final title = selectedId == LoggingService.allLogsSelectionId
+                                  final title = selectedId ==
+                                          LoggingService.allLogsSelectionId
                                       ? 'Logs'
                                       : 'Logs: $selectedId';
                                   Navigator.of(context).push(
@@ -881,11 +914,13 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                                     return;
                                   }
                                   setState(() {
-                                    _selectionId = LoggingService.allLogsSelectionId;
+                                    _selectionId =
+                                        LoggingService.allLogsSelectionId;
                                     _revision++;
                                   });
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Logs geloescht.')),
+                                    const SnackBar(
+                                        content: Text('Logs geloescht.')),
                                   );
                                 },
                         ),
@@ -905,7 +940,6 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
       ),
     );
   }
-
 }
 
 Future<void> _sendLogsEmail(
@@ -914,7 +948,8 @@ Future<void> _sendLogsEmail(
   LogSource source,
   String selectionId,
 ) async {
-  final result = await logger.sendLogsByEmail(source: source, selectionId: selectionId);
+  final result =
+      await logger.sendLogsByEmail(source: source, selectionId: selectionId);
   if (!context.mounted) {
     return;
   }
@@ -1068,7 +1103,8 @@ class _ColoredLogView extends StatelessWidget {
       children: [
         TextSpan(text: '[$ts] ', style: tsStyle),
         if (level.isNotEmpty) TextSpan(text: '$level ', style: levelStyle),
-        if (service.isNotEmpty) TextSpan(text: '$service ', style: serviceStyle),
+        if (service.isNotEmpty)
+          TextSpan(text: '$service ', style: serviceStyle),
         TextSpan(text: msg, style: msgStyle),
       ],
     );
@@ -1080,7 +1116,8 @@ class _ColoredLogView extends StatelessWidget {
     final ordered = reverseLines ? lines.reversed.toList() : lines;
     const base = TextStyle(fontFamily: 'monospace', fontSize: 13);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tsStyle = base.copyWith(color: isDark ? Colors.grey.shade400 : Colors.grey);
+    final tsStyle =
+        base.copyWith(color: isDark ? Colors.grey.shade400 : Colors.grey);
     final levelInfoStyle = base.copyWith(color: Colors.green);
     final levelWarnStyle = base.copyWith(color: Colors.orange);
     final levelErrorStyle = base.copyWith(color: Colors.red);
@@ -1125,7 +1162,8 @@ class ChangelogScreen extends StatelessWidget {
           Card(
             child: ListTile(
               title: Text('Version 0.1.0'),
-              subtitle: Text('Initiale Struktur der Einstellungen mit Debug-&-Tools-Unterseite.'),
+              subtitle: Text(
+                  'Initiale Struktur der Einstellungen mit Debug-&-Tools-Unterseite.'),
             ),
           ),
         ],

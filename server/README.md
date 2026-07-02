@@ -22,6 +22,11 @@ npm run build
 npm start
 ```
 
+Rate-Limit-Backend:
+
+- Standard ist `RATE_LIMIT_STORE=memory`.
+- Fuer mehrere Server-Instanzen kann optional `RATE_LIMIT_STORE=redis` mit `RATE_LIMIT_REDIS_URL` gesetzt werden.
+
 Beispiel in `.env`:
 
 ```bash
@@ -115,6 +120,7 @@ und nutzen dann die lokale Server-Implementierung mit `TEST_DATABASE_URL=postgre
 - `GET /api/events` — Events abrufen
 - `GET /api/events?dv=...` — Events nach Diözesanverband filtern
 - `POST /api/auth/login` — Autoren-Login
+- `POST /api/auth/refresh` — Autoren-Session per Refresh-Token erneuern
 - `POST /api/auth/logout` — Autoren-Session beenden
 - `GET /api/auth/me` — Aktive Autoren-Session laden
 - `POST /api/auth/change-password` — Passwort aendern

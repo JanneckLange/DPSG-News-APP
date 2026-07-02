@@ -11,7 +11,7 @@ import 'core/services/notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: '.env');
+  await dotenv.load(fileName: '.env.example');
 
   try {
     await Firebase.initializeApp();

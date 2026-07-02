@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Client, QueryConfig } from 'pg';
 import dotenv from 'dotenv';
 import { hashPassword, verifyPassword } from './password';
@@ -66,7 +66,13 @@ export type AuthSession = {
   expiresAt: string;
 };
 
+export type AuthLoginSession = AuthSession & {
+  refreshToken: string;
+  refreshExpiresAt: string;
+};
+
 let client: Client | null = null;
+let lastSessionCleanupAtMs = 0;
 
 function getDatabaseUrl(): string {
   return process.env.TEST_DATABASE_URL || process.env.DATABASE_URL || '';
@@ -77,6 +83,130 @@ function ensureClient(): Client {
     throw new Error('Database is not connected');
   }
   return client;
+}
+
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function positiveIntegerFromEnv(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) {
+    return fallback;
+  }
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function accessSessionTtlMinutes(): number {
+  const direct = process.env.AUTH_SESSION_TTL_MINUTES?.trim();
+  if (direct) {
+    return positiveIntegerFromEnv('AUTH_SESSION_TTL_MINUTES', 20);
+  }
+  const legacyRaw = process.env.AUTH_SESSION_TTL_HOURS?.trim();
+  if (!legacyRaw) {
+    return 20;
+  }
+  return positiveIntegerFromEnv('AUTH_SESSION_TTL_HOURS', 1) * 60;
+}
+
+function refreshSessionTtlHours(): number {
+  return positiveIntegerFromEnv('AUTH_REFRESH_SESSION_TTL_HOURS', 720);
+}
+
+async function cleanupExpiredSessions(force = false): Promise<void> {
+  const nowMs = Date.now();
+  if (!force && nowMs - lastSessionCleanupAtMs < 5 * 60 * 1000) {
+    return;
+  }
+  lastSessionCleanupAtMs = nowMs;
+  const db = ensureClient();
+  await db.query('DELETE FROM author_sessions WHERE expires_at <= NOW()');
+  await db.query(
+    `DELETE FROM author_refresh_sessions
+     WHERE expires_at <= NOW()
+        OR (revoked_at IS NOT NULL AND revoked_at <= NOW() - INTERVAL '7 days')`
+  );
+}
+
+async function revokeAuthorSessions(authorId: number): Promise<void> {
+  const db = ensureClient();
+  await db.query('DELETE FROM author_sessions WHERE author_id = $1', [authorId]);
+  await db.query(
+    `UPDATE author_refresh_sessions
+     SET revoked_at = NOW()
+     WHERE author_id = $1
+       AND revoked_at IS NULL`,
+    [authorId]
+  );
+}
+
+async function revokeRefreshFamily(familyId: string): Promise<void> {
+  const db = ensureClient();
+  await db.query(
+    `UPDATE author_refresh_sessions
+     SET revoked_at = NOW()
+     WHERE family_id = $1
+       AND revoked_at IS NULL`,
+    [familyId]
+  );
+  await db.query(
+    `DELETE FROM author_sessions
+     WHERE refresh_token_hash IN (
+       SELECT token_hash FROM author_refresh_sessions WHERE family_id = $1
+     )`,
+    [familyId]
+  );
+}
+
+function buildTokenExpiry(minutes: number): string {
+  return new Date(Date.now() + minutes * 60 * 1000).toISOString();
+}
+
+function buildHoursExpiry(hours: number): string {
+  return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+}
+
+function createRefreshTokenValue(): string {
+  return `${randomUUID()}${randomUUID()}`;
+}
+
+async function createAuthorLoginSession(author: AuthorRow, requiresPasswordChange: boolean): Promise<AuthLoginSession> {
+  const db = ensureClient();
+  const token = randomUUID();
+  const accessExpiresAt = buildTokenExpiry(accessSessionTtlMinutes());
+  const refreshToken = createRefreshTokenValue();
+  const refreshTokenHash = hashToken(refreshToken);
+  const refreshExpiresAt = buildHoursExpiry(refreshSessionTtlHours());
+  const familyId = randomUUID();
+  await db.query('BEGIN');
+  try {
+    await db.query(
+      `INSERT INTO author_refresh_sessions (token_hash, author_id, family_id, expires_at)
+       VALUES ($1, $2, $3, $4)`,
+      [refreshTokenHash, author.id, familyId, refreshExpiresAt]
+    );
+    await db.query(
+      `INSERT INTO author_sessions (token, author_id, expires_at, refresh_token_hash)
+       VALUES ($1, $2, $3, $4)`,
+      [token, author.id, accessExpiresAt, refreshTokenHash]
+    );
+    await db.query('COMMIT');
+  } catch (error) {
+    await db.query('ROLLBACK');
+    throw error;
+  }
+  return {
+    token,
+    author: normalizeAuthor(author),
+    requiresPasswordChange,
+    expiresAt: accessExpiresAt,
+    refreshToken,
+    refreshExpiresAt,
+  };
 }
 
 export async function connect(): Promise<void> {
@@ -109,9 +239,27 @@ export async function connect(): Promise<void> {
       token TEXT PRIMARY KEY,
       author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
       expires_at TIMESTAMPTZ NOT NULL,
+      refresh_token_hash TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await client.query(`ALTER TABLE author_sessions ADD COLUMN IF NOT EXISTS refresh_token_hash TEXT;`);
+  await client.query(`CREATE INDEX IF NOT EXISTS author_sessions_author_id_idx ON author_sessions(author_id);`);
+  await client.query(`CREATE INDEX IF NOT EXISTS author_sessions_refresh_token_hash_idx ON author_sessions(refresh_token_hash);`);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS author_refresh_sessions (
+      token_hash TEXT PRIMARY KEY,
+      author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+      family_id TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      revoked_at TIMESTAMPTZ,
+      replaced_by_token_hash TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS author_refresh_sessions_author_id_idx ON author_refresh_sessions(author_id);`);
+  await client.query(`CREATE INDEX IF NOT EXISTS author_refresh_sessions_family_id_idx ON author_refresh_sessions(family_id);`);
   await client.query(`
     CREATE TABLE IF NOT EXISTS events (
       id SERIAL PRIMARY KEY,
@@ -131,6 +279,7 @@ export async function connect(): Promise<void> {
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`);
   await client.query(`UPDATE events SET modified_at = created_at WHERE modified_at IS NULL;`);
+  await cleanupExpiredSessions(true);
   await ensureBootstrapAuthor();
 }
 
@@ -145,11 +294,7 @@ async function ensureBootstrapAuthor(): Promise<void> {
     `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
      VALUES ($1, $2, $3, TRUE, TRUE, TRUE)
      ON CONFLICT (username)
-     DO UPDATE SET one_time_password_hash = EXCLUDED.one_time_password_hash,
-                   must_change_password = TRUE,
-                   is_active = TRUE,
-                   is_admin = TRUE,
-                   updated_at = NOW()`,
+     DO NOTHING`,
     [bootstrapUsername, hashPassword(randomUUID()), hashPassword(bootstrapOneTimePassword)]
   );
 }
@@ -257,6 +402,7 @@ export async function clearEvents(): Promise<void> {
 
 export async function clearAuthorData(): Promise<void> {
   await ensureClient().query('DELETE FROM author_sessions');
+  await ensureClient().query('DELETE FROM author_refresh_sessions');
   await ensureClient().query('DELETE FROM authors');
 }
 
@@ -286,15 +432,8 @@ export async function createAuthorForTesting(options: {
   return normalizeAuthor(result.rows[0]);
 }
 
-function sessionTtlHours(): number {
-  const raw = Number(process.env.AUTH_SESSION_TTL_HOURS ?? 720);
-  if (!Number.isFinite(raw) || raw <= 0) {
-    return 720;
-  }
-  return raw;
-}
-
-export async function loginAuthor(username: string, password: string): Promise<AuthSession | null> {
+export async function loginAuthor(username: string, password: string): Promise<AuthLoginSession | null> {
+  await cleanupExpiredSessions();
   const result = await ensureClient().query<AuthorRow>(
     'SELECT * FROM authors WHERE username = $1 AND is_active = TRUE LIMIT 1',
     [username]
@@ -321,34 +460,26 @@ export async function loginAuthor(username: string, password: string): Promise<A
            must_change_password = TRUE,
            updated_at = NOW()
        WHERE id = $1`,
-      [author.id]
+     [author.id]
     );
   }
-
-  const token = randomUUID();
-  const expiresAt = new Date(Date.now() + sessionTtlHours() * 60 * 60 * 1000).toISOString();
-  await ensureClient().query(
-    `INSERT INTO author_sessions (token, author_id, expires_at)
-     VALUES ($1, $2, $3)`,
-    [token, author.id, expiresAt]
-  );
-
-  return {
-    token,
-    author: normalizeAuthor(author),
-    requiresPasswordChange,
-    expiresAt,
-  };
+  return createAuthorLoginSession(author, requiresPasswordChange);
 }
 
 export async function getAuthorSession(token: string): Promise<AuthSession | null> {
+  await cleanupExpiredSessions();
   const result = await ensureClient().query<(AuthorRow & { expires_at: string })>(
     `SELECT a.*, s.expires_at
      FROM author_sessions s
      JOIN authors a ON a.id = s.author_id
+     LEFT JOIN author_refresh_sessions r ON r.token_hash = s.refresh_token_hash
      WHERE s.token = $1
        AND s.expires_at > NOW()
        AND a.is_active = TRUE
+      AND (
+        s.refresh_token_hash IS NULL
+        OR (r.revoked_at IS NULL AND r.expires_at > NOW())
+      )
      LIMIT 1`,
     [token]
   );
@@ -362,6 +493,90 @@ export async function getAuthorSession(token: string): Promise<AuthSession | nul
     author: normalizeAuthor(session),
     requiresPasswordChange: session.must_change_password,
     expiresAt: session.expires_at,
+  };
+}
+
+export async function refreshAuthorSession(refreshToken: string): Promise<AuthLoginSession | null> {
+  await cleanupExpiredSessions();
+  const db = ensureClient();
+  const refreshTokenHash = hashToken(refreshToken);
+  const candidateResult = await db.query<(AuthorRow & {
+    token_hash: string;
+    family_id: string;
+    expires_at: string;
+    revoked_at: string | null;
+    replaced_by_token_hash: string | null;
+  })>(
+    `SELECT r.token_hash,
+            r.family_id,
+            r.expires_at,
+            r.revoked_at,
+            r.replaced_by_token_hash,
+            a.*
+     FROM author_refresh_sessions r
+     JOIN authors a ON a.id = r.author_id
+     WHERE r.token_hash = $1
+     LIMIT 1`,
+    [refreshTokenHash]
+  );
+  const session = candidateResult.rows[0];
+  if (!session || !session.is_active) {
+    return null;
+  }
+  if (session.revoked_at || session.replaced_by_token_hash || new Date(session.expires_at).getTime() <= Date.now()) {
+    await revokeRefreshFamily(session.family_id);
+    return null;
+  }
+
+  const nextRefreshToken = createRefreshTokenValue();
+  const nextRefreshTokenHash = hashToken(nextRefreshToken);
+  const accessToken = randomUUID();
+  const accessExpiresAt = buildTokenExpiry(accessSessionTtlMinutes());
+  const refreshExpiresAt = buildHoursExpiry(refreshSessionTtlHours());
+
+  await db.query('BEGIN');
+  try {
+    const updated = await db.query<{ family_id: string }>(
+      `UPDATE author_refresh_sessions
+       SET replaced_by_token_hash = $2,
+           last_used_at = NOW()
+       WHERE token_hash = $1
+         AND revoked_at IS NULL
+         AND replaced_by_token_hash IS NULL
+         AND expires_at > NOW()
+       RETURNING family_id`,
+      [refreshTokenHash, nextRefreshTokenHash]
+    );
+    if (!updated.rows[0]) {
+      await db.query('ROLLBACK');
+      await revokeRefreshFamily(session.family_id);
+      return null;
+    }
+
+    await db.query(
+      `INSERT INTO author_refresh_sessions (token_hash, author_id, family_id, expires_at)
+       VALUES ($1, $2, $3, $4)`,
+      [nextRefreshTokenHash, session.id, session.family_id, refreshExpiresAt]
+    );
+    await db.query('DELETE FROM author_sessions WHERE refresh_token_hash = $1', [refreshTokenHash]);
+    await db.query(
+      `INSERT INTO author_sessions (token, author_id, expires_at, refresh_token_hash)
+       VALUES ($1, $2, $3, $4)`,
+      [accessToken, session.id, accessExpiresAt, nextRefreshTokenHash]
+    );
+    await db.query('COMMIT');
+  } catch (error) {
+    await db.query('ROLLBACK');
+    throw error;
+  }
+
+  return {
+    token: accessToken,
+    author: normalizeAuthor(session),
+    requiresPasswordChange: session.must_change_password,
+    expiresAt: accessExpiresAt,
+    refreshToken: nextRefreshToken,
+    refreshExpiresAt,
   };
 }
 
@@ -416,7 +631,7 @@ export async function setAuthorActive(authorId: number, isActive: boolean): Prom
     [isActive, authorId]
   );
   if (isActive === false) {
-    await ensureClient().query('DELETE FROM author_sessions WHERE author_id = $1', [authorId]);
+    await revokeAuthorSessions(authorId);
   }
   return (result.rowCount ?? 0) > 0;
 }
@@ -443,11 +658,28 @@ export async function resetAuthorPassword(authorId: number): Promise<string | nu
   if (!result.rows[0]) {
     return null;
   }
+  await revokeAuthorSessions(authorId);
   return oneTimePassword;
 }
 
 export async function logoutAuthor(token: string): Promise<void> {
-  await ensureClient().query('DELETE FROM author_sessions WHERE token = $1', [token]);
+  const db = ensureClient();
+  const result = await db.query<{ refresh_token_hash: string | null }>(
+    'DELETE FROM author_sessions WHERE token = $1 RETURNING refresh_token_hash',
+    [token]
+  );
+  const refreshTokenHash = result.rows[0]?.refresh_token_hash;
+  if (!refreshTokenHash) {
+    return;
+  }
+  await db.query(
+    `UPDATE author_refresh_sessions
+     SET revoked_at = NOW()
+     WHERE token_hash = $1
+       AND revoked_at IS NULL`,
+    [refreshTokenHash]
+  );
+  await db.query('DELETE FROM author_sessions WHERE refresh_token_hash = $1', [refreshTokenHash]);
 }
 
 export type ChangePasswordResult =
@@ -485,6 +717,7 @@ export async function changeAuthorPassword(
      WHERE id = $2`,
     [nextHash, authorId]
   );
+  await revokeAuthorSessions(authorId);
   return 'success';
 }
 

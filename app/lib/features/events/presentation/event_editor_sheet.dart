@@ -69,7 +69,8 @@ class _EventEditorSheetState extends ConsumerState<EventEditorSheet> {
     );
     if (!mounted || time == null) return null;
 
-    return DateTime(date.year, date.month, date.day, time.hour, time.minute).toUtc();
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute)
+        .toUtc();
   }
 
   Future<void> _submit() async {
@@ -80,8 +81,8 @@ class _EventEditorSheetState extends ConsumerState<EventEditorSheet> {
       );
       return;
     }
-    final auth = ref.read(authorAuthProvider);
-    final token = auth.token;
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null) return;
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     final payload = <String, dynamic>{
@@ -89,9 +90,12 @@ class _EventEditorSheetState extends ConsumerState<EventEditorSheet> {
       'description': _descriptionController.text.trim(),
       'startDate': _startDate!.toIso8601String(),
       'endDate': (_endDate ?? _startDate!).toIso8601String(),
-      'location': _locationController.text.trim().isEmpty ? _selectedDv : _locationController.text.trim(),
+      'location': _locationController.text.trim().isEmpty
+          ? _selectedDv
+          : _locationController.text.trim(),
       'dv': _selectedDv,
-      if (_selectedTopic != null && _selectedTopic!.isNotEmpty) 'topic': _selectedTopic,
+      if (_selectedTopic != null && _selectedTopic!.isNotEmpty)
+        'topic': _selectedTopic,
     };
 
     setState(() => _saving = true);
@@ -126,19 +130,24 @@ class _EventEditorSheetState extends ConsumerState<EventEditorSheet> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            Text(widget.event == null ? 'Neues Event' : 'Event bearbeiten', style: Theme.of(context).textTheme.titleLarge),
+            Text(widget.event == null ? 'Neues Event' : 'Event bearbeiten',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(labelText: 'Titel'),
-              validator: (value) => value == null || value.trim().isEmpty ? 'Titel ist erforderlich.' : null,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Titel ist erforderlich.'
+                  : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _descriptionController,
               decoration: const InputDecoration(labelText: 'Beschreibung'),
               maxLines: 3,
-              validator: (value) => value == null || value.trim().isEmpty ? 'Beschreibung ist erforderlich.' : null,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Beschreibung ist erforderlich.'
+                  : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -148,20 +157,30 @@ class _EventEditorSheetState extends ConsumerState<EventEditorSheet> {
             const SizedBox(height: 12),
             dvTreeAsync.when(
               data: (dvs) {
-                final options = dvs.map((dv) => dv['name'] as String?).whereType<String>().toSet().toList();
+                final options = dvs
+                    .map((dv) => dv['name'] as String?)
+                    .whereType<String>()
+                    .toSet()
+                    .toList();
                 return DropdownButtonFormField<String>(
                   initialValue: _selectedDv,
-                  decoration: const InputDecoration(labelText: 'Diözesanverband'),
-                  items: options.map((dv) => DropdownMenuItem(value: dv, child: Text(dv))).toList(),
+                  decoration:
+                      const InputDecoration(labelText: 'Diözesanverband'),
+                  items: options
+                      .map((dv) => DropdownMenuItem(value: dv, child: Text(dv)))
+                      .toList(),
                   onChanged: (value) => setState(() {
                     _selectedDv = value;
                     _selectedTopic = null;
                   }),
-                  validator: (value) => value == null || value.isEmpty ? 'Bitte DV wählen.' : null,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Bitte DV wählen.'
+                      : null,
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => const Text('DV-Liste konnte nicht geladen werden.'),
+              error: (_, __) =>
+                  const Text('DV-Liste konnte nicht geladen werden.'),
             ),
             const SizedBox(height: 12),
             if (_selectedDv != null)
@@ -171,16 +190,23 @@ class _EventEditorSheetState extends ConsumerState<EventEditorSheet> {
                     (dv) => dv['name'] == _selectedDv,
                     orElse: () => <String, dynamic>{},
                   );
-                  final groups = (dvItem['groups'] as List<dynamic>?)?.whereType<String>().toList() ?? <String>[];
+                  final groups = (dvItem['groups'] as List<dynamic>?)
+                          ?.whereType<String>()
+                          .toList() ??
+                      <String>[];
                   if (groups.isEmpty) return const SizedBox.shrink();
                   return DropdownButtonFormField<String>(
                     initialValue: _selectedTopic,
-                    decoration: const InputDecoration(labelText: 'Topic (optional)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Topic (optional)'),
                     items: [
-                      const DropdownMenuItem(value: '', child: Text('Standard (DV-Channel)')),
-                      ...groups.map((topic) => DropdownMenuItem(value: topic, child: Text(topic))),
+                      const DropdownMenuItem(
+                          value: '', child: Text('Standard (DV-Channel)')),
+                      ...groups.map((topic) =>
+                          DropdownMenuItem(value: topic, child: Text(topic))),
                     ],
-                    onChanged: (value) => setState(() => _selectedTopic = value == '' ? null : value),
+                    onChanged: (value) => setState(
+                        () => _selectedTopic = value == '' ? null : value),
                   );
                 },
                 loading: () => const SizedBox.shrink(),
@@ -209,7 +235,10 @@ class _EventEditorSheetState extends ConsumerState<EventEditorSheet> {
             FilledButton(
               onPressed: _saving ? null : _submit,
               child: _saving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Speichern'),
             ),
           ],

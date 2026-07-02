@@ -40,5 +40,6 @@ flutter test
 
 ## Konfiguration
 
-- `app/.env.example` nach `app/.env` kopieren und Werte lokal setzen.
+- Die App laedt standardmaessig `app/.env.example` aus dem Asset-Bundle.
+- Lokale bzw. CI-spezifische Werte sollten ueber Build-Umgebung bzw. `--dart-define` gesetzt werden.
 - Es gibt keine globale Root-Env mehr; App und Server werden getrennt konfiguriert.

@@ -14,7 +14,8 @@ class AdminUserDetailScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> user;
 
   @override
-  ConsumerState<AdminUserDetailScreen> createState() => _AdminUserDetailScreenState();
+  ConsumerState<AdminUserDetailScreen> createState() =>
+      _AdminUserDetailScreenState();
 }
 
 class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
@@ -31,8 +32,8 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _loadContributions() async {
-    final auth = ref.read(authorAuthProvider);
-    final token = auth.token;
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null) {
       if (!mounted) return;
       setState(() {
@@ -68,7 +69,8 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     }
   }
 
-  Future<bool> _confirm(String title, String message, String confirmLabel) async {
+  Future<bool> _confirm(
+      String title, String message, String confirmLabel) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -90,11 +92,15 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _toggleActive() async {
-    final auth = ref.read(authorAuthProvider);
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) {
+      return;
+    }
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     final nextActive = !(_user['isActive'] as bool? ?? false);
     await remote.setAdminUserActive(
-      token: auth.token!,
+      token: token,
       userId: (_user['id'] as num).toInt(),
       isActive: nextActive,
     );
@@ -113,10 +119,14 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     if (!confirmed) {
       return;
     }
-    final auth = ref.read(authorAuthProvider);
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) {
+      return;
+    }
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     final otp = await remote.resetAdminUserPassword(
-      token: auth.token!,
+      token: token,
       userId: (_user['id'] as num).toInt(),
     );
     if (!mounted) return;
@@ -145,11 +155,15 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       return;
     }
 
-    final auth = ref.read(authorAuthProvider);
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) {
+      return;
+    }
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
       await remote.deleteAdminUser(
-        token: auth.token!,
+        token: token,
         userId: (_user['id'] as num).toInt(),
       );
       if (!mounted) return;
@@ -157,7 +171,9 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nutzer konnte nicht gelöscht werden: ${_describeError(error)}')),
+        SnackBar(
+            content: Text(
+                'Nutzer konnte nicht gelöscht werden: ${_describeError(error)}')),
       );
     }
   }
@@ -189,10 +205,14 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     if (!confirmed) {
       return;
     }
-    final auth = ref.read(authorAuthProvider);
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) {
+      return;
+    }
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     await remote.deleteEvent(
-      token: auth.token!,
+      token: token,
       eventId: (event['id'] as num).toInt(),
     );
     await _loadContributions();
@@ -226,8 +246,10 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                       runSpacing: 8,
                       children: [
                         Chip(label: Text(isActive ? 'Aktiv' : 'Deaktiviert')),
-                        if (_user['isAdmin'] == true) const Chip(label: Text('Admin')),
-                        if (_user['requiresPasswordChange'] == true) const Chip(label: Text('Reset offen')),
+                        if (_user['isAdmin'] == true)
+                          const Chip(label: Text('Admin')),
+                        if (_user['requiresPasswordChange'] == true)
+                          const Chip(label: Text('Reset offen')),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -237,7 +259,8 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                       children: [
                         FilledButton.icon(
                           onPressed: _toggleActive,
-                          icon: Icon(isActive ? Icons.toggle_off : Icons.toggle_on),
+                          icon: Icon(
+                              isActive ? Icons.toggle_off : Icons.toggle_on),
                           label: Text(isActive ? 'Deaktivieren' : 'Aktivieren'),
                         ),
                         FilledButton.tonalIcon(

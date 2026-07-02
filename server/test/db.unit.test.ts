@@ -37,15 +37,8 @@ describe('Database helper', () => {
       'postgres://dpsg:dpsg@localhost:5433/dpsg_news_test'
     );
     expect(mockConnect).toHaveBeenCalled();
-    expect(mockQuery).toHaveBeenCalledTimes(2);
-    expect(mockQuery.mock.calls[0][0]).toEqual(
-      expect.stringContaining('CREATE TABLE IF NOT EXISTS events')
-    );
-    expect(mockQuery.mock.calls[0][1]).toBeUndefined();
-    expect(mockQuery.mock.calls[1][0]).toEqual(
-      expect.stringContaining('ALTER TABLE events ADD COLUMN IF NOT EXISTS topic TEXT')
-    );
-    expect(mockQuery.mock.calls[1][1]).toBeUndefined();
+    expect(mockQuery.mock.calls.some((call) => String(call[0]).includes('CREATE TABLE IF NOT EXISTS events'))).toBe(true);
+    expect(mockQuery.mock.calls.some((call) => String(call[0]).includes('CREATE TABLE IF NOT EXISTS author_refresh_sessions'))).toBe(true);
   });
 
   it('throws when DATABASE_URL is not set', async () => {

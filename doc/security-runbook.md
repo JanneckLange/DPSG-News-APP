@@ -91,6 +91,14 @@ Host-Haertung:
 - Nur read-only Mounts fuer Secret-Dateien verwenden.
 - Env-Dateien nicht im Repo versionieren.
 
+## Autoren-Session-Handling
+
+- Die App speichert Autoren-Tokens im Secure Storage
+  - iOS: Keychain
+  - Android: Keystore
+- Access-Tokens sind kurzlebig, Refresh-Tokens langlebig und werden serverseitig rotiert.
+- Bei Passwortwechsel, Passwort-Reset und Deaktivierung werden alle aktiven Sessions eines Autors widerrufen.
+
 ## Review-Checkliste je Release
 
 - Sind alle Secrets ausserhalb des Repos?

@@ -33,7 +33,9 @@ Body:
 
 Returns:
 - `200 OK`
-- `token`
+- `token` (alias fuer `accessToken`)
+- `accessToken`
+- `refreshToken`
 - `author`
 - `requiresPasswordChange`
 
@@ -44,6 +46,19 @@ Header:
 
 Returns:
 - `204 No Content`
+
+#### POST /api/auth/refresh
+
+Body:
+- `refreshToken`
+
+Returns:
+- `200 OK`
+- `token` (alias fuer `accessToken`)
+- `accessToken`
+- `refreshToken`
+- `author`
+- `requiresPasswordChange`
 
 #### GET /api/auth/me
 

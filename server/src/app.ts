@@ -14,6 +14,7 @@ import {
   loginAuthor,
   logoutAuthor,
   listAuthors,
+  refreshAuthorSession,
   resetAuthorPassword,
   setAuthorActive,
   updateAuthorEventById,
@@ -23,6 +24,7 @@ import {
 import { sendEventNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
 import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError } from './logger';
+import { createRateLimitStore } from './rateLimitStore';
 
 const DV_TREE = {
   lastTreeChange: '2026-07-01T00:00:00Z',
@@ -82,43 +84,31 @@ function positiveIntegerFromEnv(name: string, fallback: number): number {
 }
 
 type RateLimiterOptions = {
+  scope: string;
   windowMs: number;
   maxRequests: number;
   errorMessage: string;
   keyFactory: (req: Request) => string;
 };
 
+const rateLimitStore = createRateLimitStore();
+
 function createRateLimiter(options: RateLimiterOptions) {
-  const counters = new Map<string, { count: number; resetAtMs: number }>();
-
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const nowMs = Date.now();
-    const key = options.keyFactory(req);
-    const current = counters.get(key);
-    if (!current || current.resetAtMs <= nowMs) {
-      counters.set(key, { count: 1, resetAtMs: nowMs + options.windowMs });
-      next();
-      return;
-    }
-
-    if (current.count >= options.maxRequests) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAtMs - nowMs) / 1000));
-      res.setHeader('Retry-After', String(retryAfterSeconds));
-      res.status(429).json({ error: options.errorMessage });
-      return;
-    }
-
-    current.count += 1;
-
-    if (counters.size > 10_000) {
-      for (const [entryKey, entry] of counters.entries()) {
-        if (entry.resetAtMs <= nowMs) {
-          counters.delete(entryKey);
-        }
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const nowMs = Date.now();
+      const key = `${options.scope}:${options.keyFactory(req)}`;
+      const current = await rateLimitStore.increment(key, options.windowMs, nowMs);
+      if (current.count > options.maxRequests) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAtMs - nowMs) / 1000));
+        res.setHeader('Retry-After', String(retryAfterSeconds));
+        res.status(429).json({ error: options.errorMessage });
+        return;
       }
+      next();
+    } catch (error) {
+      next(error);
     }
-
-    next();
   };
 }
 
@@ -128,6 +118,7 @@ const authRateLimitWindowMs = positiveIntegerFromEnv('AUTH_RATE_LIMIT_WINDOW_MS'
 const authRateLimitMax = positiveIntegerFromEnv('AUTH_RATE_LIMIT_MAX_REQUESTS', 10);
 
 const globalRateLimiter = createRateLimiter({
+  scope: 'global',
   windowMs: globalRateLimitWindowMs,
   maxRequests: globalRateLimitMax,
   errorMessage: 'Too many requests',
@@ -135,6 +126,7 @@ const globalRateLimiter = createRateLimiter({
 });
 
 const authRateLimiter = createRateLimiter({
+  scope: 'auth',
   windowMs: authRateLimitWindowMs,
   maxRequests: authRateLimitMax,
   errorMessage: 'Too many login attempts',
@@ -279,10 +271,44 @@ app.post('/api/auth/login', authRateLimiter, async (req: Request, res: Response)
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    res.json(session);
+    res.json({
+      token: session.token,
+      accessToken: session.token,
+      refreshToken: session.refreshToken,
+      author: session.author,
+      requiresPasswordChange: session.requiresPasswordChange,
+      expiresAt: session.expiresAt,
+      refreshExpiresAt: session.refreshExpiresAt,
+    });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to login' });
+  }
+});
+
+app.post('/api/auth/refresh', authRateLimiter, async (req: Request, res: Response) => {
+  try {
+    const refreshToken = typeof req.body.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    const session = await refreshAuthorSession(refreshToken);
+    if (!session) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+    res.json({
+      token: session.token,
+      accessToken: session.token,
+      refreshToken: session.refreshToken,
+      author: session.author,
+      requiresPasswordChange: session.requiresPasswordChange,
+      expiresAt: session.expiresAt,
+      refreshExpiresAt: session.refreshExpiresAt,
+    });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to refresh session' });
   }
 });
 
