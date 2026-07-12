@@ -19,6 +19,9 @@ import {
   setAuthorActive,
   updateAuthorEventById,
   updateEventById,
+  clearEvents,
+  clearAuthorData,
+  createAuthorForTesting,
   EventInput,
 } from './db';
 import { sendEventNotification } from './fcm';
@@ -70,6 +73,24 @@ if (trustProxyHops) {
   app.set('trust proxy', 1);
 }
 app.use(express.json());
+
+// Safety guard: only enable test endpoints when explicitly in test run mode.
+if (process.env.ENABLE_TEST_ENDPOINTS === 'true' && process.env.TEST_RUN !== 'true') {
+  console.error('Refusing to enable test endpoints: ENABLE_TEST_ENDPOINTS is true but TEST_RUN is not "true"');
+  process.exit(1);
+}
+
+// If running in test mode, ensure TEST_DATABASE_URL is set and does not conflict with DATABASE_URL
+if (process.env.TEST_RUN === 'true') {
+  if (!process.env.TEST_DATABASE_URL) {
+    console.error('TEST_RUN=true requires TEST_DATABASE_URL to be set');
+    process.exit(1);
+  }
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL !== process.env.TEST_DATABASE_URL) {
+    console.error('TEST_RUN=true but DATABASE_URL differs from TEST_DATABASE_URL — aborting to avoid accidental production writes');
+    process.exit(1);
+  }
+}
 
 function positiveIntegerFromEnv(name: string, fallback: number): number {
   const raw = process.env[name]?.trim();
@@ -244,8 +265,16 @@ app.get('/api/events', async (req: Request, res: Response) => {
     const authorMap = viewer?.author.isAdmin ? new Map((await listAuthors()).map((author) => [author.id, author.username])) : null;
     const currentAuthorId = viewer?.author.id ?? null;
 
+    const visible = events.filter((event) => {
+      if (!event.isDraft) return true;
+      if (!viewer) return false;
+      // authors and admins can see their own drafts
+      if (viewer.author.isAdmin) return true;
+      return event.authorId === currentAuthorId;
+    });
+
     res.json({
-      events: events.map((event) => ({
+      events: visible.map((event) => ({
         ...event,
         canEdit: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
         canDelete: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
@@ -400,13 +429,17 @@ app.post('/api/events', async (req: Request, res: Response) => {
       return;
     }
 
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
-    if (!title || !description || !startDate || !endDate || !location || !dv) {
-      return res.status(400).json({ error: 'Missing required event fields' });
+    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
+    if (isDraft) {
+      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
+    } else {
+      if (!title || !description || !startDate || !endDate || !location || !dv) {
+        return res.status(400).json({ error: 'Missing required event fields' });
+      }
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, isDraft }, author.id);
 
     logInfo('Created event, sending push notification', {
       requestId: res.locals.requestId,
@@ -448,13 +481,17 @@ app.post('/api/author/events', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
-    if (!title || !description || !startDate || !endDate || !location || !dv) {
-      return res.status(400).json({ error: 'Missing required event fields' });
+    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
+    if (isDraft) {
+      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
+    } else {
+      if (!title || !description || !startDate || !endDate || !location || !dv) {
+        return res.status(400).json({ error: 'Missing required event fields' });
+      }
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, isDraft }, author.id);
     res.status(201).json({ event });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -495,9 +532,13 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!await requireEditableEvent(req, res, current.authorId)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
-    if (!title || !description || !startDate || !endDate || !location || !dv) {
-      return res.status(400).json({ error: 'Missing required event fields' });
+    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
+    if (isDraft) {
+      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
+    } else {
+      if (!title || !description || !startDate || !endDate || !location || !dv) {
+        return res.status(400).json({ error: 'Missing required event fields' });
+      }
     }
     const updated = await updateEventById(id, {
       title,
@@ -507,6 +548,7 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
       location,
       dv,
       topic,
+      isDraft,
     });
     if (!updated) {
       return res.status(404).json({ error: 'Event not found' });
@@ -531,13 +573,17 @@ app.put('/api/author/events/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid event id' });
     }
 
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
-    if (!title || !description || !startDate || !endDate || !location || !dv) {
-      return res.status(400).json({ error: 'Missing required event fields' });
+    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
+    if (isDraft) {
+      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
+    } else {
+      if (!title || !description || !startDate || !endDate || !location || !dv) {
+        return res.status(400).json({ error: 'Missing required event fields' });
+      }
     }
 
     const author = res.locals.author as { id: number };
-    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic });
+    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic, isDraft });
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -747,6 +793,33 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to reset password' });
   }
+});
+
+// Test-only reset endpoint to clear DB and optionally seed a test author.
+app.post('/__test/reset', async (req: Request, res: Response) => {
+  try {
+    if (process.env.ENABLE_TEST_ENDPOINTS !== 'true') {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    await clearEvents();
+    await clearAuthorData();
+    const seed = req.body?.seedAuthor;
+    if (seed && seed.username && seed.password) {
+      await createAuthorForTesting({ username: seed.username, password: seed.password, oneTimePassword: seed.oneTimePassword ?? seed.password, isAdmin: seed.isAdmin ?? false });
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to reset test data' });
+  }
+});
+
+// Simple health endpoint for test orchestration
+app.get('/__test/health', (_req: Request, res: Response) => {
+  if (process.env.TEST_RUN !== 'true') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  res.json({ ok: true, mode: 'test' });
 });
 
 app.use((_req: Request, res: Response) => {

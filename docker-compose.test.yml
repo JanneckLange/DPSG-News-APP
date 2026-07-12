@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: testdb
+    # Use an anonymous volume so data is removed when compose down --volumes is run
+    volumes:
+      - pgtestdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file: .env.test
+    ports:
+      - "${TEST_SERVER_PORT:-4001}:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - testnet
+    # Restart disabled to avoid lingering processes on dev machine
+    restart: 'no'
+
+volumes:
+  pgtestdata:
+    driver: local
+
+networks:
+  testnet:
+    driver: bridge
