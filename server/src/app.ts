@@ -268,8 +268,6 @@ app.get('/api/events', async (req: Request, res: Response) => {
     const visible = events.filter((event) => {
       if (!event.isDraft) return true;
       if (!viewer) return false;
-      // authors and admins can see their own drafts
-      if (viewer.author.isAdmin) return true;
       return event.authorId === currentAuthorId;
     });
 

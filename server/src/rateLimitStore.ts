@@ -1,5 +1,5 @@
-import { createClient, RedisClientType } from 'redis';
 import { logInfo, logWarn } from './logger';
+import type { RedisClientType } from 'redis';
 
 export type RateLimitStoreResult = {
   count: number;
@@ -47,9 +47,21 @@ class RedisRateLimitStore implements RateLimitStore {
   private readonly connectPromise: Promise<void>;
 
   constructor(redisUrl: string) {
+    let createClient: (options: { url: string }) => RedisClientType;
+    try {
+      // dynamic import so tests without `redis` package don't fail at import time
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
+      createClient = (require('redis') as { createClient: typeof createClient }).createClient;
+    } catch {
+      throw new Error('Redis client library not available');
+    }
     this.client = createClient({ url: redisUrl });
-    this.client.on('error', (error) => {
-      logWarn('Redis rate limit client error', { errorMessage: error.message });
+    this.client.on('error', (error: unknown) => {
+      if (error instanceof Error) {
+        logWarn('Redis rate limit client error', { errorMessage: error.message });
+      } else {
+        logWarn('Redis rate limit client error', { errorMessage: String(error) });
+      }
     });
     this.connectPromise = this.client.connect().then(() => {
       logInfo('Redis rate limit store connected');

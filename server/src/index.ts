@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import app from './app';
-import { connect } from './db';
+import { cleanupExpiredDrafts, connect } from './db';
 import { getBuildInfo } from './buildInfo';
 import { logError, logInfo } from './logger';
 
@@ -18,6 +18,12 @@ async function start(): Promise<void> {
       ...buildInfo,
     });
   });
+
+  setInterval(() => {
+    cleanupExpiredDrafts().catch((error) => {
+      logError('Draft cleanup failed', { errorName: error instanceof Error ? error.name : 'UnknownError', errorMessage: error instanceof Error ? error.message : String(error) });
+    });
+  }, 10 * 60 * 1000);
 }
 
 start().catch((error) => {
