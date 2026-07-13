@@ -85,6 +85,22 @@ void main() {
     expect(repository.getWeeklyPushSummaryEnabled(), isFalse);
   });
 
+  test('persists saved event ids', () async {
+    expect(repository.getSavedEventIds(), isEmpty);
+
+    await repository.setSavedEventIds(['event-1', 'event-2']);
+
+    expect(repository.getSavedEventIds(), equals(['event-1', 'event-2']));
+  });
+
+  test('persists auto-save event on CTA click toggle', () async {
+    expect(repository.getAutoSaveEventOnCtaClick(), isTrue);
+
+    await repository.setAutoSaveEventOnCtaClick(false);
+
+    expect(repository.getAutoSaveEventOnCtaClick(), isFalse);
+  });
+
   test('uses reminder day defaults', () {
     expect(repository.getSubscribedEventsReminderDaysBefore(),
         SettingsRepository.defaultSubscribedEventsReminderDaysBefore);

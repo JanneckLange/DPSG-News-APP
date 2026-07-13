@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/analytics_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../data/dv_tree_provider.dart';
 import '../data/settings_repository.dart';
@@ -127,7 +130,9 @@ class _DvSelectionScreenState extends ConsumerState<DvSelectionScreen> {
 
   Future<void> _saveSelection() async {
     final repository = ref.read(settingsRepositoryProvider);
-    await repository.setSelectedDvs(_selectedDvs.toList());
+    final analytics = ref.read(analyticsServiceProvider);
+    final selectedDvs = _selectedDvs.toList()..sort();
+    await repository.setSelectedDvs(selectedDvs);
 
     for (final dvName in _selectedTopicsByDv.keys) {
       if (_selectedDvs.contains(dvName)) {
@@ -138,6 +143,7 @@ class _DvSelectionScreenState extends ConsumerState<DvSelectionScreen> {
     }
 
     await ref.read(notificationServiceProvider).refreshTopicSubscriptions();
+    unawaited(analytics.trackDvSelectionChanged(selectedDvs));
 
     if (mounted) {
       Navigator.of(context).pop(true);

@@ -1,10 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:wiredash/wiredash.dart';
 
 import '../../../core/config/app_config.dart';
+import '../../../core/services/analytics_service.dart';
+import '../../../core/services/feedback_service.dart';
 import '../../../core/services/logging_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../events/data/remote_event_source.dart';
@@ -103,6 +106,14 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
               trailing: IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: () async {
+                  unawaited(
+                    ref.read(analyticsServiceProvider).trackUiClick(
+                      'refresh_api_status',
+                      screen: 'debug_tools',
+                      action: 'press',
+                      target: 'api_health',
+                    ),
+                  );
                   await ref
                       .read(apiHealthProvider.notifier)
                       .refresh(effectiveUrl);
@@ -124,6 +135,14 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
                 onPressed: apnsToken == null || apnsToken.isEmpty
                     ? null
                     : () async {
+                        unawaited(
+                          ref.read(analyticsServiceProvider).trackUiClick(
+                            'copy_apns_token',
+                            screen: 'debug_tools',
+                            action: 'press',
+                            target: 'apns_token',
+                          ),
+                        );
                         await Clipboard.setData(ClipboardData(text: apnsToken));
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -154,20 +173,13 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
             _DebugActionButton(
               icon: Icons.feedback_outlined,
               label: 'Feedback senden',
-              onPressed: () {
+              onPressed: () async {
                 ref.read(loggingServiceProvider).trackAndLog(
                   'debug_tools',
                   'debug_action',
                   const <String, Object?>{'action': 'open_feedback'},
                 );
-                try {
-                  Wiredash.of(context).show(inheritMaterialTheme: true);
-                } catch (_) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Feedback derzeit nicht verfügbar.')),
-                  );
-                }
+                await openFeedbackFlow(context, ref, screen: 'debug_tools');
               },
             ),
             _DebugActionButton(
@@ -178,6 +190,14 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
                   'debug_tools',
                   'debug_action',
                   const <String, Object?>{'action': 'open_app_rating'},
+                );
+                unawaited(
+                  ref.read(analyticsServiceProvider).trackUiClick(
+                    'app_rating',
+                    screen: 'debug_tools',
+                    action: 'open',
+                    target: 'store',
+                  ),
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -305,9 +325,11 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
-      leading: Container(
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
+        leading: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
@@ -321,6 +343,7 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
       subtitle: subtitle == null ? null : Text(subtitle),
       trailing: trailing ?? const Icon(Icons.chevron_right),
       onTap: onTap,
+      ),
     );
   }
 }

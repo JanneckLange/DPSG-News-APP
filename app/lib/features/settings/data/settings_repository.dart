@@ -61,6 +61,18 @@ final weeklyPushSummaryProvider =
   return WeeklyPushSummaryNotifier(repository);
 });
 
+final savedEventIdsProvider =
+    StateNotifierProvider<SavedEventIdsNotifier, Set<String>>((ref) {
+  final repository = ref.read(settingsRepositoryProvider);
+  return SavedEventIdsNotifier(repository);
+});
+
+final autoSaveEventOnCtaClickProvider =
+    StateNotifierProvider<AutoSaveEventOnCtaClickNotifier, bool>((ref) {
+  final repository = ref.read(settingsRepositoryProvider);
+  return AutoSaveEventOnCtaClickNotifier(repository);
+});
+
 final subscribedEventsReminderDaysBeforeProvider =
     StateNotifierProvider<SubscribedEventsReminderDaysBeforeNotifier, int>(
         (ref) {
@@ -179,6 +191,37 @@ class WeeklyPushSummaryNotifier extends StateNotifier<bool> {
   }
 }
 
+class SavedEventIdsNotifier extends StateNotifier<Set<String>> {
+  SavedEventIdsNotifier(this._repository)
+      : super(_repository.getSavedEventIds().toSet());
+
+  final SettingsRepository _repository;
+
+  Future<void> addEvent(String eventId) async {
+    final updated = {...state, eventId};
+    await _repository.setSavedEventIds(updated.toList());
+    state = updated;
+  }
+
+  Future<void> removeEvent(String eventId) async {
+    final updated = {...state}..remove(eventId);
+    await _repository.setSavedEventIds(updated.toList());
+    state = updated;
+  }
+}
+
+class AutoSaveEventOnCtaClickNotifier extends StateNotifier<bool> {
+  AutoSaveEventOnCtaClickNotifier(this._repository)
+      : super(_repository.getAutoSaveEventOnCtaClick());
+
+  final SettingsRepository _repository;
+
+  Future<void> setAutoSaveEventOnCtaClick(bool enabled) async {
+    await _repository.setAutoSaveEventOnCtaClick(enabled);
+    state = enabled;
+  }
+}
+
 class SubscribedEventsReminderDaysBeforeNotifier extends StateNotifier<int> {
   SubscribedEventsReminderDaysBeforeNotifier(this._repository)
       : super(_repository.getSubscribedEventsReminderDaysBefore());
@@ -217,6 +260,9 @@ class SettingsRepository {
   static const String appLanguageKey = 'app_language';
   static const String notificationsEnabledKey = 'notifications_enabled';
   static const String newEventPushEnabledKey = 'new_event_push_enabled';
+  static const String savedEventIdsKey = 'saved_event_ids';
+  static const String autoSaveEventOnCtaClickKey =
+      'auto_save_event_on_cta_click';
   static const String subscribedEventsReminderEnabledKey =
       'subscribed_events_reminder_enabled';
   static const String deadlineReminderEnabledKey = 'deadline_reminder_enabled';
@@ -351,6 +397,23 @@ class SettingsRepository {
 
   Future<void> setWeeklyPushSummaryEnabled(bool enabled) async =>
       _box.put(weeklyPushSummaryEnabledKey, enabled);
+
+  List<String> getSavedEventIds() {
+    final raw = _box.get(savedEventIdsKey) as List<dynamic>?;
+    if (raw == null) return <String>[];
+    return raw.whereType<String>().toList();
+  }
+
+  Future<void> setSavedEventIds(List<String> eventIds) async {
+    await _box.put(savedEventIdsKey, eventIds);
+  }
+
+  bool getAutoSaveEventOnCtaClick() =>
+      _box.get(autoSaveEventOnCtaClickKey, defaultValue: true) as bool;
+
+  Future<void> setAutoSaveEventOnCtaClick(bool enabled) async {
+    await _box.put(autoSaveEventOnCtaClickKey, enabled);
+  }
 
   int getSubscribedEventsReminderDaysBefore() => _normalizeReminderDays(
         _box.get(

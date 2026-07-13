@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/analytics_service.dart';
+import '../../../core/services/feedback_service.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
 import 'app_settings_screen.dart';
@@ -65,6 +69,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'App-Einstellungen',
                 subtitle: 'Darstellung, Sprache und Tracking',
                 onTap: () {
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('app_settings_entry', screen: 'settings', action: 'open', target: 'app_settings'));
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => const AppSettingsScreen()),
                   );
@@ -76,6 +81,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Benachrichtigungen',
                 subtitle: 'Praeferenzen und DV-/Topic-Auswahl',
                 onTap: () {
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('notifications_entry', screen: 'settings', action: 'open', target: 'notifications'));
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
                   );
@@ -87,6 +93,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'DV-Auswahl',
                 subtitle: 'Diözesanverbände und Favoriten',
                 onTap: () {
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('dv_selection_entry', screen: 'settings', action: 'open', target: 'dv_selection'));
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => const DvSelectionScreen()),
                   );
@@ -98,12 +105,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSectionHeader('Debug & Tools'),
           _buildCard(
             children: [
+               _buildNavigationTile(
+                context,
+                icon: Icons.feedback_outlined,
+                title: 'Feedback senden',
+                subtitle: 'Teile Ideen oder Probleme mit uns',
+                onTap: () async {
+                  await openFeedbackFlow(context, ref, screen: 'settings');
+                },
+              ),
               _buildNavigationTile(
                 context,
                 icon: Icons.developer_mode,
                 title: 'Debug & Tools',
                 subtitle: 'Logs, Diagnose und Referenzen',
                 onTap: () {
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('debug_tools_entry', screen: 'settings', action: 'open', target: 'debug_tools'));
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => const DebugToolsScreen()),
                   );
@@ -160,6 +177,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () {
+          unawaited(
+            ref.read(analyticsServiceProvider).trackUiClick(
+              'profile_card',
+              screen: 'settings',
+              action: 'open',
+              target: 'profile',
+            ),
+          );
           Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const ProfileScreen()),
           );

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/analytics_service.dart';
 import '../data/author_auth_provider.dart';
 import 'author_change_password_screen.dart';
 
@@ -30,12 +33,29 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
       return;
     }
 
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(
+      analytics.trackFeatureEvent(
+        'author_login_started',
+        screen: 'author_login',
+        action: 'submit',
+      ),
+    );
+
     setState(() => _submitting = true);
     try {
       await ref.read(authorAuthProvider.notifier).login(
             _usernameController.text.trim(),
             _passwordController.text,
           );
+
+      unawaited(
+        analytics.trackFeatureEvent(
+          'author_login_completed',
+          screen: 'author_login',
+          action: 'success',
+        ),
+      );
 
       if (!mounted) {
         return;
@@ -51,6 +71,14 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
       }
       Navigator.of(context).pop(true);
     } catch (error) {
+      unawaited(
+        analytics.trackFeatureEvent(
+          'author_login_failed',
+          screen: 'author_login',
+          action: 'error',
+          additionalProperties: {'error': error.toString()},
+        ),
+      );
       if (!mounted) {
         return;
       }

@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/analytics_service.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../core/services/hive_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
+import 'event_detail_screen.dart';
 import 'event_editor_sheet.dart';
 import 'event_list_tile.dart';
 
@@ -38,6 +40,7 @@ class EventsScreen extends ConsumerWidget {
     final authorAuth = ref.watch(authorAuthProvider);
 
     final syncError = ref.watch(sync_service.eventSyncStatusProvider);
+    final analytics = ref.read(analyticsServiceProvider);
 
     Widget buildContent(List<Map<String, dynamic>> events) {
       final filteredEvents = selectedDvs.isEmpty
@@ -67,12 +70,27 @@ class EventsScreen extends ConsumerWidget {
                   location: event['location'] as String? ?? '',
                   dv: event['dv'] as String? ?? '',
                   createdBy: authorAuth.isAdmin ? createdBy : null,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => EventDetailScreen(event: event),
+                      ),
+                    );
+                  },
                   onEdit: canEdit
                       ? () async {
-                          final changed = await showModalBottomSheet<bool>(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (context) => EventEditorSheet(event: event),
+                          unawaited(
+                            analytics.trackFeatureEvent(
+                              'event_edit_started',
+                              screen: 'events',
+                              action: 'edit',
+                              target: event['title']?.toString() ?? 'unknown',
+                            ),
+                          );
+                          final changed = await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(
+                              builder: (context) => EventEditorPage(existingEvent: event),
+                            ),
                           );
                           if (changed == true) {
                             await ref.read(sync_service.syncServiceProvider).syncEvents();
@@ -81,6 +99,14 @@ class EventsScreen extends ConsumerWidget {
                       : null,
                   onDelete: canDelete
                       ? () async {
+                          unawaited(
+                            analytics.trackFeatureEvent(
+                              'event_delete_started',
+                              screen: 'events',
+                              action: 'delete',
+                              target: event['title']?.toString() ?? 'unknown',
+                            ),
+                          );
                           final confirmed = await showDialog<bool>(
                             context: context,
                             builder: (context) => AlertDialog(
@@ -115,6 +141,18 @@ class EventsScreen extends ConsumerWidget {
               },
             );
 
+      unawaited(
+        analytics.trackFeatureEvent(
+          'event_list_viewed',
+          screen: 'events',
+          source: 'events_screen',
+          additionalProperties: {
+            'selected_dv_count': selectedDvs.length,
+            'total_event_count': events.length,
+          },
+        ),
+      );
+
       return Column(
         children: [
           if (syncError != null)
@@ -130,6 +168,13 @@ class EventsScreen extends ConsumerWidget {
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
+                unawaited(
+                  analytics.trackFeatureEvent(
+                    'event_list_refreshed',
+                    screen: 'events',
+                    action: 'refresh',
+                  ),
+                );
                 await ref.read(sync_service.syncServiceProvider).syncEvents();
               },
               child: listView,

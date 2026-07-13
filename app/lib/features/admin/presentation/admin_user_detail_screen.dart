@@ -186,10 +186,10 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _editContribution(Map<String, dynamic> event) async {
-    final changed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => EventEditorSheet(event: event),
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => EventEditorPage(existingEvent: event),
+      ),
     );
     if (changed == true) {
       await _loadContributions();

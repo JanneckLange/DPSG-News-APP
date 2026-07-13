@@ -10,6 +10,7 @@ class EventListTile extends StatelessWidget {
     this.modifiedAt,
     this.onEdit,
     this.onDelete,
+    this.onTap,
   });
 
   final String title;
@@ -19,6 +20,7 @@ class EventListTile extends StatelessWidget {
   final String? modifiedAt;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +54,7 @@ class EventListTile extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: actions,
       ),
+      onTap: onTap,
     );
   }
 }

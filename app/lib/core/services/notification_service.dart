@@ -159,6 +159,7 @@ class NotificationService {
 
     final selectedDvs = settingsRepository.getSelectedDvs();
     final selectedTopicsByDv = settingsRepository.getSelectedTopicsByDv();
+    final savedEventIds = settingsRepository.getSavedEventIds();
     final topics = <String>{'events'};
 
     for (final dv in selectedDvs) {
@@ -167,6 +168,10 @@ class NotificationService {
       for (final topic in selectedTopics) {
         topics.add('events_${_normalizeTopicName(dv)}_${_normalizeTopicName(topic)}');
       }
+    }
+
+    for (final eventId in savedEventIds) {
+      topics.add('event_${_normalizeTopicName(eventId)}');
     }
 
     final newTopics = topics.toList();

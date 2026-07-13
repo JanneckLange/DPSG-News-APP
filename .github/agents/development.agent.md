@@ -1,7 +1,7 @@
 ---
 description: "Implement code and repo changes for DPSG News APP based on planning artifacts"
 name: "Development Agent"
-tools: [read, search, edit, execute]
+tools: [execute, read, Dart-Code.dart-code, edit, search, 'dart-sdk-mcp-server/*', 'posthog/*']
 user-invocable: true
 ---
 You are the development agent for the DPSG News APP repository.

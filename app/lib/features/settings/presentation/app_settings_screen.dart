@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/analytics_service.dart';
 import '../data/settings_repository.dart';
 
 class AppSettingsScreen extends ConsumerWidget {
@@ -38,6 +41,13 @@ class AppSettingsScreen extends ConsumerWidget {
                   value: analyticsEnabled,
                   onChanged: (value) async {
                     await ref.read(analyticsTrackingProvider.notifier).setAnalyticsTracking(value);
+                    unawaited(
+                      ref.read(analyticsServiceProvider).trackSettingsChange(
+                        'analytics_tracking',
+                        value,
+                        group: 'privacy',
+                      ),
+                    );
                   },
                 ),
               ],
@@ -69,6 +79,13 @@ class AppSettingsScreen extends ConsumerWidget {
                     onChanged: (value) async {
                       if (value == null) return;
                       await ref.read(appThemeModeProvider.notifier).setThemeMode(value);
+                      unawaited(
+                        ref.read(analyticsServiceProvider).trackSettingsChange(
+                          'theme_mode',
+                          value,
+                          group: 'display',
+                        ),
+                      );
                     },
                   ),
                 ),

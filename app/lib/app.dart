@@ -1,22 +1,27 @@
 import 'dart:developer';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wiredash/wiredash.dart';
 
 import 'core/config/app_config.dart';
+import 'core/services/analytics_service.dart';
 import 'core/services/app_navigation_service.dart';
 import 'core/services/logging_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/sync_service.dart';
 import 'core/services/usage_tracking_service.dart';
+import 'core/services/wiredash_metadata_service.dart';
 import 'features/author/presentation/author_screen.dart';
 import 'features/author/data/author_auth_provider.dart';
 import 'features/calendar/presentation/calendar_screen.dart';
 import 'features/events/presentation/events_screen.dart';
-import 'features/settings/data/settings_repository.dart';
+import 'features/settings/data/settings_repository.dart' as settings_repository;
 import 'features/settings/presentation/settings_screen.dart';
+
+final appThemeModeProvider = settings_repository.appThemeModeProvider;
 
 final currentIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -29,6 +34,7 @@ class App extends ConsumerStatefulWidget {
 
 class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
   late final LoggingService _logger;
+  late final AnalyticsService _analytics;
   late final UsageTrackingService _usageTracking;
   bool _isPaused = false;
 
@@ -38,9 +44,13 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     _logger = ref.read(loggingServiceProvider);
+    _analytics = ref.read(analyticsServiceProvider);
     _usageTracking = UsageTrackingService(logger: _logger);
 
     unawaited(_logger.logInfo('lifecycle', 'app_started'));
+    unawaited(_analytics.initialize());
+    unawaited(_analytics.trackScreenView('app_start'));
+    unawaited(_analytics.trackFeatureEvent('app_started', screen: 'app', source: 'launch'));
     unawaited(_usageTracking.flushPendingSession());
     _usageTracking.startSession();
 
@@ -63,6 +73,7 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     final authorAuth = ref.read(authorAuthProvider.notifier);
     if (state == AppLifecycleState.resumed) {
       unawaited(_logger.logInfo('lifecycle', 'app_resumed'));
+      unawaited(_analytics.capture('app_resumed'));
       unawaited(_usageTracking.resume());
       unawaited(authorAuth.onAppResumed());
       _isPaused = false;
@@ -72,6 +83,7 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       if (!_isPaused) {
         _isPaused = true;
         unawaited(_usageTracking.pause());
+        unawaited(_analytics.capture('app_backgrounded'));
         unawaited(authorAuth.onAppBackgrounded());
       }
       unawaited(_logger.logInfo('lifecycle', 'app_${state.name}'));
@@ -83,6 +95,7 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_usageTracking.endSession());
+    unawaited(_analytics.capture('app_closed'));
     super.dispose();
   }
 
@@ -118,6 +131,27 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       _ => ThemeMode.system,
     };
 
+    final locale = Localizations.maybeLocaleOf(context);
+    final safeLocale = locale != null && locale.languageCode.isNotEmpty
+        ? locale
+        : const Locale('de', 'DE');
+    final eventsAsync = ref.watch(eventsProvider);
+    final settingsRepo = ref.watch(settings_repository.settingsRepositoryProvider);
+    final selectedDvs = settingsRepo.getSelectedDvs();
+    final displayedEvents = eventsAsync.valueOrNull ?? <Map<String, dynamic>>[];
+    final filteredEvents = selectedDvs.isEmpty
+        ? displayedEvents
+        : displayedEvents.where((event) => selectedDvs.contains(event['dv'] as String?)).toList();
+    final wiredashMetadata = WiredashMetadataService.buildSafeCustomMetadata(
+      locale: safeLocale,
+      platform: defaultTargetPlatform,
+      isReleaseMode: !const bool.fromEnvironment('dart.vm.product', defaultValue: false),
+      appThemeMode: appThemeMode,
+      isLoggedIn: authorAuth.isLoggedIn,
+      displayedEventCount: filteredEvents.length,
+      selectedDvs: selectedDvs,
+    );
+
     final materialApp = MaterialApp(
       title: 'DPSG News APP',
       theme: ThemeData(primarySwatch: Colors.blue),
@@ -125,19 +159,13 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       themeMode: effectiveThemeMode,
       navigatorKey: navigatorKey,
       navigatorObservers: [
-        AppNavigationLoggingObserver(logger: _logger),
+        AppNavigationLoggingObserver(logger: _logger, analytics: _analytics),
       ],
       builder: (context, child) {
         if (child == null) {
           return const SizedBox.shrink();
         }
-        return Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerDown: (event) {
-            unawaited(_logger.logTap(x: event.position.dx, y: event.position.dy));
-          },
-          child: child,
-        );
+        return child;
       },
       home: Scaffold(
         body: pages[safeIndex],
@@ -145,6 +173,14 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
           selectedIndex: safeIndex,
           onDestinationSelected: (index) {
             ref.read(currentIndexProvider.notifier).state = index;
+            unawaited(
+              _analytics.trackUiClick(
+                'bottom_navigation',
+                screen: 'app',
+                action: 'select',
+                target: destinations[index].label,
+              ),
+            );
           },
           destinations: destinations,
         ),
@@ -152,12 +188,19 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     );
 
     if (!AppConfig.hasWiredashConfig) {
+      debugPrint('Wiredash config missing: projectId=${AppConfig.wiredashProjectId.isNotEmpty}, secret=${AppConfig.wiredashSecret.isNotEmpty}');
       return materialApp;
     }
 
     return Wiredash(
       projectId: AppConfig.wiredashProjectId,
       secret: AppConfig.wiredashSecret,
+      environment: kDebugMode ? 'debug' : 'release',
+      options: WiredashOptionsData(locale: safeLocale),
+      collectMetaData: (metaData) async {
+        metaData.custom.addAll(wiredashMetadata);
+        return metaData;
+      },
       child: materialApp,
     );
   }

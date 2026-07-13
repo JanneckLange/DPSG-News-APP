@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:wiredash/wiredash.dart';
 
 import '../../features/settings/data/settings_repository.dart';
+import 'analytics_service.dart';
 import 'app_navigation_service.dart';
 import 'logging_env.dart';
 
@@ -76,7 +77,7 @@ class LoggingService {
     String message, {
     Object? error,
     StackTrace? stackTrace,
-  }) {
+  }) async {
     final buffer = StringBuffer(message);
     if (error != null) {
       buffer.write(' error=${error.runtimeType}: $error');
@@ -84,7 +85,9 @@ class LoggingService {
     if (stackTrace != null) {
       buffer.write(' stack=$stackTrace');
     }
-    return _writeLogLine(LogSource.app, 'error', service, buffer.toString());
+
+    await _writeLogLine(LogSource.app, 'error', service, buffer.toString());
+    await _trackErrorAnalytics(service, buffer.toString());
   }
 
   Future<void> logNavigationAction(
@@ -101,17 +104,6 @@ class LoggingService {
       ...properties,
     };
     return logInfo('nav', _composeMessage(action, details));
-  }
-
-  Future<void> logTap({required double x, required double y}) {
-    return logInfo(
-      'ui',
-      _composeMessage('tap', <String, Object?>{
-        'route': currentRouteName,
-        'x': x.toStringAsFixed(1),
-        'y': y.toStringAsFixed(1),
-      }),
-    );
   }
 
   Future<void> trackAndLog(
@@ -325,6 +317,19 @@ class LoggingService {
     await _trackWiredashEvent(name, properties);
   }
 
+  Future<void> _trackErrorAnalytics(String service, String message) async {
+    try {
+      final analytics = _ref.read(analyticsServiceProvider);
+      await analytics.trackError(
+        message,
+        screen: currentRouteName,
+        context: service,
+      );
+    } catch (_) {
+      // Keep error tracking resilient.
+    }
+  }
+
   bool _isAnalyticsTrackingEnabled() {
     try {
       return _ref.read(settingsRepositoryProvider).getAnalyticsTracking();
@@ -513,9 +518,12 @@ class LoggingService {
 }
 
 class AppNavigationLoggingObserver extends NavigatorObserver {
-  AppNavigationLoggingObserver({required LoggingService logger}) : _logger = logger;
+  AppNavigationLoggingObserver({required LoggingService logger, AnalyticsService? analytics})
+      : _logger = logger,
+        _analytics = analytics;
 
   final LoggingService _logger;
+  final AnalyticsService? _analytics;
 
   String _resolveRouteName(Route<dynamic> route) {
     final configuredName = route.settings.name;
@@ -537,6 +545,13 @@ class AppNavigationLoggingObserver extends NavigatorObserver {
         fromRoute: previousRoute == null ? null : _resolveRouteName(previousRoute),
       ),
     );
+    if (_analytics != null) {
+      unawaited(_analytics!.trackScreenView(
+        routeName,
+        previousScreen: previousRoute == null ? null : _resolveRouteName(previousRoute),
+        source: 'navigation',
+      ));
+    }
   }
 
   @override
