@@ -16,7 +16,7 @@ final remoteEventSourceProvider = Provider<RemoteEventSource>((ref) {
   final logger = ref.watch(loggingServiceProvider);
   final configuredUrl = settingsRepository.getApiBaseUrl();
   final baseUrl = configuredUrl ?? AppConfig.defaultApiBaseUrl;
-  return RemoteEventSource(baseUrl: Uri.parse(baseUrl), logger: logger);
+  return RemoteEventSource(baseUrl: AppConfig.normalizeApiBaseUrl(baseUrl), logger: logger);
 });
 
 final eventSyncStatusProvider = StateProvider<String?>((_) => null);

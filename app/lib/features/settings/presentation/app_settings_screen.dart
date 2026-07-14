@@ -24,6 +24,7 @@ class AppSettingsScreen extends ConsumerWidget {
     final themeMode = ref.watch(appThemeModeProvider);
     final analyticsEnabled = ref.watch(analyticsTrackingProvider);
     final appLanguage = ref.watch(appLanguageProvider);
+    final autoSaveOnCtaClick = ref.watch(autoSaveEventOnCtaClickProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('App-Einstellungen')),
@@ -46,6 +47,33 @@ class AppSettingsScreen extends ConsumerWidget {
                         'analytics_tracking',
                         value,
                         group: 'privacy',
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text('Event bei Button-Klick automatisch merken'),
+                  subtitle: const Text(
+                      'Merkt ein Event automatisch, wenn du auf einen Event-Button tippst'),
+                  value: autoSaveOnCtaClick,
+                  onChanged: (value) async {
+                    await ref
+                        .read(autoSaveEventOnCtaClickProvider.notifier)
+                        .setAutoSaveEventOnCtaClick(value);
+                    unawaited(
+                      ref.read(analyticsServiceProvider).trackSettingsChange(
+                        'auto_save_event_on_cta_click',
+                        value,
+                        group: 'events',
                       ),
                     );
                   },

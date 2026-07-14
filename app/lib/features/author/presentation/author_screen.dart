@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../data/author_auth_provider.dart';
 import 'author_change_password_screen.dart';
@@ -17,21 +18,23 @@ class AuthorScreen extends ConsumerStatefulWidget {
 
 class _AuthorScreenState extends ConsumerState<AuthorScreen> {
   List<Map<String, dynamic>> _events = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> _drafts = <Map<String, dynamic>>[];
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOwnEvents());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOwnData());
   }
 
-  Future<void> _loadOwnEvents() async {
+  Future<void> _loadOwnData() async {
     final auth = ref.read(authorAuthProvider);
     if (!auth.isLoggedIn || auth.isLocked || auth.requiresPasswordChange) {
       if (!mounted) return;
       setState(() {
         _events = <Map<String, dynamic>>[];
+        _drafts = <Map<String, dynamic>>[];
         _error = null;
       });
       return;
@@ -49,9 +52,15 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
         throw StateError('Nicht eingeloggt');
       }
       final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final events = await remote.fetchOwnEvents(token: token);
+      final results = await Future.wait([
+        remote.fetchOwnEvents(token: token),
+        remote.fetchOwnDrafts(token: token),
+      ]);
       if (!mounted) return;
-      setState(() => _events = events);
+      setState(() {
+        _events = results[0];
+        _drafts = results[1];
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());
@@ -62,14 +71,20 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
     }
   }
 
-  Future<void> _openForm({Map<String, dynamic>? existingEvent}) async {
+  Future<void> _openForm({
+    Map<String, dynamic>? existingEvent,
+    Map<String, dynamic>? existingDraft,
+  }) async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (context) => EventEditorPage(existingEvent: existingEvent),
+        builder: (context) => EventEditorPage(
+          existingEvent: existingEvent,
+          existingDraft: existingDraft,
+        ),
       ),
     );
     if (result == true) {
-      await _loadOwnEvents();
+      await _loadOwnData();
     }
   }
 
@@ -78,8 +93,25 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
         await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null) return;
     final remote = ref.read(sync_service.remoteEventSourceProvider);
-    await remote.deleteOwnEvent(token: token, eventId: eventId);
-    await _loadOwnEvents();
+    try {
+      await remote.deleteOwnEvent(token: token, eventId: eventId);
+      await _loadOwnData();
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+    }
+  }
+
+  Future<void> _deleteDraft(int draftId) async {
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) return;
+    final remote = ref.read(sync_service.remoteEventSourceProvider);
+    try {
+      await remote.deleteDraft(token: token, draftId: draftId);
+      await _loadOwnData();
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+    }
   }
 
   @override
@@ -95,7 +127,7 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                 MaterialPageRoute(
                     builder: (context) => const AuthorLoginScreen()),
               );
-              await _loadOwnEvents();
+              await _loadOwnData();
             },
             icon: const Icon(Icons.login),
             label: const Text('Autoren-Login'),
@@ -111,7 +143,7 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
           child: FilledButton.icon(
             onPressed: () async {
               await ref.read(authorAuthProvider.notifier).unlock();
-              await _loadOwnEvents();
+              await _loadOwnData();
             },
             icon: const Icon(Icons.lock_open),
             label: const Text('Mit Biometrie entsperren'),
@@ -131,7 +163,7 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                     builder: (context) => const AuthorChangePasswordScreen()),
               );
               await ref.read(authorAuthProvider.notifier).refreshSession();
-              await _loadOwnEvents();
+              await _loadOwnData();
             },
             icon: const Icon(Icons.password),
             label: const Text('Passwort ändern'),
@@ -145,7 +177,7 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
         title: const Text('Meine Events'),
       ),
       body: RefreshIndicator(
-        onRefresh: _loadOwnEvents,
+        onRefresh: _loadOwnData,
         child: _isLoading
             ? ListView(children: const [
                 SizedBox(height: 240),
@@ -156,49 +188,101 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                     Padding(
                         padding: const EdgeInsets.all(24), child: Text(_error!))
                   ])
-                : _events.isEmpty
+                : (_events.isEmpty && _drafts.isEmpty)
                     ? ListView(children: const [
                         Padding(
                             padding: EdgeInsets.all(24),
                             child: Text('Noch keine eigenen Events vorhanden.'))
                       ])
-                    : ListView.builder(
-                        itemCount: _events.length,
-                        itemBuilder: (context, index) {
-                          final event = _events[index];
-                          final eventId = (event['id'] as num).toInt();
-                          return EventListTile(
-                            title: event['title'] as String? ?? '',
-                            location: event['location'] as String? ?? '',
-                            dv: event['dv'] as String? ?? '',
-                            onEdit: () => _openForm(existingEvent: event),
-                            onDelete: () async {
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Event löschen'),
-                                  content: const Text(
-                                      'Möchtest du dieses Event löschen?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: const Text('Abbrechen'),
-                                    ),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      child: const Text('Löschen'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirmed == true) {
-                                await _deleteEvent(eventId);
-                              }
-                            },
-                          );
-                        },
+                    : ListView(
+                        children: [
+                          if (_events.isNotEmpty)
+                            ExpansionTile(
+                              title: Text('Eigene Events (${_events.length})'),
+                              initiallyExpanded: false,
+                              children: [
+                                for (final event in _events)
+                                  EventListTile(
+                                    title: event['title'] as String? ?? '',
+                                    location: event['location'] as String? ?? '',
+                                    dv: event['dv'] as String? ?? '',
+                                    onEdit: () =>
+                                        _openForm(existingEvent: event),
+                                    onDelete: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Event löschen'),
+                                          content: const Text(
+                                              'Möchtest du dieses Event löschen?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(
+                                                      context)
+                                                  .pop(false),
+                                              child: const Text('Abbrechen'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () => Navigator.of(
+                                                      context)
+                                                  .pop(true),
+                                              child: const Text('Löschen'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirmed == true) {
+                                        await _deleteEvent(
+                                            (event['id'] as num).toInt());
+                                      }
+                                    },
+                                  ),
+                              ],
+                            ),
+                          if (_drafts.isNotEmpty)
+                            ExpansionTile(
+                              title: Text('Entwürfe (${_drafts.length})'),
+                              initiallyExpanded: false,
+                              children: [
+                                for (final draft in _drafts)
+                                  EventListTile(
+                                    title: draft['title'] as String? ?? '',
+                                    location: draft['location'] as String? ?? '',
+                                    dv: draft['dv'] as String? ?? '',
+                                    onEdit: () =>
+                                        _openForm(existingDraft: draft),
+                                    onDelete: () async {
+                                      final confirmed = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Entwurf löschen'),
+                                          content: const Text(
+                                              'Möchtest du diesen Entwurf löschen?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.of(
+                                                      context)
+                                                  .pop(false),
+                                              child: const Text('Abbrechen'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () => Navigator.of(
+                                                      context)
+                                                  .pop(true),
+                                              child: const Text('Löschen'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirmed == true) {
+                                        await _deleteDraft(
+                                            (draft['id'] as num).toInt());
+                                      }
+                                    },
+                                  ),
+                              ],
+                            ),
+                        ],
                       ),
       ),
       floatingActionButton: FloatingActionButton.extended(

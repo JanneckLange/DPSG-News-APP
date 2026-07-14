@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../author/data/author_auth_provider.dart';
-import '../../events/data/remote_event_source.dart';
 import '../../events/presentation/event_editor_sheet.dart';
 import '../../events/presentation/event_list_tile.dart';
+import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import 'admin_otp_dialog.dart';
 
@@ -140,9 +140,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
 
   Future<void> _deleteUser() async {
     if ((_user['isActive'] as bool? ?? false)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bitte Nutzer zuerst deaktivieren.')),
-      );
+      showErrorToast(ref, 'Bitte Nutzer zuerst deaktivieren.');
       return;
     }
 
@@ -170,19 +168,11 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Nutzer konnte nicht gelöscht werden: ${_describeError(error)}')),
+      showErrorToast(
+        ref,
+        'Nutzer konnte nicht gelöscht werden: ${describeRemoteError(error)}',
       );
     }
-  }
-
-  String _describeError(Object error) {
-    if (error is RemoteEventSourceException) {
-      return 'Serverfehler beim Löschen';
-    }
-    return error.toString();
   }
 
   Future<void> _editContribution(Map<String, dynamic> event) async {

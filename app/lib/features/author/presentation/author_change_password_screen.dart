@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/error_toast_service.dart';
 import '../data/author_auth_provider.dart';
 
 class AuthorChangePasswordScreen extends ConsumerStatefulWidget {
@@ -51,8 +52,9 @@ class _AuthorChangePasswordScreenState extends ConsumerState<AuthorChangePasswor
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Passwort konnte nicht aktualisiert werden: $error')),
+      showErrorToast(
+        ref,
+        'Passwort konnte nicht aktualisiert werden: ${describeRemoteError(error)}',
       );
     } finally {
       if (mounted) {

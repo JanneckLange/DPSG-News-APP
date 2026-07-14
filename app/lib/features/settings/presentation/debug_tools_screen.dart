@@ -26,7 +26,7 @@ class ApiHealthNotifier extends StateNotifier<ApiHealthStatus?> {
   Future<void> refresh(String baseUrl) async {
     state = ApiHealthStatus(false, 'Prüfe Verbindung...');
     try {
-      final uri = Uri.parse(baseUrl);
+      final uri = AppConfig.normalizeApiBaseUrl(baseUrl);
       final status =
           await RemoteEventSource(baseUrl: uri, logger: _logger).checkHealth();
       state = status;

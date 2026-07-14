@@ -7,7 +7,6 @@ jest.mock('../src/fcm', () => ({
 
 import request from 'supertest';
 import app from '../src/app';
-import { Client } from 'pg';
 import { clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
 import { sendEventNotification } from '../src/fcm';
 
@@ -23,20 +22,6 @@ beforeAll(async () => {
   process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD = process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD || 'bootstrap-one-time-password';
   await connect();
 });
-
-async function forceUpdateEventModifiedAt(eventId: number, modifiedAt: string): Promise<void> {
-  const databaseUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error('TEST_DATABASE_URL or DATABASE_URL is required for tests');
-  }
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    await client.query('UPDATE events SET modified_at = $1 WHERE id = $2', [modifiedAt, eventId]);
-  } finally {
-    await client.end();
-  }
-}
 
 beforeEach(async () => {
   await clearEvents();
@@ -58,66 +43,61 @@ describe('Events API e2e', () => {
     expect(response.body).toEqual({ error: 'Unauthorized' });
   });
 
-  it('allows author to create a draft with title only', async () => {
-    await createAuthorForTesting({ username: 'draft-author', password: 'pwd-123' });
-    const token = await loginAuthor('draft-author', 'pwd-123');
+  it('rejects a title-only event as invalid (events always require full data)', async () => {
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    const token = await loginAuthor('author-a', 'secret-123');
 
     const res = await request(app)
       .post('/api/author/events')
       .set('authorization', `Bearer ${token}`)
-      .send({ title: 'Draft only', isDraft: true });
+      .send({ title: 'Title only' });
 
-    expect(res.status).toBe(201);
-    expect(res.body.event).toBeDefined();
-    expect(res.body.event.isDraft).toBe(true);
-    expect(typeof res.body.event.timeUntilDeletion).toBe('number');
-    expect(res.body.event.timeUntilDeletion).toBeGreaterThan(0);
+    expect(res.status).toBe(400);
   });
 
-  it('does not expose drafts to other viewers, including admins', async () => {
-    await createAuthorForTesting({ username: 'draft-author', password: 'pwd-123' });
-    await createAuthorForTesting({ username: 'admin-user', password: 'admin-123', isAdmin: true });
-    const draftToken = await loginAuthor('draft-author', 'pwd-123');
-    const adminToken = await loginAuthor('admin-user', 'admin-123');
+  it('allows creating and updating events without an endDate (falls back to startDate)', async () => {
+    await createAuthorForTesting({ username: 'author-enddate', password: 'secret-123' });
+    const token = await loginAuthor('author-enddate', 'secret-123');
 
-    const createDraft = await request(app)
-      .post('/api/author/events')
-      .set('authorization', `Bearer ${draftToken}`)
-      .send({ title: 'Private draft', isDraft: true });
-    expect(createDraft.status).toBe(201);
-
-    const publicResponse = await request(app).get('/api/events');
-    expect(publicResponse.status).toBe(200);
-    const publicEvents = publicResponse.body.events as Array<{ title?: string }>;
-    expect(publicEvents.find((event) => event.title === 'Private draft')).toBeUndefined();
-
-    const adminResponse = await request(app)
-      .get('/api/events')
-      .set('authorization', `Bearer ${adminToken}`);
-    expect(adminResponse.status).toBe(200);
-    const adminEvents = adminResponse.body.events as Array<{ title?: string }>;
-    expect(adminEvents.find((event) => event.title === 'Private draft')).toBeUndefined();
-  });
-
-  it('deletes expired drafts after retention window', async () => {
-    await createAuthorForTesting({ username: 'draft-author', password: 'pwd-123' });
-    const token = await loginAuthor('draft-author', 'pwd-123');
-
-    const createDraft = await request(app)
+    const createResponse = await request(app)
       .post('/api/author/events')
       .set('authorization', `Bearer ${token}`)
-      .send({ title: 'Expired draft', isDraft: true });
-    expect(createDraft.status).toBe(201);
-    const eventId = createDraft.body.event.id as number;
+      .send({
+        title: 'Ohne Enddatum',
+        description: 'Beschreibung',
+        startDate: '2026-04-01T10:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.event.endDate).toBe('2026-04-01T10:00:00.000Z');
 
-    await forceUpdateEventModifiedAt(eventId, '1999-01-01T00:00:00Z');
+    const publicCreateResponse = await request(app)
+      .post('/api/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Ohne Enddatum (public)',
+        description: 'Beschreibung',
+        startDate: '2026-04-02T10:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(publicCreateResponse.status).toBe(201);
+    expect(publicCreateResponse.body.event.endDate).toBe('2026-04-02T10:00:00.000Z');
 
-    const authorResponse = await request(app)
-      .get('/api/author/events')
-      .set('authorization', `Bearer ${token}`);
-    expect(authorResponse.status).toBe(200);
-    const authorEvents = authorResponse.body.events as Array<{ id?: number }>;
-    expect(authorEvents.find((event) => event.id === eventId)).toBeUndefined();
+    const eventId = createResponse.body.event.id as number;
+    const updateResponse = await request(app)
+      .put(`/api/author/events/${eventId}`)
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Ohne Enddatum aktualisiert',
+        description: 'Beschreibung',
+        startDate: '2026-04-03T10:00:00Z',
+        location: 'Ort',
+        dv: 'Köln',
+      });
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body.event.endDate).toBe('2026-04-03T10:00:00.000Z');
   });
 
   it('creates and returns own events for authenticated author', async () => {

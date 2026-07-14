@@ -3,11 +3,14 @@ import { randomUUID } from 'crypto';
 import {
   changeAuthorPassword,
   createAuthor,
+  createAuthorDraft,
   createAuthorEvent,
   deleteAllEvents,
+  deleteAuthorDraftById,
   deleteAuthorEventById,
   deleteAuthorById,
   deleteEventById,
+  getAuthorDrafts,
   getAuthorEvents,
   getAuthorSession,
   getEvents,
@@ -17,16 +20,19 @@ import {
   refreshAuthorSession,
   resetAuthorPassword,
   setAuthorActive,
+  updateAuthorDraftById,
   updateAuthorEventById,
   updateEventById,
+  clearDrafts,
   clearEvents,
   clearAuthorData,
   createAuthorForTesting,
+  DraftInput,
   EventInput,
 } from './db';
 import { sendEventNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
-import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError } from './logger';
+import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError, logWarn } from './logger';
 import { createRateLimitStore } from './rateLimitStore';
 
 const DV_TREE = {
@@ -242,6 +248,11 @@ function requirePasswordChangeCompleted(res: Response): boolean {
   return true;
 }
 
+function respondBadRequest(req: Request, res: Response, message: string): Response {
+  logWarn(message, { requestId: res.locals.requestId, method: req.method, path: req.originalUrl });
+  return res.status(400).json({ error: message });
+}
+
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
@@ -265,14 +276,8 @@ app.get('/api/events', async (req: Request, res: Response) => {
     const authorMap = viewer?.author.isAdmin ? new Map((await listAuthors()).map((author) => [author.id, author.username])) : null;
     const currentAuthorId = viewer?.author.id ?? null;
 
-    const visible = events.filter((event) => {
-      if (!event.isDraft) return true;
-      if (!viewer) return false;
-      return event.authorId === currentAuthorId;
-    });
-
     res.json({
-      events: visible.map((event) => ({
+      events: events.map((event) => ({
         ...event,
         canEdit: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
         canDelete: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
@@ -290,7 +295,7 @@ app.post('/api/auth/login', authRateLimiter, async (req: Request, res: Response)
     const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
     const password = typeof req.body.password === 'string' ? req.body.password : '';
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
+      return respondBadRequest(req, res, 'Username and password are required');
     }
 
     const session = await loginAuthor(username, password);
@@ -317,7 +322,7 @@ app.post('/api/auth/refresh', authRateLimiter, async (req: Request, res: Respons
   try {
     const refreshToken = typeof req.body.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
     if (!refreshToken) {
-      return res.status(400).json({ error: 'Refresh token is required' });
+      return respondBadRequest(req, res, 'Refresh token is required');
     }
 
     const session = await refreshAuthorSession(refreshToken);
@@ -382,13 +387,13 @@ app.post('/api/auth/change-password', async (req: Request, res: Response) => {
     const newPassword = typeof req.body.newPassword === 'string' ? req.body.newPassword : '';
     const oldPassword = typeof req.body.oldPassword === 'string' ? req.body.oldPassword : undefined;
     if (newPassword.trim().length < 8) {
-      return res.status(400).json({ error: 'New password must be at least 8 characters long' });
+      return respondBadRequest(req, res, 'New password must be at least 8 characters long');
     }
 
     const author = res.locals.author as { id: number; username: string };
     const changed = await changeAuthorPassword(author.id, newPassword, oldPassword);
     if (changed === 'invalid_old_password') {
-      return res.status(400).json({ error: 'Invalid old password' });
+      return respondBadRequest(req, res, 'Invalid old password');
     }
     if (changed === 'author_not_found') {
       return res.status(404).json({ error: 'Author not found' });
@@ -427,17 +432,13 @@ app.post('/api/events', async (req: Request, res: Response) => {
       return;
     }
 
-    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
-    if (isDraft) {
-      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
-    } else {
-      if (!title || !description || !startDate || !endDate || !location || !dv) {
-        return res.status(400).json({ error: 'Missing required event fields' });
-      }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    if (!title || !description || !startDate || !location || !dv) {
+      return respondBadRequest(req, res, 'Missing required event fields');
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, isDraft }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
 
     logInfo('Created event, sending push notification', {
       requestId: res.locals.requestId,
@@ -479,21 +480,110 @@ app.post('/api/author/events', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
-    if (isDraft) {
-      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
-    } else {
-      if (!title || !description || !startDate || !endDate || !location || !dv) {
-        return res.status(400).json({ error: 'Missing required event fields' });
-      }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    if (!title || !description || !startDate || !location || !dv) {
+      return respondBadRequest(req, res, 'Missing required event fields');
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, isDraft }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
     res.status(201).json({ event });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to create own event' });
+  }
+});
+
+app.get('/api/author/drafts', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const author = res.locals.author as { id: number };
+    const drafts = await getAuthorDrafts(author.id);
+    res.json({ drafts });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load drafts' });
+  }
+});
+
+app.post('/api/author/drafts', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as DraftInput;
+    if (!title) {
+      return respondBadRequest(req, res, 'Missing required draft fields');
+    }
+
+    const author = res.locals.author as { id: number };
+    const draft = await createAuthorDraft({ title, description, startDate, endDate, location, dv, topic }, author.id);
+    res.status(201).json({ draft });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to create draft' });
+  }
+});
+
+app.put('/api/author/drafts/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid draft id');
+    }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as DraftInput;
+    if (!title) {
+      return respondBadRequest(req, res, 'Missing required draft fields');
+    }
+
+    const author = res.locals.author as { id: number };
+    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, location, dv, topic });
+    if (!draft) {
+      return res.status(404).json({ error: 'Draft not found' });
+    }
+    res.json({ draft });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to update draft' });
+  }
+});
+
+app.delete('/api/author/drafts/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid draft id');
+    }
+
+    const author = res.locals.author as { id: number };
+    const deleted = await deleteAuthorDraftById(id, author.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Draft not found' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to delete draft' });
   }
 });
 
@@ -520,7 +610,7 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
     }
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid event id' });
+      return respondBadRequest(req, res, 'Invalid event id');
     }
     const events = await getEvents();
     const current = events.find((event) => event.id === id);
@@ -530,13 +620,9 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!await requireEditableEvent(req, res, current.authorId)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
-    if (isDraft) {
-      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
-    } else {
-      if (!title || !description || !startDate || !endDate || !location || !dv) {
-        return res.status(400).json({ error: 'Missing required event fields' });
-      }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    if (!title || !description || !startDate || !location || !dv) {
+      return respondBadRequest(req, res, 'Missing required event fields');
     }
     const updated = await updateEventById(id, {
       title,
@@ -546,7 +632,6 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
       location,
       dv,
       topic,
-      isDraft,
     });
     if (!updated) {
       return res.status(404).json({ error: 'Event not found' });
@@ -568,20 +653,16 @@ app.put('/api/author/events/:id', async (req: Request, res: Response) => {
     }
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid event id' });
+      return respondBadRequest(req, res, 'Invalid event id');
     }
 
-    const { title, description, startDate, endDate, location, dv, topic, isDraft } = req.body as EventInput & { isDraft?: boolean };
-    if (isDraft) {
-      if (!title) return res.status(400).json({ error: 'Missing required event fields' });
-    } else {
-      if (!title || !description || !startDate || !endDate || !location || !dv) {
-        return res.status(400).json({ error: 'Missing required event fields' });
-      }
+    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    if (!title || !description || !startDate || !location || !dv) {
+      return respondBadRequest(req, res, 'Missing required event fields');
     }
 
     const author = res.locals.author as { id: number };
-    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic, isDraft });
+    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic });
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -603,7 +684,7 @@ app.delete('/api/events/:id', async (req: Request, res: Response) => {
 
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid event id' });
+      return respondBadRequest(req, res, 'Invalid event id');
     }
 
     const events = await getEvents();
@@ -638,7 +719,7 @@ app.delete('/api/author/events/:id', async (req: Request, res: Response) => {
     }
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid event id' });
+      return respondBadRequest(req, res, 'Invalid event id');
     }
 
     const author = res.locals.author as { id: number };
@@ -705,7 +786,7 @@ app.post('/api/admin/users', async (req: Request, res: Response) => {
     const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
     const isAdmin = req.body.isAdmin === true;
     if (!username) {
-      return res.status(400).json({ error: 'Username is required' });
+      return respondBadRequest(req, res, 'Username is required');
     }
     const result = await createAuthor({ username, isAdmin });
     res.status(201).json(result);
@@ -728,10 +809,10 @@ app.patch('/api/admin/users/:id', async (req: Request, res: Response) => {
     }
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid user id' });
+      return respondBadRequest(req, res, 'Invalid user id');
     }
     if (typeof req.body.isActive !== 'boolean') {
-      return res.status(400).json({ error: 'isActive is required' });
+      return respondBadRequest(req, res, 'isActive is required');
     }
     const updated = await setAuthorActive(id, req.body.isActive);
     if (!updated) {
@@ -757,7 +838,7 @@ app.delete('/api/admin/users/:id', async (req: Request, res: Response) => {
     }
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid user id' });
+      return respondBadRequest(req, res, 'Invalid user id');
     }
     const deleted = await deleteAuthorById(id);
     if (!deleted) {
@@ -780,7 +861,7 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
     }
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
-      return res.status(400).json({ error: 'Invalid user id' });
+      return respondBadRequest(req, res, 'Invalid user id');
     }
     const oneTimePassword = await resetAuthorPassword(id);
     if (!oneTimePassword) {
@@ -800,6 +881,7 @@ app.post('/__test/reset', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Not found' });
     }
     await clearEvents();
+    await clearDrafts();
     await clearAuthorData();
     const seed = req.body?.seedAuthor;
     if (seed && seed.username && seed.password) {

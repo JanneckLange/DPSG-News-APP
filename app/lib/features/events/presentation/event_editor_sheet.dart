@@ -3,14 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'event_detail_screen.dart';
 
+import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
 
 class EventEditorPage extends ConsumerStatefulWidget {
-  const EventEditorPage({super.key, this.existingEvent});
+  const EventEditorPage({super.key, this.existingEvent, this.existingDraft})
+      : assert(
+          existingEvent == null || existingDraft == null,
+          'existingEvent and existingDraft are mutually exclusive',
+        );
 
   final Map<String, dynamic>? existingEvent;
+  final Map<String, dynamic>? existingDraft;
 
   @override
   ConsumerState<EventEditorPage> createState() => _EventEditorPageState();
@@ -65,10 +71,13 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     return !_stepHasError.contains(true);
   }
 
+  bool get _isEditingEvent => widget.existingEvent != null;
+  bool get _isEditingDraft => widget.existingDraft != null;
+
   @override
   void initState() {
     super.initState();
-    final event = widget.existingEvent;
+    final event = widget.existingEvent ?? widget.existingDraft;
     if (event != null) {
       _titleController.text = event['title'] as String? ?? '';
       _descriptionController.text = event['description'] as String? ?? '';
@@ -161,7 +170,6 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
           ? _selectedDv
           : _locationController.text.trim(),
       if (_selectedDv != null) 'dv': _selectedDv,
-      'isDraft': asDraft,
       if (_selectedTopic != null && _selectedTopic!.isNotEmpty)
         'topic': _selectedTopic,
       if (_showCta1 && _cta1LabelController.text.trim().isNotEmpty)
@@ -176,16 +184,45 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
 
     setState(() => _saving = true);
     try {
-      if (widget.existingEvent == null) {
-        await remote.createOwnEvent(token: token, event: payload);
+      if (asDraft) {
+        if (_isEditingDraft) {
+          await remote.updateDraft(
+            token: token,
+            draftId: (widget.existingDraft!['id'] as num).toInt(),
+            draft: payload,
+          );
+        } else {
+          await remote.createDraft(token: token, draft: payload);
+        }
       } else {
-        await remote.updateOwnEvent(
-          token: token,
-          eventId: (widget.existingEvent!['id'] as num).toInt(),
-          event: payload,
-        );
+        if (_isEditingEvent) {
+          await remote.updateOwnEvent(
+            token: token,
+            eventId: (widget.existingEvent!['id'] as num).toInt(),
+            event: payload,
+          );
+        } else {
+          await remote.createOwnEvent(token: token, event: payload);
+          if (_isEditingDraft) {
+            try {
+              await remote.deleteDraft(
+                token: token,
+                draftId: (widget.existingDraft!['id'] as num).toInt(),
+              );
+            } catch (error) {
+              if (mounted) {
+                showErrorToast(
+                  ref,
+                  'Event wurde veröffentlicht, der ursprüngliche Entwurf konnte aber nicht automatisch gelöscht werden: ${describeRemoteError(error)}',
+                );
+              }
+            }
+          }
+        }
       }
       if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -208,10 +245,14 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   @override
   Widget build(BuildContext context) {
     final dvTreeAsync = ref.watch(dvTreeProvider);
-    final isEditing = widget.existingEvent != null;
+    final title = _isEditingEvent
+        ? 'Event bearbeiten'
+        : _isEditingDraft
+            ? 'Entwurf bearbeiten'
+            : 'Neues Event';
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Event bearbeiten' : 'Neues Event'),
+        title: Text(title),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -314,8 +355,20 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             .whereType<String>()
                             .toSet()
                             .toList();
+                        if (_selectedDv != null &&
+                            !options.contains(_selectedDv)) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              setState(() {
+                                _selectedDv = null;
+                                _selectedTopic = null;
+                              });
+                            }
+                          });
+                        }
                         return DropdownButtonFormField<String>(
-                          initialValue: _selectedDv,
+                          initialValue:
+                              options.contains(_selectedDv) ? _selectedDv : null,
                           decoration: const InputDecoration(
                               labelText: 'Diözesanverband'),
                           items: options
@@ -348,8 +401,18 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                                   .toList() ??
                               <String>[];
                           if (groups.isEmpty) return const SizedBox.shrink();
+                          if (_selectedTopic != null &&
+                              !groups.contains(_selectedTopic)) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                setState(() => _selectedTopic = null);
+                              }
+                            });
+                          }
                           return DropdownButtonFormField<String>(
-                            initialValue: _selectedTopic,
+                            initialValue: groups.contains(_selectedTopic)
+                                ? _selectedTopic
+                                : null,
                             decoration: const InputDecoration(
                                 labelText: 'Topic (optional)'),
                             items: [
@@ -540,17 +603,23 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: _saving ? null : () => _saveEvent(asDraft: true),
-                            child: const Text('Entwurf speichern'),
+                        if (!_isEditingEvent) ...[
+                          Expanded(
+                            child: FilledButton(
+                              onPressed:
+                                  _saving ? null : () => _saveEvent(asDraft: true),
+                              child: const Text('Entwurf speichern'),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
+                          const SizedBox(width: 12),
+                        ],
                         Expanded(
                           child: FilledButton(
-                            onPressed: _saving ? null : () => _saveEvent(asDraft: false),
-                            child: const Text('Jetzt veröffentlichen'),
+                            onPressed:
+                                _saving ? null : () => _saveEvent(asDraft: false),
+                            child: Text(_isEditingEvent
+                                ? 'Änderungen veröffentlichen'
+                                : 'Jetzt veröffentlichen'),
                           ),
                         ),
                       ],

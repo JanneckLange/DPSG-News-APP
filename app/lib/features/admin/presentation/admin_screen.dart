@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../author/data/author_auth_provider.dart';
+import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import 'admin_otp_dialog.dart';
 import 'admin_user_detail_screen.dart';
@@ -96,8 +97,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nutzer konnte nicht angelegt werden: $error')),
+      showErrorToast(
+        ref,
+        'Nutzer konnte nicht angelegt werden: ${describeRemoteError(error)}',
       );
     }
   }

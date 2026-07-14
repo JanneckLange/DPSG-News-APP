@@ -17,7 +17,6 @@ type EventRow = {
   author_id: number | null;
   created_at: string;
   modified_at: string;
-  is_draft?: boolean;
 };
 
 export type Event = {
@@ -32,8 +31,6 @@ export type Event = {
   authorId: number | null;
   createdAt: string;
   modifiedAt: string;
-  isDraft?: boolean;
-  timeUntilDeletion?: number;
 };
 
 export type EventInput = {
@@ -44,7 +41,45 @@ export type EventInput = {
   location?: string;
   dv?: string;
   topic?: string;
-  isDraft?: boolean;
+};
+
+type DraftRow = {
+  id: number;
+  title: string;
+  description: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  location: string | null;
+  dv: string | null;
+  topic?: string;
+  author_id: number;
+  created_at: string;
+  modified_at: string;
+};
+
+export type Draft = {
+  id: number;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  location: string;
+  dv: string;
+  topic?: string;
+  authorId: number;
+  createdAt: string;
+  modifiedAt: string;
+  timeUntilDeletion: number;
+};
+
+export type DraftInput = {
+  title: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  location?: string;
+  dv?: string;
+  topic?: string;
 };
 
 type AuthorRow = {
@@ -157,9 +192,8 @@ async function cleanupExpiredDraftsInternal(force = false): Promise<void> {
   const db = ensureClient();
   const retention = draftRetentionDays();
   await db.query(
-    `DELETE FROM events
-     WHERE is_draft = TRUE
-       AND modified_at <= NOW() - $1::interval`,
+    `DELETE FROM drafts
+     WHERE modified_at <= NOW() - $1::interval`,
     [`${retention} days`]
   );
 }
@@ -306,17 +340,43 @@ export async function connect(): Promise<void> {
       location TEXT,
       dv TEXT,
       topic TEXT,
-      is_draft BOOLEAN NOT NULL DEFAULT FALSE,
       author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS topic TEXT;`);
-  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_draft BOOLEAN NOT NULL DEFAULT FALSE;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`);
   await client.query(`UPDATE events SET modified_at = created_at WHERE modified_at IS NULL;`);
+  await client.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'events' AND column_name = 'is_draft'
+      ) THEN
+        DELETE FROM events WHERE is_draft = TRUE;
+      END IF;
+    END $$;
+  `);
+  await client.query(`ALTER TABLE events DROP COLUMN IF EXISTS is_draft;`);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS drafts (
+      id SERIAL PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      start_date TIMESTAMPTZ,
+      end_date TIMESTAMPTZ,
+      location TEXT,
+      dv TEXT,
+      topic TEXT,
+      author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS drafts_author_id_idx ON drafts(author_id);`);
   await cleanupExpiredSessions(true);
   await cleanupExpiredDrafts(true);
   await ensureBootstrapAuthor();
@@ -354,17 +414,30 @@ export function mapEventRow(row: EventRow): Event {
   if (row.topic != null) {
     out.topic = row.topic;
   }
-  if (row.is_draft != null) {
-    out.isDraft = row.is_draft;
-    if (row.is_draft) {
-      out.timeUntilDeletion = computeDraftTimeUntilDeletion(row.modified_at);
-    }
+  return out;
+}
+
+export function mapDraftRow(row: DraftRow): Draft {
+  const out: Draft = {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? '',
+    startDate: row.start_date ?? '',
+    endDate: row.end_date ?? '',
+    location: row.location ?? '',
+    dv: row.dv ?? '',
+    authorId: row.author_id,
+    createdAt: row.created_at,
+    modifiedAt: row.modified_at,
+    timeUntilDeletion: computeDraftTimeUntilDeletion(row.modified_at),
+  };
+  if (row.topic != null) {
+    out.topic = row.topic;
   }
   return out;
 }
 
 export async function getEvents(dv?: string): Promise<Event[]> {
-  await cleanupExpiredDrafts(true);
   const query: QueryConfig = dv
     ? { text: 'SELECT * FROM events WHERE dv = $1 ORDER BY start_date ASC', values: [dv] }
     : { text: 'SELECT * FROM events ORDER BY start_date ASC', values: [] };
@@ -382,15 +455,24 @@ export async function createAuthorEvent(event: EventInput, authorId: number | nu
   const endDate = event.endDate ?? startDate;
   const dv = event.dv ?? event.location ?? 'Unbekannt';
   const location = event.location ?? event.dv ?? dv;
-  const isDraft = event.isDraft ?? false;
 
   const result = await ensureClient().query<EventRow>(
-    `INSERT INTO events (title, description, start_date, end_date, location, dv, topic, author_id, is_draft)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `INSERT INTO events (title, description, start_date, end_date, location, dv, topic, author_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [event.title, description, startDate, endDate, location, dv, event.topic ?? null, authorId, isDraft]
+    [event.title, description, startDate, endDate, location, dv, event.topic ?? null, authorId]
   );
   return mapEventRow(result.rows[0]);
+}
+
+export async function createAuthorDraft(draft: DraftInput, authorId: number): Promise<Draft> {
+  const result = await ensureClient().query<DraftRow>(
+    `INSERT INTO drafts (title, description, start_date, end_date, location, dv, topic, author_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING *`,
+    [draft.title, draft.description ?? null, draft.startDate ?? null, draft.endDate ?? null, draft.location ?? null, draft.dv ?? null, draft.topic ?? null, authorId]
+  );
+  return mapDraftRow(result.rows[0]);
 }
 
 export async function deleteEventById(id: number): Promise<boolean> {
@@ -399,7 +481,6 @@ export async function deleteEventById(id: number): Promise<boolean> {
 }
 
 export async function getAuthorEvents(authorId: number): Promise<Event[]> {
-  await cleanupExpiredDrafts(true);
   const result = await ensureClient().query<EventRow>(
     'SELECT * FROM events WHERE author_id = $1 ORDER BY start_date ASC',
     [authorId]
@@ -408,6 +489,7 @@ export async function getAuthorEvents(authorId: number): Promise<Event[]> {
 }
 
 export async function updateAuthorEventById(id: number, authorId: number, event: EventInput): Promise<Event | null> {
+  const endDate = event.endDate ?? event.startDate;
   const result = await ensureClient().query<EventRow>(
     `UPDATE events
      SET title = $1,
@@ -417,16 +499,16 @@ export async function updateAuthorEventById(id: number, authorId: number, event:
          location = $5,
          dv = $6,
          topic = $7,
-         is_draft = $8,
          modified_at = NOW()
-    WHERE id = $9 AND author_id = $10
+    WHERE id = $8 AND author_id = $9
      RETURNING *`,
-    [event.title, event.description, event.startDate, event.endDate, event.location, event.dv, event.topic ?? null, event.isDraft ?? false, id, authorId]
+    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, id, authorId]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
 
 export async function updateEventById(id: number, event: EventInput): Promise<Event | null> {
+  const endDate = event.endDate ?? event.startDate;
   const result = await ensureClient().query<EventRow>(
     `UPDATE events
      SET title = $1,
@@ -436,11 +518,10 @@ export async function updateEventById(id: number, event: EventInput): Promise<Ev
          location = $5,
          dv = $6,
          topic = $7,
-         is_draft = $8,
          modified_at = NOW()
-    WHERE id = $9
+    WHERE id = $8
      RETURNING *`,
-    [event.title, event.description, event.startDate, event.endDate, event.location, event.dv, event.topic ?? null, event.isDraft ?? false, id]
+    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, id]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
@@ -459,14 +540,46 @@ export async function clearEvents(): Promise<void> {
   await ensureClient().query('TRUNCATE TABLE events RESTART IDENTITY CASCADE');
 }
 
+export async function getAuthorDrafts(authorId: number): Promise<Draft[]> {
+  await cleanupExpiredDrafts(true);
+  const result = await ensureClient().query<DraftRow>(
+    'SELECT * FROM drafts WHERE author_id = $1 ORDER BY modified_at DESC',
+    [authorId]
+  );
+  return result.rows.map(mapDraftRow);
+}
+
+export async function updateAuthorDraftById(id: number, authorId: number, draft: DraftInput): Promise<Draft | null> {
+  const result = await ensureClient().query<DraftRow>(
+    `UPDATE drafts
+     SET title = $1,
+         description = $2,
+         start_date = $3,
+         end_date = $4,
+         location = $5,
+         dv = $6,
+         topic = $7,
+         modified_at = NOW()
+    WHERE id = $8 AND author_id = $9
+     RETURNING *`,
+    [draft.title, draft.description, draft.startDate, draft.endDate, draft.location, draft.dv, draft.topic ?? null, id, authorId]
+  );
+  return result.rows[0] ? mapDraftRow(result.rows[0]) : null;
+}
+
+export async function deleteAuthorDraftById(id: number, authorId: number): Promise<boolean> {
+  const result = await ensureClient().query('DELETE FROM drafts WHERE id = $1 AND author_id = $2', [id, authorId]);
+  return (result.rowCount ?? 0) > 0;
+}
+
+export async function clearDrafts(): Promise<void> {
+  await ensureClient().query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
+}
+
 export async function clearAuthorData(): Promise<void> {
   await ensureClient().query('DELETE FROM author_sessions');
   await ensureClient().query('DELETE FROM author_refresh_sessions');
   await ensureClient().query('DELETE FROM authors');
-}
-
-export async function cleanupExpiredDrafts(force = false): Promise<void> {
-  return cleanupExpiredDraftsInternal(force);
 }
 
 function normalizeAuthor(row: AuthorRow): AuthorIdentity {

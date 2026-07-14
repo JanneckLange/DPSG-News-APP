@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/services/analytics_service.dart';
+import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../settings/data/settings_repository.dart';
 
@@ -64,9 +65,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     final uri = Uri.tryParse(url);
     if (uri == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ungültige URL')), 
-        );
+        showErrorToast(ref, 'Ungültige URL');
       }
       return;
     }
@@ -91,9 +90,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Link konnte nicht geöffnet werden')), 
-        );
+        showErrorToast(ref, 'Link konnte nicht geöffnet werden');
       }
     }
   }

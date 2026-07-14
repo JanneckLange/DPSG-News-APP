@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/analytics_service.dart';
+import '../../../core/services/error_toast_service.dart';
 import '../data/author_auth_provider.dart';
 import 'author_change_password_screen.dart';
 
@@ -82,9 +83,7 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login fehlgeschlagen: $error')),
-      );
+      showErrorToast(ref, 'Login fehlgeschlagen: ${describeRemoteError(error)}');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);

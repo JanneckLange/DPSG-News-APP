@@ -54,6 +54,15 @@ class AppConfig {
     return const String.fromEnvironment('POSTHOG_PROJECT_ID', defaultValue: '');
   }
 
+  static Uri normalizeApiBaseUrl(String raw) {
+    final trimmed = raw.trim();
+    final parsed = Uri.tryParse(trimmed);
+    if (parsed != null && parsed.scheme.isNotEmpty && parsed.host.isNotEmpty) {
+      return parsed;
+    }
+    return Uri.parse('http://$trimmed');
+  }
+
   static bool get hasWiredashConfig => wiredashProjectId.isNotEmpty && wiredashSecret.isNotEmpty;
 
   static bool get hasPosthogConfig => posthogApiKey.isNotEmpty && posthogProjectId.isNotEmpty;
