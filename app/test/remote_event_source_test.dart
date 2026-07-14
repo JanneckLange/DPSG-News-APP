@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -259,6 +260,90 @@ void main() {
           isA<RemoteEventSourceException>(),
           predicate((RemoteEventSourceException e) =>
               e.serverMessage == null && e.statusCode == 500),
+        ),
+      ),
+    );
+  });
+
+  test('fetchEventUpdates returns parsed updates on HTTP 200', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/events/42/updates');
+      expect(request.method, 'GET');
+      return http.Response(
+        '{"updates":[{"id":1,"message":"Hallo","authorUsername":"max"}]}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final updates = await source.fetchEventUpdates(eventId: 42);
+
+    expect(updates, hasLength(1));
+    expect(updates.first['message'], 'Hallo');
+  });
+
+  test(
+      'fetchEventUpdates throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('Not found', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchEventUpdates(eventId: 999),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test(
+      'createEventUpdate posts to /api/events/:id/updates and returns created update',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/events/42/updates');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {'message': 'Neues Update'});
+      return http.Response(
+        '{"update":{"id":5,"message":"Neues Update","authorUsername":"max"}}',
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final update = await source.createEventUpdate(
+      token: 'token',
+      eventId: 42,
+      message: 'Neues Update',
+    );
+
+    expect(update['id'], 5);
+    expect(update['message'], 'Neues Update');
+  });
+
+  test(
+      'createEventUpdate exposes the server error message on a JSON error body',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response(
+        '{"error":"Missing update message"}',
+        400,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    await expectLater(
+      source.createEventUpdate(token: 'token', eventId: 42, message: ''),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Missing update message' &&
+              e.statusCode == 400),
         ),
       ),
     );

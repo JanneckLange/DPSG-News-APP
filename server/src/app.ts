@@ -5,6 +5,7 @@ import {
   createAuthor,
   createAuthorDraft,
   createAuthorEvent,
+  createEventUpdate,
   deleteAllEvents,
   deleteAuthorDraftById,
   deleteAuthorEventById,
@@ -13,6 +14,7 @@ import {
   getAuthorDrafts,
   getAuthorEvents,
   getAuthorSession,
+  getEventUpdates,
   getEvents,
   loginAuthor,
   logoutAuthor,
@@ -30,7 +32,7 @@ import {
   DraftInput,
   EventInput,
 } from './db';
-import { sendEventNotification } from './fcm';
+import { sendEventNotification, sendEventUpdateNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
 import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError, logWarn } from './logger';
 import { createRateLimitStore } from './rateLimitStore';
@@ -732,6 +734,71 @@ app.delete('/api/author/events/:id', async (req: Request, res: Response) => {
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to delete own event' });
+  }
+});
+
+app.get('/api/events/:id/updates', async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid event id');
+    }
+    const events = await getEvents();
+    const current = events.find((event) => event.id === id);
+    if (!current) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    const updates = await getEventUpdates(id);
+    res.json({ updates });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load event updates' });
+  }
+});
+
+app.post('/api/events/:id/updates', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid event id');
+    }
+    const events = await getEvents();
+    const current = events.find((event) => event.id === id);
+    if (!current) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (!await requireEditableEvent(req, res, current.authorId)) {
+      return;
+    }
+
+    const { message } = req.body as { message?: string };
+    if (!message || !message.trim()) {
+      return respondBadRequest(req, res, 'Missing update message');
+    }
+
+    const author = res.locals.author as { id: number };
+    const update = await createEventUpdate(id, author.id, message);
+
+    try {
+      await sendEventUpdateNotification({
+        eventId: id,
+        eventTitle: current.title,
+        message,
+      });
+    } catch (notificationError) {
+      logRequestError(notificationError, res.locals.requestId);
+    }
+
+    res.status(201).json({ update });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to create event update' });
   }
 });
 

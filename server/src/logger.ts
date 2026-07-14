@@ -40,6 +40,8 @@ const KNOWN_ENDPOINTS: Array<{ method: string; path: RegExp }> = [
   { method: 'PUT', path: /^\/api\/events\/\d+\/?$/ },
   { method: 'DELETE', path: /^\/api\/events\/\d+\/?$/ },
   { method: 'DELETE', path: /^\/api\/events\/?$/ },
+  { method: 'GET', path: /^\/api\/events\/\d+\/updates\/?$/ },
+  { method: 'POST', path: /^\/api\/events\/\d+\/updates\/?$/ },
   { method: 'POST', path: /^\/api\/auth\/login\/?$/ },
   { method: 'POST', path: /^\/api\/auth\/refresh\/?$/ },
   { method: 'POST', path: /^\/api\/auth\/logout\/?$/ },

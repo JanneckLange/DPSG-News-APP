@@ -815,6 +815,48 @@ class RemoteEventSource {
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     return decoded['oneTimePassword'] as String;
   }
+
+  Future<List<Map<String, dynamic>>> fetchEventUpdates(
+      {required int eventId}) async {
+    final uri = baseUrl.replace(path: '/api/events/$eventId/updates');
+    final response = await _client.get(uri).timeout(timeout);
+    if (response.statusCode != 200) {
+      throw RemoteEventSourceException(
+        'Failed to fetch event updates: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
+        serverMessage: _parseServerError(response.body),
+      );
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return List<Map<String, dynamic>>.from(json['updates'] as List<dynamic>);
+  }
+
+  Future<Map<String, dynamic>> createEventUpdate({
+    required String token,
+    required int eventId,
+    required String message,
+  }) async {
+    final uri = baseUrl.replace(path: '/api/events/$eventId/updates');
+    final response = await _client
+        .post(
+          uri,
+          headers: {
+            HttpHeaders.authorizationHeader: 'Bearer $token',
+            HttpHeaders.contentTypeHeader: 'application/json',
+          },
+          body: jsonEncode({'message': message}),
+        )
+        .timeout(timeout);
+    if (response.statusCode != 201) {
+      throw RemoteEventSourceException(
+        'Failed to create event update: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
+        serverMessage: _parseServerError(response.body),
+      );
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return decoded['update'] as Map<String, dynamic>;
+  }
 }
 
 class ApiHealthStatus {

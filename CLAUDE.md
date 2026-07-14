@@ -38,3 +38,5 @@
 - Lies zuerst die relevanten Dateien, bevor du groessere Aenderungen vornimmst.
 - Vermeide unnoetige Massenreformatierung und unangrenzende Refactorings.
 - Benenne Annahmen, Risiken oder offene Punkte knapp, wenn sie fuer die Aufgabe relevant bleiben.
+- Hinterfrage meine Aussage und schlage alternativen vor, wenn diese zum erreichen des Zieles besser passen.
+- Stelle Fragen bei der Planung und während der Entwicklung sollten unklarheiten auftreten. Setze nie mit unbestätigten Annahmen fort.

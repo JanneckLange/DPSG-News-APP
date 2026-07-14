@@ -82,6 +82,24 @@ export type DraftInput = {
   topic?: string;
 };
 
+type EventUpdateRow = {
+  id: number;
+  event_id: number;
+  author_id: number | null;
+  message: string;
+  created_at: string;
+  author_username: string | null;
+};
+
+export type EventUpdate = {
+  id: number;
+  eventId: number;
+  authorId: number | null;
+  authorUsername: string | null;
+  message: string;
+  createdAt: string;
+};
+
 type AuthorRow = {
   id: number;
   username: string;
@@ -377,6 +395,16 @@ export async function connect(): Promise<void> {
     );
   `);
   await client.query(`CREATE INDEX IF NOT EXISTS drafts_author_id_idx ON drafts(author_id);`);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS event_updates (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL,
+      message TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS event_updates_event_id_idx ON event_updates(event_id);`);
   await cleanupExpiredSessions(true);
   await cleanupExpiredDrafts(true);
   await ensureBootstrapAuthor();
@@ -435,6 +463,17 @@ export function mapDraftRow(row: DraftRow): Draft {
     out.topic = row.topic;
   }
   return out;
+}
+
+export function mapEventUpdateRow(row: EventUpdateRow): EventUpdate {
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    authorId: row.author_id,
+    authorUsername: row.author_username,
+    message: row.message,
+    createdAt: row.created_at,
+  };
 }
 
 export async function getEvents(dv?: string): Promise<Event[]> {
@@ -574,6 +613,28 @@ export async function deleteAuthorDraftById(id: number, authorId: number): Promi
 
 export async function clearDrafts(): Promise<void> {
   await ensureClient().query('TRUNCATE TABLE drafts RESTART IDENTITY CASCADE');
+}
+
+export async function createEventUpdate(eventId: number, authorId: number, message: string): Promise<EventUpdate> {
+  const result = await ensureClient().query<EventUpdateRow>(
+    `INSERT INTO event_updates (event_id, author_id, message)
+     VALUES ($1, $2, $3)
+     RETURNING *, (SELECT username FROM authors WHERE id = $2) AS author_username`,
+    [eventId, authorId, message]
+  );
+  return mapEventUpdateRow(result.rows[0]);
+}
+
+export async function getEventUpdates(eventId: number): Promise<EventUpdate[]> {
+  const result = await ensureClient().query<EventUpdateRow>(
+    `SELECT eu.*, a.username AS author_username
+     FROM event_updates eu
+     LEFT JOIN authors a ON a.id = eu.author_id
+     WHERE eu.event_id = $1
+     ORDER BY eu.created_at DESC`,
+    [eventId]
+  );
+  return result.rows.map(mapEventUpdateRow);
 }
 
 export async function clearAuthorData(): Promise<void> {

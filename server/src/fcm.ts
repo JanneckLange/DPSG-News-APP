@@ -92,3 +92,41 @@ export async function sendEventNotification({ title, description, eventId, dv, t
   console.log('FCM event notification sent successfully', { messageId: result });
   return result;
 }
+
+export type EventUpdateNotificationPayload = {
+  eventId: number;
+  eventTitle: string;
+  message: string;
+};
+
+export async function sendEventUpdateNotification({ eventId, eventTitle, message }: EventUpdateNotificationPayload): Promise<string> {
+  if (!firebaseMessagingEnabled) {
+    console.warn('Skipping FCM event update notification because Firebase is disabled.');
+    return 'firebase-disabled';
+  }
+
+  const shortBody = message.length > 120 ? `${message.substring(0, 117)}...` : message;
+  const topicName = `event_${normalizeTopicName(String(eventId))}`;
+  const fcmMessage: Message = {
+    topic: topicName,
+    notification: {
+      title: `Update zu ${eventTitle}`,
+      body: shortBody,
+    },
+    data: {
+      eventId: String(eventId),
+      type: 'event_update',
+    },
+  };
+
+  console.log('Sending FCM event update notification', {
+    topic: fcmMessage.topic,
+    title: fcmMessage.notification?.title,
+    body: fcmMessage.notification?.body,
+    eventId,
+  });
+
+  const result = await getMessaging().send(fcmMessage);
+  console.log('FCM event update notification sent successfully', { messageId: result });
+  return result;
+}

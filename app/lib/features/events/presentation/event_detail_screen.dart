@@ -9,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/sync_service.dart' as sync_service;
+import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/settings_repository.dart';
 
 class EventDetailScreen extends ConsumerStatefulWidget {
@@ -22,6 +24,10 @@ class EventDetailScreen extends ConsumerStatefulWidget {
 
 class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   bool _saving = false;
+  final _updateMessageController = TextEditingController();
+  List<Map<String, dynamic>> _updates = <Map<String, dynamic>>[];
+  bool _loadingUpdates = true;
+  bool _postingUpdate = false;
 
   @override
   void initState() {
@@ -36,9 +42,75 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         target: title,
       );
     });
+    _loadUpdates();
+  }
+
+  @override
+  void dispose() {
+    _updateMessageController.dispose();
+    super.dispose();
   }
 
   String get _eventId => widget.event['id']?.toString() ?? '';
+
+  int? get _eventIdAsInt =>
+      widget.event['id'] is num ? (widget.event['id'] as num).toInt() : null;
+
+  bool get _canManageEvent {
+    final authorAuth = ref.watch(authorAuthProvider);
+    final eventAuthorId = widget.event['authorId'] is num
+        ? (widget.event['authorId'] as num).toInt()
+        : null;
+    return authorAuth.isLoggedIn &&
+        !authorAuth.isLocked &&
+        !authorAuth.requiresPasswordChange &&
+        (authorAuth.isAdmin || eventAuthorId == authorAuth.authorId);
+  }
+
+  Future<void> _loadUpdates() async {
+    final eventId = _eventIdAsInt;
+    if (eventId == null) {
+      if (mounted) setState(() => _loadingUpdates = false);
+      return;
+    }
+    setState(() => _loadingUpdates = true);
+    try {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
+      final updates = await remote.fetchEventUpdates(eventId: eventId);
+      if (!mounted) return;
+      setState(() => _updates = updates);
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+    } finally {
+      if (mounted) setState(() => _loadingUpdates = false);
+    }
+  }
+
+  Future<void> _postUpdate() async {
+    final eventId = _eventIdAsInt;
+    final message = _updateMessageController.text.trim();
+    if (eventId == null || message.isEmpty) return;
+
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) return;
+
+    setState(() => _postingUpdate = true);
+    try {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
+      await remote.createEventUpdate(
+        token: token,
+        eventId: eventId,
+        message: message,
+      );
+      _updateMessageController.clear();
+      await _loadUpdates();
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+    } finally {
+      if (mounted) setState(() => _postingUpdate = false);
+    }
+  }
 
   bool get _isSaved {
     final savedEventIds = ref.watch(savedEventIdsProvider);
@@ -171,6 +243,59 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               onPressed: () => _openExternalLink(cta2Url, cta2Label),
               child: Text(cta2Label),
             ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          Text('Updates', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          if (_loadingUpdates)
+            const Center(child: CircularProgressIndicator())
+          else if (_updates.isEmpty)
+            const Text('Noch keine Updates vorhanden.')
+          else
+            ..._updates.map((update) {
+              final authorUsername = update['authorUsername'] as String?;
+              final createdAt = formatEventDateTime(update['createdAt'] as String?);
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MarkdownBody(data: update['message'] as String? ?? ''),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${authorUsername ?? 'Unbekannt'} · $createdAt',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          if (_canManageEvent) ...[
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _updateMessageController,
+              decoration: const InputDecoration(
+                labelText: 'Neues Update (Markdown)',
+              ),
+              minLines: 3,
+              maxLines: 6,
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _postingUpdate ? null : _postUpdate,
+              child: _postingUpdate
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Update senden'),
+            ),
+          ],
         ],
       ),
     );
