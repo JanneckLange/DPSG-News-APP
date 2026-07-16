@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +11,8 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/settings_repository.dart';
+import '../../../shared/utils/url_utils.dart';
+import '../../../shared/widgets/safe_markdown_body.dart';
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({super.key, required this.event});
@@ -133,12 +134,42 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     }
   }
 
-  Future<void> _openExternalLink(String url, String label) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) {
+  Future<void> _confirmAndOpenLink(String url, String label) async {
+    var uri = Uri.tryParse(url);
+    if (uri != null && uri.scheme.isEmpty) {
+      uri = Uri.tryParse('https://$url');
+    }
+    if (uri == null || uri.host.isEmpty) {
       if (mounted) {
         showErrorToast(ref, 'Ungültige URL');
       }
+      return;
+    }
+    if (!isHttpOrHttpsUri(uri)) {
+      if (mounted) {
+        showErrorToast(ref, 'Ungültige URL');
+      }
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Webseite öffnen'),
+        content: Text('Möchtest du folgende Webseite öffnen: $url'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Ja'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
       return;
     }
 
@@ -160,7 +191,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       additionalProperties: {'event_id': _eventId, 'url': url},
     ));
 
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (!mounted) return;
+    if (!await launchUrl(uri, mode: LaunchMode.inAppWebView)) {
       if (mounted) {
         showErrorToast(ref, 'Link konnte nicht geöffnet werden');
       }
@@ -231,16 +263,16 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           const SizedBox(height: 16),
           const Divider(),
           const SizedBox(height: 16),
-          MarkdownBody(data: description),
+          SafeMarkdownBody(data: description),
           const SizedBox(height: 24),
           if (cta1Label != null && cta1Url != null && cta1Label.isNotEmpty && cta1Url.isNotEmpty)
             FilledButton(
-              onPressed: () => _openExternalLink(cta1Url, cta1Label),
+              onPressed: () => _confirmAndOpenLink(cta1Url, cta1Label),
               child: Text(cta1Label),
             ),
           if (cta2Label != null && cta2Url != null && cta2Label.isNotEmpty && cta2Url.isNotEmpty)
             FilledButton(
-              onPressed: () => _openExternalLink(cta2Url, cta2Label),
+              onPressed: () => _confirmAndOpenLink(cta2Url, cta2Label),
               child: Text(cta2Label),
             ),
           const SizedBox(height: 24),
@@ -263,7 +295,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      MarkdownBody(data: update['message'] as String? ?? ''),
+                      SafeMarkdownBody(data: update['message'] as String? ?? ''),
                       const SizedBox(height: 8),
                       Text(
                         '${authorUsername ?? 'Unbekannt'} · $createdAt',

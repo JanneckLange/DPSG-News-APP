@@ -14,6 +14,10 @@ type EventRow = {
   location: string | null;
   dv: string | null;
   topic?: string;
+  cta1_label: string | null;
+  cta1_url: string | null;
+  cta2_label: string | null;
+  cta2_url: string | null;
   author_id: number | null;
   created_at: string;
   modified_at: string;
@@ -28,6 +32,10 @@ export type Event = {
   location: string;
   dv: string;
   topic?: string;
+  cta1Label?: string;
+  cta1Url?: string;
+  cta2Label?: string;
+  cta2Url?: string;
   authorId: number | null;
   createdAt: string;
   modifiedAt: string;
@@ -41,6 +49,10 @@ export type EventInput = {
   location?: string;
   dv?: string;
   topic?: string;
+  cta1Label?: string;
+  cta1Url?: string;
+  cta2Label?: string;
+  cta2Url?: string;
 };
 
 type DraftRow = {
@@ -52,6 +64,10 @@ type DraftRow = {
   location: string | null;
   dv: string | null;
   topic?: string;
+  cta1_label: string | null;
+  cta1_url: string | null;
+  cta2_label: string | null;
+  cta2_url: string | null;
   author_id: number;
   created_at: string;
   modified_at: string;
@@ -66,6 +82,10 @@ export type Draft = {
   location: string;
   dv: string;
   topic?: string;
+  cta1Label?: string;
+  cta1Url?: string;
+  cta2Label?: string;
+  cta2Url?: string;
   authorId: number;
   createdAt: string;
   modifiedAt: string;
@@ -80,6 +100,10 @@ export type DraftInput = {
   location?: string;
   dv?: string;
   topic?: string;
+  cta1Label?: string;
+  cta1Url?: string;
+  cta2Label?: string;
+  cta2Url?: string;
 };
 
 type EventUpdateRow = {
@@ -358,12 +382,20 @@ export async function connect(): Promise<void> {
       location TEXT,
       dv TEXT,
       topic TEXT,
+      cta1_label TEXT,
+      cta1_url TEXT,
+      cta2_label TEXT,
+      cta2_url TEXT,
       author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS topic TEXT;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta1_label TEXT;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta1_url TEXT;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`);
   await client.query(`UPDATE events SET modified_at = created_at WHERE modified_at IS NULL;`);
@@ -389,11 +421,19 @@ export async function connect(): Promise<void> {
       location TEXT,
       dv TEXT,
       topic TEXT,
+      cta1_label TEXT,
+      cta1_url TEXT,
+      cta2_label TEXT,
+      cta2_url TEXT,
       author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta1_label TEXT;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta1_url TEXT;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
   await client.query(`CREATE INDEX IF NOT EXISTS drafts_author_id_idx ON drafts(author_id);`);
   await client.query(`
     CREATE TABLE IF NOT EXISTS event_updates (
@@ -442,6 +482,10 @@ export function mapEventRow(row: EventRow): Event {
   if (row.topic != null) {
     out.topic = row.topic;
   }
+  if (row.cta1_label != null) out.cta1Label = row.cta1_label;
+  if (row.cta1_url != null) out.cta1Url = row.cta1_url;
+  if (row.cta2_label != null) out.cta2Label = row.cta2_label;
+  if (row.cta2_url != null) out.cta2Url = row.cta2_url;
   return out;
 }
 
@@ -462,6 +506,10 @@ export function mapDraftRow(row: DraftRow): Draft {
   if (row.topic != null) {
     out.topic = row.topic;
   }
+  if (row.cta1_label != null) out.cta1Label = row.cta1_label;
+  if (row.cta1_url != null) out.cta1Url = row.cta1_url;
+  if (row.cta2_label != null) out.cta2Label = row.cta2_label;
+  if (row.cta2_url != null) out.cta2Url = row.cta2_url;
   return out;
 }
 
@@ -496,20 +544,20 @@ export async function createAuthorEvent(event: EventInput, authorId: number | nu
   const location = event.location ?? event.dv ?? dv;
 
   const result = await ensureClient().query<EventRow>(
-    `INSERT INTO events (title, description, start_date, end_date, location, dv, topic, author_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO events (title, description, start_date, end_date, location, dv, topic, cta1_label, cta1_url, cta2_label, cta2_url, author_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
-    [event.title, description, startDate, endDate, location, dv, event.topic ?? null, authorId]
+    [event.title, description, startDate, endDate, location, dv, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, authorId]
   );
   return mapEventRow(result.rows[0]);
 }
 
 export async function createAuthorDraft(draft: DraftInput, authorId: number): Promise<Draft> {
   const result = await ensureClient().query<DraftRow>(
-    `INSERT INTO drafts (title, description, start_date, end_date, location, dv, topic, author_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO drafts (title, description, start_date, end_date, location, dv, topic, cta1_label, cta1_url, cta2_label, cta2_url, author_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
-    [draft.title, draft.description ?? null, draft.startDate ?? null, draft.endDate ?? null, draft.location ?? null, draft.dv ?? null, draft.topic ?? null, authorId]
+    [draft.title, draft.description ?? null, draft.startDate ?? null, draft.endDate ?? null, draft.location ?? null, draft.dv ?? null, draft.topic ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, authorId]
   );
   return mapDraftRow(result.rows[0]);
 }
@@ -538,10 +586,14 @@ export async function updateAuthorEventById(id: number, authorId: number, event:
          location = $5,
          dv = $6,
          topic = $7,
+         cta1_label = $8,
+         cta1_url = $9,
+         cta2_label = $10,
+         cta2_url = $11,
          modified_at = NOW()
-    WHERE id = $8 AND author_id = $9
+    WHERE id = $12 AND author_id = $13
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, id, authorId]
+    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id, authorId]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
@@ -557,10 +609,14 @@ export async function updateEventById(id: number, event: EventInput): Promise<Ev
          location = $5,
          dv = $6,
          topic = $7,
+         cta1_label = $8,
+         cta1_url = $9,
+         cta2_label = $10,
+         cta2_url = $11,
          modified_at = NOW()
-    WHERE id = $8
+    WHERE id = $12
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, id]
+    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
@@ -598,10 +654,14 @@ export async function updateAuthorDraftById(id: number, authorId: number, draft:
          location = $5,
          dv = $6,
          topic = $7,
+         cta1_label = $8,
+         cta1_url = $9,
+         cta2_label = $10,
+         cta2_url = $11,
          modified_at = NOW()
-    WHERE id = $8 AND author_id = $9
+    WHERE id = $12 AND author_id = $13
      RETURNING *`,
-    [draft.title, draft.description, draft.startDate, draft.endDate, draft.location, draft.dv, draft.topic ?? null, id, authorId]
+    [draft.title, draft.description, draft.startDate, draft.endDate, draft.location, draft.dv, draft.topic ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, id, authorId]
   );
   return result.rows[0] ? mapDraftRow(result.rows[0]) : null;
 }

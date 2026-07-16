@@ -137,6 +137,32 @@ describe('Event updates API e2e', () => {
     expect(post.status).toBe(400);
   });
 
+  it('rejects a non-string update message instead of crashing', async () => {
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    const token = await loginAuthor('evtupd-author', 'pwd-123');
+    const eventId = await createEvent(token, 'Event mit falschem Typ');
+
+    const post = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 12345 });
+
+    expect(post.status).toBe(400);
+  });
+
+  it('rejects an oversized update message', async () => {
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    const token = await loginAuthor('evtupd-author', 'pwd-123');
+    const eventId = await createEvent(token, 'Event mit zu langer Nachricht');
+
+    const post = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'x'.repeat(1001) });
+
+    expect(post.status).toBe(400);
+  });
+
   it('returns 404 for updates on a non-existent event, 400 for an invalid id', async () => {
     await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
     const token = await loginAuthor('evtupd-author', 'pwd-123');

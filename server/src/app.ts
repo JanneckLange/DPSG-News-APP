@@ -36,37 +36,8 @@ import { sendEventNotification, sendEventUpdateNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
 import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError, logWarn } from './logger';
 import { createRateLimitStore } from './rateLimitStore';
-
-const DV_TREE = {
-  lastTreeChange: '2026-07-01T00:00:00Z',
-  dvs: [
-    { name: 'Aachen', url: 'http://www.dpsg-ac.de/' },
-    { name: 'Augsburg', url: 'http://www.dpsg-augsburg.de/' },
-    { name: 'Bamberg', url: 'http://www.dpsg-bamberg.de/' },
-    { name: 'Berlin', url: 'http://www.dpsg-dv-berlin.de/' },
-    { name: 'Eichstätt', url: 'http://www.dpsg-eichstaett.de/' },
-    { name: 'Essen', url: 'http://www.dpsg-essen.de/' },
-    { name: 'Erfurt', url: 'https://dpsg-thueringen.de/' },
-    { name: 'Freiburg', url: 'http://www.dpsg-freiburg.de/' },
-    { name: 'Fulda', url: 'http://www.dpsg-fulda.de/' },
-    { name: 'Hamburg', url: 'http://www.dpsg-hamburg.de/', groups: ['Wölflinge', 'Jungpfadfinder', 'Pfadfinder', 'Rover', 'AK Aus-& Weiterbildung'] },
-    { name: 'Hildesheim', url: 'http://www.dpsg-hildesheim.de/' },
-    { name: 'Köln', url: 'http://www.dpsg-koeln.de/' },
-    { name: 'Limburg', url: 'http://www.dpsg-limburg.de/' },
-    { name: 'Magdeburg', url: 'http://www.dpsg-dv-magdeburg.de/' },
-    { name: 'Mainz', url: 'http://www.dpsg-mainz.de/' },
-    { name: 'München-Freising', url: 'http://www.dpsg1300.de/' },
-    { name: 'Münster', url: 'https://dpsgmuenster.de/' },
-    { name: 'Osnabrück', url: 'https://dpsg-os.de/' },
-    { name: 'Paderborn', url: 'http://www.dpsg-paderborn.de/' },
-    { name: 'Passau', url: 'http://www.dpsg-passau.de/' },
-    { name: 'Regensburg', url: 'http://www.dpsg-regensburg.de/' },
-    { name: 'Rottenburg-Stuttgart', url: 'http://www.dpsg-rottenburg.de/' },
-    { name: 'Speyer', url: 'http://www.dpsg-speyer.org/' },
-    { name: 'Trier', url: 'http://www.dpsg-trier.de/' },
-    { name: 'Würzburg', url: 'http://www.dpsg-wuerzburg.de/' },
-  ],
-};
+import { DV_TREE } from './dvTree';
+import { validateEventTextFields, validateMessageField } from './eventValidation';
 
 const app = express();
 app.disable('x-powered-by');
@@ -434,13 +405,17 @@ app.post('/api/events', async (req: Request, res: Response) => {
       return;
     }
 
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
     if (!title || !description || !startDate || !location || !dv) {
       return respondBadRequest(req, res, 'Missing required event fields');
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
 
     logInfo('Created event, sending push notification', {
       requestId: res.locals.requestId,
@@ -482,13 +457,17 @@ app.post('/api/author/events', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
     if (!title || !description || !startDate || !location || !dv) {
       return respondBadRequest(req, res, 'Missing required event fields');
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
     res.status(201).json({ event });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -521,13 +500,17 @@ app.post('/api/author/drafts', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as DraftInput;
+    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
     if (!title) {
       return respondBadRequest(req, res, 'Missing required draft fields');
     }
 
     const author = res.locals.author as { id: number };
-    const draft = await createAuthorDraft({ title, description, startDate, endDate, location, dv, topic }, author.id);
+    const draft = await createAuthorDraft({ title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
     res.status(201).json({ draft });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -547,13 +530,17 @@ app.put('/api/author/drafts/:id', async (req: Request, res: Response) => {
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid draft id');
     }
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as DraftInput;
+    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
     if (!title) {
       return respondBadRequest(req, res, 'Missing required draft fields');
     }
 
     const author = res.locals.author as { id: number };
-    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, location, dv, topic });
+    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url });
     if (!draft) {
       return res.status(404).json({ error: 'Draft not found' });
     }
@@ -622,7 +609,11 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!await requireEditableEvent(req, res, current.authorId)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
     if (!title || !description || !startDate || !location || !dv) {
       return respondBadRequest(req, res, 'Missing required event fields');
     }
@@ -634,6 +625,10 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
       location,
       dv,
       topic,
+      cta1Label,
+      cta1Url,
+      cta2Label,
+      cta2Url,
     });
     if (!updated) {
       return res.status(404).json({ error: 'Event not found' });
@@ -658,13 +653,17 @@ app.put('/api/author/events/:id', async (req: Request, res: Response) => {
       return respondBadRequest(req, res, 'Invalid event id');
     }
 
-    const { title, description, startDate, endDate, location, dv, topic } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
     if (!title || !description || !startDate || !location || !dv) {
       return respondBadRequest(req, res, 'Missing required event fields');
     }
 
     const author = res.locals.author as { id: number };
-    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic });
+    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url });
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -778,6 +777,10 @@ app.post('/api/events/:id/updates', async (req: Request, res: Response) => {
     }
 
     const { message } = req.body as { message?: string };
+    const messageCheck = validateMessageField(message);
+    if (!messageCheck.valid) {
+      return respondBadRequest(req, res, messageCheck.error);
+    }
     if (!message || !message.trim()) {
       return respondBadRequest(req, res, 'Missing update message');
     }
