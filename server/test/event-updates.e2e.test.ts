@@ -93,6 +93,52 @@ describe('Event updates API e2e', () => {
     expect(list.body.updates[0].message).toBe('**Wichtig:** Ort geändert.');
   });
 
+  it('exposes lastUpdateAt on the event once an update has been posted', async () => {
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    const token = await loginAuthor('evtupd-author', 'pwd-123');
+    const eventId = await createEvent(token, 'Event ohne Update');
+
+    const beforeUpdate = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${token}`);
+    expect(beforeUpdate.status).toBe(200);
+    expect(beforeUpdate.body.events[0].lastUpdateAt).toBeUndefined();
+
+    const firstUpdate = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'Erstes Update' });
+    expect(firstUpdate.status).toBe(201);
+
+    const afterFirstUpdate = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${token}`);
+    const lastUpdateAtAfterFirst = afterFirstUpdate.body.events[0].lastUpdateAt as string;
+    expect(typeof lastUpdateAtAfterFirst).toBe('string');
+    expect(new Date(lastUpdateAtAfterFirst).getTime()).toBeGreaterThanOrEqual(
+      new Date(afterFirstUpdate.body.events[0].createdAt).getTime(),
+    );
+
+    const secondUpdate = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'Zweites, neueres Update' });
+    expect(secondUpdate.status).toBe(201);
+
+    const afterSecondUpdate = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${token}`);
+    const lastUpdateAtAfterSecond = afterSecondUpdate.body.events[0].lastUpdateAt as string;
+    expect(new Date(lastUpdateAtAfterSecond).getTime()).toBeGreaterThanOrEqual(
+      new Date(lastUpdateAtAfterFirst).getTime(),
+    );
+
+    // Auch der oeffentliche Endpunkt liefert lastUpdateAt.
+    const publicEvents = await request(app).get('/api/events');
+    expect(publicEvents.status).toBe(200);
+    expect(publicEvents.body.events[0].lastUpdateAt).toBe(lastUpdateAtAfterSecond);
+  });
+
   it('forbids a foreign author (neither creator nor admin) from posting an update', async () => {
     await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
     await createAuthorForTesting({ username: 'evtupd-other', password: 'pwd-456' });

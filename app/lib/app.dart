@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:wiredash/wiredash.dart';
 
 import 'core/config/app_config.dart';
+import 'core/theme/app_theme.dart';
 import 'core/services/analytics_service.dart';
 import 'core/services/app_navigation_service.dart';
 import 'core/services/logging_service.dart';
@@ -18,10 +19,12 @@ import 'features/author/presentation/author_screen.dart';
 import 'features/author/data/author_auth_provider.dart';
 import 'features/calendar/presentation/calendar_screen.dart';
 import 'features/events/presentation/events_screen.dart';
+import 'features/onboarding/presentation/welcome_screen.dart';
 import 'features/settings/data/settings_repository.dart' as settings_repository;
 import 'features/settings/presentation/settings_screen.dart';
 
 final appThemeModeProvider = settings_repository.appThemeModeProvider;
+final hasSeenWelcomeProvider = settings_repository.hasSeenWelcomeProvider;
 
 final currentIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -104,6 +107,7 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     final currentIndex = ref.watch(currentIndexProvider);
     final authorAuth = ref.watch(authorAuthProvider);
     final appThemeMode = ref.watch(appThemeModeProvider);
+    final hasSeenWelcome = ref.watch(hasSeenWelcomeProvider);
     final navigatorKey = ref.watch(appNavigatorKeyProvider);
 
     final pages = <Widget>[
@@ -154,8 +158,8 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
 
     final materialApp = MaterialApp(
       title: 'DPSG News APP',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      darkTheme: ThemeData(brightness: Brightness.dark, colorSchemeSeed: Colors.blue),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       themeMode: effectiveThemeMode,
       navigatorKey: navigatorKey,
       navigatorObservers: [
@@ -167,24 +171,26 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
         }
         return child;
       },
-      home: Scaffold(
-        body: pages[safeIndex],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: safeIndex,
-          onDestinationSelected: (index) {
-            ref.read(currentIndexProvider.notifier).state = index;
-            unawaited(
-              _analytics.trackUiClick(
-                'bottom_navigation',
-                screen: 'app',
-                action: 'select',
-                target: destinations[index].label,
+      home: hasSeenWelcome
+          ? Scaffold(
+              body: pages[safeIndex],
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: safeIndex,
+                onDestinationSelected: (index) {
+                  ref.read(currentIndexProvider.notifier).state = index;
+                  unawaited(
+                    _analytics.trackUiClick(
+                      'bottom_navigation',
+                      screen: 'app',
+                      action: 'select',
+                      target: destinations[index].label,
+                    ),
+                  );
+                },
+                destinations: destinations,
               ),
-            );
-          },
-          destinations: destinations,
-        ),
-      ),
+            )
+          : const WelcomeScreen(),
     );
 
     if (!AppConfig.hasWiredashConfig) {

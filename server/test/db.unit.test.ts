@@ -68,7 +68,7 @@ describe('Database helper', () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ dv: 'Köln' });
     expect(mockQuery).toHaveBeenLastCalledWith({
-      text: 'SELECT * FROM events ORDER BY start_date ASC',
+      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e ORDER BY e.start_date ASC',
       values: [],
     });
 
@@ -76,7 +76,7 @@ describe('Database helper', () => {
     events = await getEvents('Köln');
     expect(events[0]).toMatchObject({ dv: 'Köln' });
     expect(mockQuery).toHaveBeenLastCalledWith({
-      text: 'SELECT * FROM events WHERE dv = $1 ORDER BY start_date ASC',
+      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e WHERE e.dv = $1 ORDER BY e.start_date ASC',
       values: ['Köln'],
     });
   });

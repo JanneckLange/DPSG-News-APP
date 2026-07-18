@@ -36,12 +36,27 @@ class SyncService {
   final LoggingService _logger;
   final Ref _ref;
 
-  Future<void> syncEvents() async {
+  static const _minSyncInterval = Duration(seconds: 120);
+  DateTime? _lastSyncedAt;
+
+  /// Laedt Events vom Server und speichert sie lokal. Wird [force] nicht
+  /// gesetzt, wird ein Aufruf innerhalb von [_minSyncInterval] seit dem
+  /// letzten erfolgreichen Sync uebersprungen (z.B. beim Betreten der
+  /// Events-Seite). Nutzeraktionen wie Pull-to-Refresh oder das
+  /// Erstellen/Bearbeiten/Loeschen eines Events sollen [force] setzen, damit
+  /// Aenderungen sofort sichtbar sind.
+  Future<void> syncEvents({bool force = false}) async {
+    if (!force &&
+        _lastSyncedAt != null &&
+        DateTime.now().difference(_lastSyncedAt!) < _minSyncInterval) {
+      return;
+    }
     _logger.logEvent('events_sync_started');
     _ref.read(eventSyncStatusProvider.notifier).state = null;
     try {
       final events = await _remoteSource.fetchEvents();
       await _repository.saveEvents(events);
+      _lastSyncedAt = DateTime.now();
       _logger.logEvent('events_synced', properties: {'count': events.length});
     } catch (error, stackTrace) {
       _logger.logError('events_sync_failed', error: error, stackTrace: stackTrace);

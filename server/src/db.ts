@@ -21,6 +21,7 @@ type EventRow = {
   author_id: number | null;
   created_at: string;
   modified_at: string;
+  last_update_at: string | null;
 };
 
 export type Event = {
@@ -39,6 +40,7 @@ export type Event = {
   authorId: number | null;
   createdAt: string;
   modifiedAt: string;
+  lastUpdateAt?: string;
 };
 
 export type EventInput = {
@@ -486,6 +488,7 @@ export function mapEventRow(row: EventRow): Event {
   if (row.cta1_url != null) out.cta1Url = row.cta1_url;
   if (row.cta2_label != null) out.cta2Label = row.cta2_label;
   if (row.cta2_url != null) out.cta2Url = row.cta2_url;
+  if (row.last_update_at != null) out.lastUpdateAt = row.last_update_at;
   return out;
 }
 
@@ -524,10 +527,12 @@ export function mapEventUpdateRow(row: EventUpdateRow): EventUpdate {
   };
 }
 
+const EVENT_SELECT_WITH_LAST_UPDATE = `SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e`;
+
 export async function getEvents(dv?: string): Promise<Event[]> {
   const query: QueryConfig = dv
-    ? { text: 'SELECT * FROM events WHERE dv = $1 ORDER BY start_date ASC', values: [dv] }
-    : { text: 'SELECT * FROM events ORDER BY start_date ASC', values: [] };
+    ? { text: `${EVENT_SELECT_WITH_LAST_UPDATE} WHERE e.dv = $1 ORDER BY e.start_date ASC`, values: [dv] }
+    : { text: `${EVENT_SELECT_WITH_LAST_UPDATE} ORDER BY e.start_date ASC`, values: [] };
   const result = await ensureClient().query<EventRow>(query);
   return result.rows.map(mapEventRow);
 }
@@ -569,7 +574,7 @@ export async function deleteEventById(id: number): Promise<boolean> {
 
 export async function getAuthorEvents(authorId: number): Promise<Event[]> {
   const result = await ensureClient().query<EventRow>(
-    'SELECT * FROM events WHERE author_id = $1 ORDER BY start_date ASC',
+    `${EVENT_SELECT_WITH_LAST_UPDATE} WHERE e.author_id = $1 ORDER BY e.start_date ASC`,
     [authorId]
   );
   return result.rows.map(mapEventRow);
