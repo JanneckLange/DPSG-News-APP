@@ -80,6 +80,30 @@ describe('Drafts API e2e', () => {
     expect(sendEventNotification).not.toHaveBeenCalled();
   });
 
+  it('rejects a draft with an oversized CTA label', async () => {
+    await createAuthorForTesting({ username: 'draft-author-cta', password: 'pwd-123' });
+    const token = await loginAuthor('draft-author-cta', 'pwd-123');
+
+    const res = await request(app)
+      .post('/api/author/drafts')
+      .set('authorization', `Bearer ${token}`)
+      .send({ title: 'Draft', cta1Label: 'x'.repeat(21) });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a draft with a non-http CTA URL', async () => {
+    await createAuthorForTesting({ username: 'draft-author-scheme', password: 'pwd-123' });
+    const token = await loginAuthor('draft-author-scheme', 'pwd-123');
+
+    const res = await request(app)
+      .post('/api/author/drafts')
+      .set('authorization', `Bearer ${token}`)
+      .send({ title: 'Draft', cta1Url: 'file:///etc/passwd' });
+
+    expect(res.status).toBe(400);
+  });
+
   it('rejects draft creation and update without a title', async () => {
     await createAuthorForTesting({ username: 'draft-author', password: 'pwd-123' });
     const token = await loginAuthor('draft-author', 'pwd-123');

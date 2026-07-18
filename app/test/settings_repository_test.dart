@@ -21,6 +21,14 @@ void main() {
     await HiveService.getEventsBox().clear();
   });
 
+  test('persists has seen welcome flag', () async {
+    expect(repository.getHasSeenWelcome(), isFalse);
+
+    await repository.setHasSeenWelcome(true);
+
+    expect(repository.getHasSeenWelcome(), isTrue);
+  });
+
   test('persists app theme mode', () async {
     expect(repository.getAppThemeMode(), 'system');
 
@@ -91,6 +99,27 @@ void main() {
     await repository.setSavedEventIds(['event-1', 'event-2']);
 
     expect(repository.getSavedEventIds(), equals(['event-1', 'event-2']));
+  });
+
+  test('persists event viewed-at timestamps', () async {
+    expect(repository.getEventViewedAt(), isEmpty);
+
+    final viewedAt = DateTime.utc(2026, 1, 15, 10, 30);
+    await repository.setEventViewedAt({'event-1': viewedAt});
+
+    expect(repository.getEventViewedAt(), equals({'event-1': viewedAt}));
+  });
+
+  test('skips unparsable entries when reading event viewed-at timestamps', () async {
+    await HiveService.getSettingsBox().put('event_viewed_at', {
+      'event-1': 'not-a-date',
+      'event-2': DateTime.utc(2026, 1, 15).toIso8601String(),
+    });
+
+    final result = repository.getEventViewedAt();
+
+    expect(result.containsKey('event-1'), isFalse);
+    expect(result['event-2'], DateTime.utc(2026, 1, 15));
   });
 
   test('persists auto-save event on CTA click toggle', () async {
