@@ -10,6 +10,7 @@ import '../../../shared/widgets/stat_tile.dart';
 import '../../events/presentation/event_detail_screen.dart';
 import '../../events/presentation/event_editor_sheet.dart';
 import '../../events/presentation/event_list_tile.dart';
+import '../../settings/data/dv_tree_provider.dart';
 import '../data/author_auth_provider.dart';
 import '../data/own_events_provider.dart';
 import 'author_change_password_screen.dart';
@@ -43,8 +44,10 @@ class AuthorScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _deleteDraft(BuildContext context, WidgetRef ref, int draftId) async {
-    final token = await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+  Future<void> _deleteDraft(
+      BuildContext context, WidgetRef ref, int draftId) async {
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null) return;
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
@@ -64,20 +67,29 @@ class AuthorScreen extends ConsumerWidget {
     ]);
   }
 
-  List<StatTile> _buildStatTiles(BuildContext context, AuthorDashboardStats stats) {
+  List<StatTile> _buildStatTiles(
+      BuildContext context, AuthorDashboardStats stats) {
     return [
-      StatTile(icon: Icons.public, value: '${stats.onlineCount}', label: 'Events online'),
-      StatTile(icon: Icons.calendar_month, value: '${stats.thisMonthCount}', label: 'Diesen Monat'),
+      StatTile(
+          icon: Icons.public,
+          value: '${stats.onlineCount}',
+          label: 'Events online'),
+      StatTile(
+          icon: Icons.calendar_month,
+          value: '${stats.thisMonthCount}',
+          label: 'Diesen Monat'),
       StatTile(
         icon: Icons.warning_amber,
         value: '${stats.staleCount}',
         label: 'Lange kein Update',
-        color: stats.staleCount > 0 ? Theme.of(context).colorScheme.error : null,
+        color:
+            stats.staleCount > 0 ? Theme.of(context).colorScheme.error : null,
         onTap: stats.staleCount == 0
             ? null
             : () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => StaleEventsScreen(events: stats.staleEvents),
+                    builder: (context) =>
+                        StaleEventsScreen(events: stats.staleEvents),
                   ),
                 ),
       ),
@@ -87,6 +99,7 @@ class AuthorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authorAuthProvider);
+    final layerNamesById = ref.watch(layerNamesByIdProvider);
     if (!auth.isLoggedIn) {
       return Scaffold(
         appBar: AppBar(title: const Text('Autor')),
@@ -94,7 +107,8 @@ class AuthorScreen extends ConsumerWidget {
           child: FilledButton.icon(
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AuthorLoginScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const AuthorLoginScreen()),
               );
             },
             icon: const Icon(Icons.login),
@@ -124,7 +138,8 @@ class AuthorScreen extends ConsumerWidget {
           child: FilledButton.icon(
             onPressed: () async {
               await Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AuthorChangePasswordScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const AuthorChangePasswordScreen()),
               );
               await ref.read(authorAuthProvider.notifier).refreshSession();
             },
@@ -143,11 +158,15 @@ class AuthorScreen extends ConsumerWidget {
       body = const SkeletonCardList();
     } else if (eventsAsync.hasError) {
       body = ListView(children: [
-        Padding(padding: const EdgeInsets.all(24), child: Text('${eventsAsync.error}')),
+        Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('${eventsAsync.error}')),
       ]);
     } else if (draftsAsync.hasError) {
       body = ListView(children: [
-        Padding(padding: const EdgeInsets.all(24), child: Text('${draftsAsync.error}')),
+        Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('${draftsAsync.error}')),
       ]);
     } else {
       final events = eventsAsync.value ?? <Map<String, dynamic>>[];
@@ -174,11 +193,14 @@ class AuthorScreen extends ConsumerWidget {
                     EventListTile(
                       title: event['title'] as String? ?? '',
                       location: event['location'] as String? ?? '',
-                      dv: event['dv'] as String? ?? '',
+                      layerName:
+                          layerNamesById[(event['layerId'] as num?)?.toInt()] ??
+                              'Kein DV',
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => EventDetailScreen(event: event),
+                            builder: (context) =>
+                                EventDetailScreen(event: event),
                           ),
                         );
                       },
@@ -194,21 +216,27 @@ class AuthorScreen extends ConsumerWidget {
                     EventListTile(
                       title: draft['title'] as String? ?? '',
                       location: draft['location'] as String? ?? '',
-                      dv: draft['dv'] as String? ?? '',
-                      onEdit: () => _openForm(context, ref, existingDraft: draft),
+                      layerName:
+                          layerNamesById[(draft['layerId'] as num?)?.toInt()] ??
+                              'Kein DV',
+                      onEdit: () =>
+                          _openForm(context, ref, existingDraft: draft),
                       onDelete: () async {
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
                             title: const Text('Entwurf löschen'),
-                            content: const Text('Möchtest du diesen Entwurf löschen?'),
+                            content: const Text(
+                                'Möchtest du diesen Entwurf löschen?'),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(context).pop(false),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
                                 child: const Text('Abbrechen'),
                               ),
                               FilledButton(
-                                onPressed: () => Navigator.of(context).pop(true),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                                 child: const Text('Löschen'),
                               ),
                             ],
@@ -216,7 +244,8 @@ class AuthorScreen extends ConsumerWidget {
                         );
                         if (confirmed == true) {
                           if (!context.mounted) return;
-                          await _deleteDraft(context, ref, (draft['id'] as num).toInt());
+                          await _deleteDraft(
+                              context, ref, (draft['id'] as num).toInt());
                         }
                       },
                     ),

@@ -14,7 +14,6 @@ describe('validateEventTextFields', () => {
       title: 'Sommerlager',
       description: 'Ein tolles Lager',
       location: 'Zeltplatz',
-      dv: 'Köln',
       topic: undefined,
       cta1Label: 'Anmelden',
       cta1Url: 'https://example.org/anmeldung',
@@ -67,26 +66,23 @@ describe('validateEventTextFields', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('rejects an unknown dv', () => {
-    const result = validateEventTextFields({ title: 'Test', dv: 'Atlantis' });
-    expect(result).toEqual({ valid: false, error: expect.stringContaining('dv') });
-  });
-
-  it('accepts a known dv', () => {
-    expect(validateEventTextFields({ title: 'Test', dv: 'Köln' }).valid).toBe(true);
-  });
-
-  it('rejects a topic that does not belong to the selected dv', () => {
-    const result = validateEventTextFields({ title: 'Test', dv: 'Hamburg', topic: 'Nicht existent' });
+  it('rejects a topic that does not belong to the selected layer', () => {
+    const result = validateEventTextFields(
+      { title: 'Test', topic: 'Nicht existent' },
+      ['Wölflinge', 'Rover'],
+    );
     expect(result).toEqual({ valid: false, error: expect.stringContaining('topic') });
   });
 
-  it('accepts a topic that belongs to the selected dv', () => {
-    const result = validateEventTextFields({ title: 'Test', dv: 'Hamburg', topic: 'Rover' });
+  it('accepts a topic that belongs to the selected layer', () => {
+    const result = validateEventTextFields(
+      { title: 'Test', topic: 'Rover' },
+      ['Wölflinge', 'Rover'],
+    );
     expect(result.valid).toBe(true);
   });
 
-  it('rejects a topic when no dv is set', () => {
+  it('rejects a topic when the selected layer has no groups', () => {
     const result = validateEventTextFields({ title: 'Test', topic: 'Rover' });
     expect(result.valid).toBe(false);
   });

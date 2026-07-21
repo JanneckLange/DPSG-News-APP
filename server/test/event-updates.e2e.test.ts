@@ -17,6 +17,18 @@ async function loginAuthor(username: string, password: string): Promise<string> 
   return response.body.token as string;
 }
 
+async function getLayerIdByName(name: string): Promise<number> {
+  const response = await request(app).get('/api/layers');
+  expect(response.status).toBe(200);
+  const layer = (response.body.layers as Array<{ id: number; name: string }>).find((l) => l.name === name);
+  if (!layer) {
+    throw new Error(`Layer "${name}" not found in seeded layers`);
+  }
+  return layer.id;
+}
+
+let koelnLayerId: number;
+
 async function createEvent(token: string, title: string): Promise<number> {
   const response = await request(app)
     .post('/api/author/events')
@@ -27,7 +39,7 @@ async function createEvent(token: string, title: string): Promise<number> {
       startDate: '2026-05-01T10:00:00Z',
       endDate: '2026-05-01T12:00:00Z',
       location: 'Ort',
-      dv: 'Köln',
+      layerId: koelnLayerId,
     });
   expect(response.status).toBe(201);
   return response.body.event.id as number;
@@ -38,6 +50,7 @@ beforeAll(async () => {
   process.env.AUTHOR_BOOTSTRAP_USERNAME = process.env.AUTHOR_BOOTSTRAP_USERNAME || 'bootstrap-admin';
   process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD = process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD || 'bootstrap-one-time-password';
   await connect();
+  koelnLayerId = await getLayerIdByName('Köln');
 });
 
 beforeEach(async () => {

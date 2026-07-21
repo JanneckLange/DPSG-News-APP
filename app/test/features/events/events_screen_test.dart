@@ -9,17 +9,49 @@ import 'package:dpsg_news_app/core/services/sync_service.dart' as sync_service;
 import 'package:dpsg_news_app/features/author/data/author_auth_provider.dart';
 import 'package:dpsg_news_app/features/events/data/remote_event_source.dart';
 import 'package:dpsg_news_app/features/events/presentation/events_screen.dart';
-import 'package:dpsg_news_app/features/settings/data/settings_repository.dart' as settings_repo;
+import 'package:dpsg_news_app/features/settings/data/settings_repository.dart'
+    as settings_repo;
 
-import '../../widget_test.dart' show FakeSecureStorageService, TestAuthorAuthNotifier;
+import '../../widget_test.dart'
+    show FakeSecureStorageService, TestAuthorAuthNotifier;
+
+const koelnLayerId = 1;
+const hamburgLayerId = 2;
 
 class _FakeRemoteEventSource extends RemoteEventSource {
-  _FakeRemoteEventSource(this._events) : super(baseUrl: Uri.parse('http://localhost'));
+  _FakeRemoteEventSource(this._events)
+      : super(baseUrl: Uri.parse('http://localhost'));
 
   final List<Map<String, dynamic>> _events;
 
   @override
-  Future<List<Map<String, dynamic>>> fetchEvents({String? token}) async => _events;
+  Future<List<Map<String, dynamic>>> fetchEvents({String? token}) async =>
+      _events;
+
+  @override
+  Future<Map<String, dynamic>> fetchLayers() async => {
+        'lastChange': '2026-01-01T00:00:00.000Z',
+        'layers': [
+          {
+            'id': 0,
+            'name': 'Bundesverband DPSG',
+            'type': 'bundesverband',
+            'parentId': null,
+          },
+          {
+            'id': koelnLayerId,
+            'name': 'Köln',
+            'type': 'dv',
+            'parentId': 0,
+          },
+          {
+            'id': hamburgLayerId,
+            'name': 'Hamburg',
+            'type': 'dv',
+            'parentId': 0,
+          },
+        ],
+      };
 }
 
 // runAsync: EventsScreen.initState synchronisiert Events (echter
@@ -29,15 +61,16 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 Future<void> _pumpEventsScreen(
   WidgetTester tester, {
   required List<Map<String, dynamic>> events,
-  required List<String> selectedDvs,
+  required List<int> selectedLayerIds,
   Set<String> savedEventIds = const {},
 }) async {
-  final repository = settings_repo.SettingsRepository(HiveService.getSettingsBox());
+  final repository =
+      settings_repo.SettingsRepository(HiveService.getSettingsBox());
   final secureStorage = FakeSecureStorageService();
   final remote = _FakeRemoteEventSource(events);
 
   await tester.runAsync(() async {
-    await repository.setSelectedDvs(selectedDvs);
+    await repository.setSelectedLayerIds(selectedLayerIds);
     await repository.setSavedEventIds(savedEventIds.toList());
 
     await tester.pumpWidget(
@@ -49,7 +82,8 @@ Future<void> _pumpEventsScreen(
               repository: repository,
               remote: remote,
               secureStorage: secureStorage,
-              initialState: const AuthorAuthState(isLoggedIn: false, isLocked: false),
+              initialState:
+                  const AuthorAuthState(isLoggedIn: false, isLocked: false),
             ),
           ),
         ],
@@ -81,31 +115,33 @@ void main() {
     await HiveService.getEventsBox().clear();
   });
 
-  testWidgets('shows saved events first, then remaining events grouped by month', (tester) async {
+  testWidgets(
+      'shows saved events first, then remaining events grouped by month',
+      (tester) async {
     await _pumpEventsScreen(
       tester,
-      selectedDvs: ['Köln', 'Hamburg'],
+      selectedLayerIds: [koelnLayerId, hamburgLayerId],
       savedEventIds: {'1'},
       events: [
         {
           'id': 1,
           'title': 'Gemerktes Event',
           'location': 'Ort A',
-          'dv': 'Köln',
+          'layerId': koelnLayerId,
           'startDate': '2026-12-01T10:00:00Z',
         },
         {
           'id': 2,
           'title': 'Event August',
           'location': 'Ort B',
-          'dv': 'Hamburg',
+          'layerId': hamburgLayerId,
           'startDate': '2026-08-05T10:00:00Z',
         },
         {
           'id': 3,
           'title': 'Event September',
           'location': 'Ort C',
-          'dv': 'Hamburg',
+          'layerId': hamburgLayerId,
           'startDate': '2026-09-10T10:00:00Z',
         },
       ],
@@ -125,16 +161,17 @@ void main() {
     expect(septemberHeaderY, lessThan(septemberEventY));
   });
 
-  testWidgets('hides the DV chip when only one DV is subscribed', (tester) async {
+  testWidgets('hides the DV chip when only one DV is subscribed',
+      (tester) async {
     await _pumpEventsScreen(
       tester,
-      selectedDvs: ['Köln'],
+      selectedLayerIds: [koelnLayerId],
       events: [
         {
           'id': 1,
           'title': 'Solo-DV-Event',
           'location': 'Ort A',
-          'dv': 'Köln',
+          'layerId': koelnLayerId,
           'startDate': '2026-08-05T10:00:00Z',
         },
       ],
@@ -144,16 +181,17 @@ void main() {
     expect(find.text('Köln'), findsNothing);
   });
 
-  testWidgets('shows the DV chip when multiple DVs are subscribed', (tester) async {
+  testWidgets('shows the DV chip when multiple DVs are subscribed',
+      (tester) async {
     await _pumpEventsScreen(
       tester,
-      selectedDvs: ['Köln', 'Hamburg'],
+      selectedLayerIds: [koelnLayerId, hamburgLayerId],
       events: [
         {
           'id': 1,
           'title': 'Multi-DV-Event',
           'location': 'Ort A',
-          'dv': 'Köln',
+          'layerId': koelnLayerId,
           'startDate': '2026-08-05T10:00:00Z',
         },
       ],

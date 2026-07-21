@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../author/data/author_auth_provider.dart';
+import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../core/services/hive_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
@@ -110,7 +111,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     super.initState();
     // Ungedrosselt aufgerufen, die Drossel-Logik (max. alle 120s) sitzt
     // zentral in SyncService.syncEvents.
-    Future.microtask(() => ref.read(sync_service.syncServiceProvider).syncEvents());
+    Future.microtask(
+        () => ref.read(sync_service.syncServiceProvider).syncEvents());
   }
 
   Future<void> _toggleSaved(String eventId, bool isSaved) async {
@@ -127,21 +129,26 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
   Widget build(BuildContext context) {
     final eventsAsync = ref.watch(eventsProvider);
     final settingsRepo = ref.watch(settingsRepositoryProvider);
-    final selectedDvs = settingsRepo.getSelectedDvs();
+    final selectedLayerIds = settingsRepo.getSelectedLayerIds();
+    final layerNamesById = ref.watch(layerNamesByIdProvider);
     final savedEventIds = ref.watch(savedEventIdsProvider);
     final viewedAt = ref.watch(eventViewedAtProvider);
     final authorAuth = ref.watch(authorAuthProvider);
-    final showDv = selectedDvs.length > 1;
+    final showDv = selectedLayerIds.length > 1;
 
     final syncError = ref.watch(sync_service.eventSyncStatusProvider);
     final analytics = ref.read(analyticsServiceProvider);
 
     Widget buildContent(List<Map<String, dynamic>> events) {
-      final filteredEvents = selectedDvs.isEmpty
+      final filteredEvents = selectedLayerIds.isEmpty
           ? events
-          : events.where((event) => selectedDvs.contains(event['dv'] as String)).toList();
+          : events
+              .where((event) => selectedLayerIds
+                  .contains((event['layerId'] as num?)?.toInt()))
+              .toList();
 
-      final stats = EventsDashboardStats.fromEvents(filteredEvents, savedEventIds, viewedAt);
+      final stats = EventsDashboardStats.fromEvents(
+          filteredEvents, savedEventIds, viewedAt);
       final entries = _buildListEntries(filteredEvents, savedEventIds);
 
       final listView = filteredEvents.isEmpty
@@ -172,18 +179,23 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
                 final event = (entry as _EventEntry).event;
                 final id = event['id']?.toString() ?? '';
-                final startDate = DateTime.tryParse(event['startDate']?.toString() ?? '');
-                final lastUpdateAt = DateTime.tryParse(event['lastUpdateAt']?.toString() ?? '');
-                final createdAt = DateTime.tryParse(event['createdAt']?.toString() ?? '');
+                final startDate =
+                    DateTime.tryParse(event['startDate']?.toString() ?? '');
+                final lastUpdateAt =
+                    DateTime.tryParse(event['lastUpdateAt']?.toString() ?? '');
+                final createdAt =
+                    DateTime.tryParse(event['createdAt']?.toString() ?? '');
                 final viewed = viewedAt[id];
                 final isSaved = savedEventIds.contains(id);
                 final createdBy = event['createdBy'] as String?;
+                final eventLayerId = (event['layerId'] as num?)?.toInt();
 
                 final showNewUpdateBadge = isSaved &&
                     lastUpdateAt != null &&
                     (viewed == null || lastUpdateAt.isAfter(viewed));
                 final showNewBadge = createdAt != null &&
-                    DateTime.now().difference(createdAt) < const Duration(days: 30) &&
+                    DateTime.now().difference(createdAt) <
+                        const Duration(days: 30) &&
                     !viewedAt.containsKey(id);
 
                 return Dismissible(
@@ -204,14 +216,16 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                     if (direction == DismissDirection.startToEnd) {
                       await _toggleSaved(id, isSaved);
                     } else {
-                      await ref.read(eventViewedAtProvider.notifier).markViewed(id);
+                      await ref
+                          .read(eventViewedAtProvider.notifier)
+                          .markViewed(id);
                     }
                     return false;
                   },
                   child: EventListTile(
                     title: event['title'] as String? ?? '',
                     location: event['location'] as String? ?? '',
-                    dv: event['dv'] as String? ?? '',
+                    layerName: layerNamesById[eventLayerId] ?? 'Unbekannt',
                     topic: event['topic'] as String?,
                     startDate: startDate,
                     createdBy: authorAuth.isAdmin ? createdBy : null,
@@ -237,7 +251,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
           screen: 'events',
           source: 'events_screen',
           additionalProperties: {
-            'selected_dv_count': selectedDvs.length,
+            'selected_dv_count': selectedLayerIds.length,
             'total_event_count': events.length,
           },
         ),
@@ -252,7 +266,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               padding: const EdgeInsets.all(12),
               child: Text(
                 syncError,
-                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer),
               ),
             ),
           DashboardStatRow(
@@ -284,7 +299,9 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                     action: 'refresh',
                   ),
                 );
-                await ref.read(sync_service.syncServiceProvider).syncEvents(force: true);
+                await ref
+                    .read(sync_service.syncServiceProvider)
+                    .syncEvents(force: true);
               },
               child: listView,
             ),
@@ -300,7 +317,9 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
         loading: () => const SkeletonCardList(),
         error: (error, stackTrace) => RefreshIndicator(
           onRefresh: () async {
-            await ref.read(sync_service.syncServiceProvider).syncEvents(force: true);
+            await ref
+                .read(sync_service.syncServiceProvider)
+                .syncEvents(force: true);
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),

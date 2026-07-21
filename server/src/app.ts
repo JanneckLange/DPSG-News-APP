@@ -6,16 +6,20 @@ import {
   createAuthorDraft,
   createAuthorEvent,
   createEventUpdate,
+  createLayer,
   deleteAllEvents,
   deleteAuthorDraftById,
   deleteAuthorEventById,
   deleteAuthorById,
   deleteEventById,
+  deleteLayer,
   getAuthorDrafts,
   getAuthorEvents,
   getAuthorSession,
   getEventUpdates,
   getEvents,
+  getLayerById,
+  getLayers,
   loginAuthor,
   logoutAuthor,
   listAuthors,
@@ -25,18 +29,19 @@ import {
   updateAuthorDraftById,
   updateAuthorEventById,
   updateEventById,
+  updateLayer,
   clearDrafts,
   clearEvents,
   clearAuthorData,
   createAuthorForTesting,
   DraftInput,
   EventInput,
+  Layer,
 } from './db';
 import { sendEventNotification, sendEventUpdateNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
 import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError, logWarn } from './logger';
 import { createRateLimitStore } from './rateLimitStore';
-import { DV_TREE } from './dvTree';
 import { validateEventTextFields, validateMessageField } from './eventValidation';
 
 const app = express();
@@ -226,25 +231,37 @@ function respondBadRequest(req: Request, res: Response, message: string): Respon
   return res.status(400).json({ error: message });
 }
 
+function parseLayerId(value: unknown): number | undefined {
+  const num = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(num) && num > 0 ? num : undefined;
+}
+
+async function isKnownLayerId(layerId: number): Promise<boolean> {
+  return (await getLayerById(layerId)) !== null;
+}
+
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    treeVersion: DV_TREE.lastTreeChange,
     build: getBuildInfo(),
   });
 });
 
-app.get('/api/dvs', (_req: Request, res: Response) => {
-  res.json({
-    lastTreeChange: DV_TREE.lastTreeChange,
-    dvs: DV_TREE.dvs,
-  });
+app.get('/api/layers', async (_req: Request, res: Response) => {
+  try {
+    const layers = await getLayers();
+    const lastChange = layers.reduce((max, layer) => (layer.updatedAt > max ? layer.updatedAt : max), '');
+    res.json({ layers, lastChange });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load layers' });
+  }
 });
 
 app.get('/api/events', async (req: Request, res: Response) => {
   try {
-    const dv = typeof req.query.dv === 'string' ? req.query.dv : undefined;
-    const events = await getEvents(dv);
+    const layerId = typeof req.query.layerId === 'string' ? Number(req.query.layerId) : undefined;
+    const events = await getEvents(Number.isInteger(layerId) && layerId! > 0 ? layerId : undefined);
     const viewer = await getViewerSession(req);
     const authorMap = viewer?.author.isAdmin ? new Map((await listAuthors()).map((author) => [author.id, author.username])) : null;
     const currentAuthorId = viewer?.author.id ?? null;
@@ -405,24 +422,29 @@ app.post('/api/events', async (req: Request, res: Response) => {
       return;
     }
 
-    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    const { title, description, startDate, endDate, location, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const layerId = parseLayerId((req.body as EventInput).layerId);
+    if (!title || !description || !startDate || !location || !layerId) {
+      return respondBadRequest(req, res, 'Missing required event fields');
+    }
+    const layer = await getLayerById(layerId);
+    if (!layer) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, layer.groups);
     if (!fieldsCheck.valid) {
       return respondBadRequest(req, res, fieldsCheck.error);
     }
-    if (!title || !description || !startDate || !location || !dv) {
-      return respondBadRequest(req, res, 'Missing required event fields');
-    }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, layerId, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
 
     logInfo('Created event, sending push notification', {
       requestId: res.locals.requestId,
       eventId: event.id,
       title,
       location,
-      dv,
+      layerId,
       topic,
     });
 
@@ -431,7 +453,7 @@ app.post('/api/events', async (req: Request, res: Response) => {
         title,
         description,
         eventId: event.id,
-        dv,
+        layerId,
         topic,
       });
       logInfo('Push notification request completed for event', {
@@ -457,17 +479,22 @@ app.post('/api/author/events', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    const { title, description, startDate, endDate, location, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const layerId = parseLayerId((req.body as EventInput).layerId);
+    if (!title || !description || !startDate || !location || !layerId) {
+      return respondBadRequest(req, res, 'Missing required event fields');
+    }
+    const layer = await getLayerById(layerId);
+    if (!layer) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, layer.groups);
     if (!fieldsCheck.valid) {
       return respondBadRequest(req, res, fieldsCheck.error);
     }
-    if (!title || !description || !startDate || !location || !dv) {
-      return respondBadRequest(req, res, 'Missing required event fields');
-    }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, layerId, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
     res.status(201).json({ event });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -500,17 +527,26 @@ app.post('/api/author/drafts', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
-    if (!fieldsCheck.valid) {
-      return respondBadRequest(req, res, fieldsCheck.error);
-    }
+    const { title, description, startDate, endDate, location, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
+    const rawLayerId = (req.body as DraftInput).layerId;
+    const layerId = rawLayerId != null ? parseLayerId(rawLayerId) : undefined;
     if (!title) {
       return respondBadRequest(req, res, 'Missing required draft fields');
     }
+    let layer: Layer | null = null;
+    if (rawLayerId != null) {
+      layer = layerId ? await getLayerById(layerId) : null;
+      if (!layer) {
+        return respondBadRequest(req, res, 'Invalid layerId');
+      }
+    }
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, layer?.groups);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
 
     const author = res.locals.author as { id: number };
-    const draft = await createAuthorDraft({ title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
+    const draft = await createAuthorDraft({ title, description, startDate, endDate, location, layerId, topic, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
     res.status(201).json({ draft });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -530,17 +566,26 @@ app.put('/api/author/drafts/:id', async (req: Request, res: Response) => {
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid draft id');
     }
-    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
-    if (!fieldsCheck.valid) {
-      return respondBadRequest(req, res, fieldsCheck.error);
-    }
+    const { title, description, startDate, endDate, location, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
+    const rawLayerId = (req.body as DraftInput).layerId;
+    const layerId = rawLayerId != null ? parseLayerId(rawLayerId) : undefined;
     if (!title) {
       return respondBadRequest(req, res, 'Missing required draft fields');
     }
+    let layer: Layer | null = null;
+    if (rawLayerId != null) {
+      layer = layerId ? await getLayerById(layerId) : null;
+      if (!layer) {
+        return respondBadRequest(req, res, 'Invalid layerId');
+      }
+    }
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, layer?.groups);
+    if (!fieldsCheck.valid) {
+      return respondBadRequest(req, res, fieldsCheck.error);
+    }
 
     const author = res.locals.author as { id: number };
-    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url });
+    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, location, layerId, topic, cta1Label, cta1Url, cta2Label, cta2Url });
     if (!draft) {
       return res.status(404).json({ error: 'Draft not found' });
     }
@@ -609,13 +654,18 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!await requireEditableEvent(req, res, current.authorId)) {
       return;
     }
-    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    const { title, description, startDate, endDate, location, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const layerId = parseLayerId((req.body as EventInput).layerId);
+    if (!title || !description || !startDate || !location || !layerId) {
+      return respondBadRequest(req, res, 'Missing required event fields');
+    }
+    const layer = await getLayerById(layerId);
+    if (!layer) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, layer.groups);
     if (!fieldsCheck.valid) {
       return respondBadRequest(req, res, fieldsCheck.error);
-    }
-    if (!title || !description || !startDate || !location || !dv) {
-      return respondBadRequest(req, res, 'Missing required event fields');
     }
     const updated = await updateEventById(id, {
       title,
@@ -623,7 +673,7 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
       startDate,
       endDate,
       location,
-      dv,
+      layerId,
       topic,
       cta1Label,
       cta1Url,
@@ -653,17 +703,22 @@ app.put('/api/author/events/:id', async (req: Request, res: Response) => {
       return respondBadRequest(req, res, 'Invalid event id');
     }
 
-    const { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>);
+    const { title, description, startDate, endDate, location, topic, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const layerId = parseLayerId((req.body as EventInput).layerId);
+    if (!title || !description || !startDate || !location || !layerId) {
+      return respondBadRequest(req, res, 'Missing required event fields');
+    }
+    const layer = await getLayerById(layerId);
+    if (!layer) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, layer.groups);
     if (!fieldsCheck.valid) {
       return respondBadRequest(req, res, fieldsCheck.error);
     }
-    if (!title || !description || !startDate || !location || !dv) {
-      return respondBadRequest(req, res, 'Missing required event fields');
-    }
 
     const author = res.locals.author as { id: number };
-    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, dv, topic, cta1Label, cta1Url, cta2Label, cta2Url });
+    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, layerId, topic, cta1Label, cta1Url, cta2Label, cta2Url });
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -941,6 +996,109 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to reset password' });
+  }
+});
+
+app.post('/api/admin/layers', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const type = typeof req.body.type === 'string' ? req.body.type.trim() : '';
+    const url = typeof req.body.url === 'string' ? req.body.url.trim() : undefined;
+    const parentId = req.body.parentId != null ? parseLayerId(req.body.parentId) : null;
+    if (!name || !type) {
+      return respondBadRequest(req, res, 'name and type are required');
+    }
+    if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
+      return respondBadRequest(req, res, 'Invalid parentId');
+    }
+    const layer = await createLayer({ name, type, parentId, url });
+    res.status(201).json({ layer });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to create layer' });
+  }
+});
+
+app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid layer id');
+    }
+    const existing = await getLayerById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Layer not found' });
+    }
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : existing.name;
+    const type = typeof req.body.type === 'string' ? req.body.type.trim() : existing.type;
+    const url = typeof req.body.url === 'string' ? req.body.url.trim() : existing.url;
+    const parentId = req.body.parentId !== undefined
+      ? (req.body.parentId != null ? parseLayerId(req.body.parentId) : null)
+      : existing.parentId;
+    if (!name || !type) {
+      return respondBadRequest(req, res, 'name and type are required');
+    }
+    if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
+      return respondBadRequest(req, res, 'Invalid parentId');
+    }
+    const updated = await updateLayer(id, { name, type, parentId, url });
+    if (!updated) {
+      return res.status(404).json({ error: 'Layer not found' });
+    }
+    res.json({ layer: updated });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to update layer' });
+  }
+});
+
+app.delete('/api/admin/layers/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid layer id');
+    }
+    const result = await deleteLayer(id);
+    if (result === 'not_found') {
+      return res.status(404).json({ error: 'Layer not found' });
+    }
+    if (result === 'has_children') {
+      return res.status(409).json({ error: 'Layer has child layers and cannot be deleted' });
+    }
+    if (result === 'in_use') {
+      return res.status(409).json({ error: 'Layer is referenced by events or drafts and cannot be deleted' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to delete layer' });
   }
 });
 

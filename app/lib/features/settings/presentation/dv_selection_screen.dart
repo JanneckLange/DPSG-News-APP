@@ -7,6 +7,7 @@ import '../../../core/services/analytics_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../data/dv_tree_provider.dart';
 import '../data/settings_repository.dart';
+import '../domain/layer_model.dart';
 
 class DvSelectionScreen extends StatelessWidget {
   const DvSelectionScreen({super.key});
@@ -43,59 +44,61 @@ class DvSelectionEditor extends ConsumerStatefulWidget {
 }
 
 class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
-  late final Set<String> _selectedDvs;
-  late final Map<String, List<String>> _selectedTopicsByDv;
+  late final Set<int> _selectedLayerIds;
+  late final Map<int, List<String>> _selectedTopicsByLayer;
 
   @override
   void initState() {
     super.initState();
     final repository = ref.read(settingsRepositoryProvider);
-    _selectedDvs = repository.getSelectedDvs().toSet();
-    _selectedTopicsByDv = repository.getSelectedTopicsByDv();
+    _selectedLayerIds = repository.getSelectedLayerIds().toSet();
+    _selectedTopicsByLayer = repository.getSelectedTopicsByLayer();
   }
 
   @override
   Widget build(BuildContext context) {
-    final dvTreeAsync = ref.watch(dvTreeProvider);
+    final layerTreeAsync = ref.watch(layerTreeProvider);
 
-    return dvTreeAsync.when(
-      data: (dvs) {
+    return layerTreeAsync.when(
+      data: (layers) {
+        final dvs = layers.where((layer) => layer.type == 'dv').toList();
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           itemCount: dvs.length,
           itemBuilder: (context, index) {
             final dv = dvs[index];
-            final dvName = dv['name'] as String;
-            final groups = (dv['groups'] as List<dynamic>?)?.whereType<String>().toList() ?? <String>[];
-            final isSelected = _selectedDvs.contains(dvName);
-            final selectedTopics = _selectedTopicsByDv[dvName] ?? <String>[];
+            final groups = dv.groups ?? <String>[];
+            final isSelected = _selectedLayerIds.contains(dv.id);
+            final selectedTopics = _selectedTopicsByLayer[dv.id] ?? <String>[];
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CheckboxListTile(
-                      title: Text(dvName),
-                      subtitle: dv['url'] != null ? Text(dv['url'] as String) : null,
+                      title: Text(dv.name),
+                      subtitle: dv.url != null ? Text(dv.url!) : null,
                       value: isSelected,
                       onChanged: (checked) {
                         setState(() {
                           if (checked == true) {
-                            _selectedDvs.add(dvName);
+                            _selectedLayerIds.add(dv.id);
                           } else {
-                            _selectedDvs.remove(dvName);
-                            _selectedTopicsByDv.remove(dvName);
+                            _selectedLayerIds.remove(dv.id);
+                            _selectedTopicsByLayer.remove(dv.id);
                           }
                         });
                       },
                     ),
                     if (isSelected && groups.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 4),
+                        padding: const EdgeInsets.only(
+                            left: 16, right: 16, bottom: 4),
                         child: Row(
                           children: [
                             Expanded(
@@ -110,13 +113,13 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
                               onPressed: () async {
                                 final updated = await _showTopicDialog(
                                   context,
-                                  dvName,
+                                  dv.name,
                                   groups,
                                   selectedTopics,
                                 );
                                 if (updated != null) {
                                   setState(() {
-                                    _selectedTopicsByDv[dvName] = updated;
+                                    _selectedTopicsByLayer[dv.id] = updated;
                                   });
                                 }
                               },
@@ -148,21 +151,33 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
   Future<List<String>> save() async {
     final repository = ref.read(settingsRepositoryProvider);
     final analytics = ref.read(analyticsServiceProvider);
-    final selectedDvs = _selectedDvs.toList()..sort();
-    await repository.setSelectedDvs(selectedDvs);
+    final layerTree =
+        ref.read(layerTreeProvider).asData?.value ?? <LayerModel>[];
+    final selectedLayerIds = _selectedLayerIds.toList()..sort();
+    await repository.setSelectedLayerIds(selectedLayerIds);
 
-    for (final dvName in _selectedTopicsByDv.keys) {
-      if (_selectedDvs.contains(dvName)) {
-        await repository.setSelectedTopicsForDv(dvName, _selectedTopicsByDv[dvName] ?? <String>[]);
+    for (final layerId in _selectedTopicsByLayer.keys) {
+      if (_selectedLayerIds.contains(layerId)) {
+        await repository.setSelectedTopicsForLayer(
+            layerId, _selectedTopicsByLayer[layerId] ?? <String>[]);
       } else {
-        await repository.removeSelectedTopicsForDv(dvName);
+        await repository.removeSelectedTopicsForLayer(layerId);
       }
     }
 
     await ref.read(notificationServiceProvider).refreshTopicSubscriptions();
-    unawaited(analytics.trackDvSelectionChanged(selectedDvs));
 
-    return selectedDvs;
+    final layerNamesById = {
+      for (final layer in layerTree) layer.id: layer.name
+    };
+    final selectedNames = selectedLayerIds
+        .map((id) => layerNamesById[id])
+        .whereType<String>()
+        .toList()
+      ..sort();
+    unawaited(analytics.trackDvSelectionChanged(selectedNames));
+
+    return selectedNames;
   }
 
   Future<List<String>?> _showTopicDialog(
@@ -209,7 +224,8 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
                   child: const Text('Abbrechen'),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context, selectedTopics.toList()),
+                  onPressed: () =>
+                      Navigator.pop(context, selectedTopics.toList()),
                   child: const Text('Speichern'),
                 ),
               ],

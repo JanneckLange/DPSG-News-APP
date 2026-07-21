@@ -5,11 +5,12 @@ import 'package:dpsg_news_app/features/events/presentation/event_list_tile.dart'
 void main() {
   Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
-  testWidgets('shows the DV chip by default (backwards compatible)', (tester) async {
+  testWidgets('shows the DV chip by default (backwards compatible)',
+      (tester) async {
     await tester.pumpWidget(wrap(const EventListTile(
       title: 'Titel',
       location: 'Ort',
-      dv: 'Köln',
+      layerName: 'Köln',
     )));
 
     expect(find.text('Köln'), findsOneWidget);
@@ -20,7 +21,7 @@ void main() {
     await tester.pumpWidget(wrap(const EventListTile(
       title: 'Titel',
       location: 'Ort',
-      dv: 'Köln',
+      layerName: 'Köln',
       showDv: false,
     )));
 
@@ -31,18 +32,19 @@ void main() {
     await tester.pumpWidget(wrap(const EventListTile(
       title: 'Titel',
       location: 'Ort',
-      dv: 'Köln',
+      layerName: 'Köln',
       topic: 'Pfadfinder',
     )));
 
     expect(find.text('Pfadfinder'), findsOneWidget);
   });
 
-  testWidgets('shows a bookmark indicator when isSaved is true', (tester) async {
+  testWidgets('shows a bookmark indicator when isSaved is true',
+      (tester) async {
     await tester.pumpWidget(wrap(const EventListTile(
       title: 'Titel',
       location: 'Ort',
-      dv: 'Köln',
+      layerName: 'Köln',
       isSaved: true,
     )));
 
@@ -53,18 +55,19 @@ void main() {
     await tester.pumpWidget(wrap(const EventListTile(
       title: 'Titel',
       location: 'Ort',
-      dv: 'Köln',
+      layerName: 'Köln',
       showNewBadge: true,
     )));
 
     expect(find.text('NEU'), findsOneWidget);
   });
 
-  testWidgets('shows a new-update badge when showNewUpdateBadge is true', (tester) async {
+  testWidgets('shows a new-update badge when showNewUpdateBadge is true',
+      (tester) async {
     await tester.pumpWidget(wrap(const EventListTile(
       title: 'Titel',
       location: 'Ort',
-      dv: 'Köln',
+      layerName: 'Köln',
       showNewUpdateBadge: true,
     )));
 
@@ -75,7 +78,7 @@ void main() {
     await tester.pumpWidget(wrap(EventListTile(
       title: 'Titel',
       location: 'Ort',
-      dv: 'Köln',
+      layerName: 'Köln',
       startDate: DateTime(2026, 8, 16),
     )));
 

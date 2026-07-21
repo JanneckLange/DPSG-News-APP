@@ -12,7 +12,7 @@ void main() {
   test('fetchEvents returns parsed events on HTTP 200', () async {
     final client = MockClient((request) async {
       return http.Response(
-        '{"events":[{"title":"Test Event","location":"Testort","dv":"Köln"}]}',
+        '{"events":[{"title":"Test Event","location":"Testort","layerId":3}]}',
         200,
         headers: {'content-type': 'application/json'},
       );
@@ -26,7 +26,8 @@ void main() {
     expect(events.first['title'], 'Test Event');
   });
 
-  test('fetchEvents throws RemoteEventSourceException on non-200 response', () async {
+  test('fetchEvents throws RemoteEventSourceException on non-200 response',
+      () async {
     final client = MockClient((request) async {
       return http.Response('Not found', 404);
     });
@@ -71,7 +72,8 @@ void main() {
     );
   });
 
-  test('fetchEvents throws RemoteEventSourceException on network unreachable', () async {
+  test('fetchEvents throws RemoteEventSourceException on network unreachable',
+      () async {
     final client = MockClient((request) async {
       throw const SocketException('Failed host lookup');
     });
@@ -85,6 +87,44 @@ void main() {
           isA<RemoteEventSourceException>(),
           predicate((RemoteEventSourceException e) =>
               e.message.contains('Unable to reach the event server')),
+        ),
+      ),
+    );
+  });
+
+  test('fetchLayers returns parsed layers on HTTP 200', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/layers');
+      expect(request.method, 'GET');
+      return http.Response(
+        '{"layers":[{"id":1,"name":"Bundesverband DPSG","type":"bundesverband","parentId":null}],"lastChange":"2026-01-01T00:00:00.000Z"}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result = await source.fetchLayers();
+
+    expect(result['lastChange'], '2026-01-01T00:00:00.000Z');
+    expect((result['layers'] as List).first['name'], 'Bundesverband DPSG');
+  });
+
+  test('fetchLayers throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('Server error', 500);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchLayers(),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.message.contains('Failed to fetch layers')),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../events/presentation/event_editor_sheet.dart';
 import '../../events/presentation/event_list_tile.dart';
+import '../../settings/data/dv_tree_provider.dart';
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import 'admin_otp_dialog.dart';
@@ -300,7 +301,9 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                 (event) => EventListTile(
                   title: event['title'] as String? ?? '',
                   location: event['location'] as String? ?? '',
-                  dv: event['dv'] as String? ?? '',
+                  layerName: ref.watch(layerNamesByIdProvider)[
+                          (event['layerId'] as num?)?.toInt()] ??
+                      'Kein DV',
                   onEdit: () => _editContribution(event),
                   onDelete: () => _deleteContribution(event),
                 ),

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'crypto';
 import { Client, QueryConfig } from 'pg';
 import dotenv from 'dotenv';
 import { hashPassword, verifyPassword } from './password';
+import { BUNDESVERBAND_NAME, SEED_DVS } from './seedLayers';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ type EventRow = {
   start_date: string | null;
   end_date: string | null;
   location: string | null;
-  dv: string | null;
+  layer_id: number | null;
   topic?: string;
   cta1_label: string | null;
   cta1_url: string | null;
@@ -31,7 +32,7 @@ export type Event = {
   startDate: string;
   endDate: string;
   location: string;
-  dv: string;
+  layerId: number | null;
   topic?: string;
   cta1Label?: string;
   cta1Url?: string;
@@ -49,7 +50,7 @@ export type EventInput = {
   startDate?: string;
   endDate?: string;
   location?: string;
-  dv?: string;
+  layerId?: number;
   topic?: string;
   cta1Label?: string;
   cta1Url?: string;
@@ -64,7 +65,7 @@ type DraftRow = {
   start_date: string | null;
   end_date: string | null;
   location: string | null;
-  dv: string | null;
+  layer_id: number | null;
   topic?: string;
   cta1_label: string | null;
   cta1_url: string | null;
@@ -82,7 +83,7 @@ export type Draft = {
   startDate: string;
   endDate: string;
   location: string;
-  dv: string;
+  layerId: number | null;
   topic?: string;
   cta1Label?: string;
   cta1Url?: string;
@@ -100,12 +101,41 @@ export type DraftInput = {
   startDate?: string;
   endDate?: string;
   location?: string;
-  dv?: string;
+  layerId?: number;
   topic?: string;
   cta1Label?: string;
   cta1Url?: string;
   cta2Label?: string;
   cta2Url?: string;
+};
+
+type LayerRow = {
+  id: number;
+  name: string;
+  type: string;
+  parent_id: number | null;
+  url: string | null;
+  groups: string[] | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Layer = {
+  id: number;
+  name: string;
+  type: string;
+  parentId: number | null;
+  url: string | null;
+  groups: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LayerInput = {
+  name: string;
+  type: string;
+  parentId?: number | null;
+  url?: string | null;
 };
 
 type EventUpdateRow = {
@@ -375,6 +405,21 @@ export async function connect(): Promise<void> {
   await client.query(`CREATE INDEX IF NOT EXISTS author_refresh_sessions_author_id_idx ON author_refresh_sessions(author_id);`);
   await client.query(`CREATE INDEX IF NOT EXISTS author_refresh_sessions_family_id_idx ON author_refresh_sessions(family_id);`);
   await client.query(`
+    CREATE TABLE IF NOT EXISTS layers (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      parent_id INTEGER REFERENCES layers(id) ON DELETE CASCADE,
+      url TEXT,
+      groups TEXT[],
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE NULLS NOT DISTINCT (type, name, parent_id)
+    );
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS layers_parent_id_idx ON layers(parent_id);`);
+  await ensureSeedLayers();
+  await client.query(`
     CREATE TABLE IF NOT EXISTS events (
       id SERIAL PRIMARY KEY,
       title TEXT NOT NULL,
@@ -437,6 +482,8 @@ export async function connect(): Promise<void> {
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
   await client.query(`CREATE INDEX IF NOT EXISTS drafts_author_id_idx ON drafts(author_id);`);
+  await migrateDvToLayerId('events');
+  await migrateDvToLayerId('drafts');
   await client.query(`
     CREATE TABLE IF NOT EXISTS event_updates (
       id SERIAL PRIMARY KEY,
@@ -450,6 +497,60 @@ export async function connect(): Promise<void> {
   await cleanupExpiredSessions(true);
   await cleanupExpiredDrafts(true);
   await ensureBootstrapAuthor();
+}
+
+async function ensureSeedLayers(): Promise<void> {
+  const db = ensureClient();
+  const bundesverbandResult = await db.query<{ id: number }>(
+    `INSERT INTO layers (name, type, parent_id)
+     VALUES ($1, 'bundesverband', NULL)
+     ON CONFLICT (type, name, parent_id) DO UPDATE SET name = EXCLUDED.name
+     RETURNING id`,
+    [BUNDESVERBAND_NAME]
+  );
+  const bundesverbandId = bundesverbandResult.rows[0].id;
+
+  for (const dv of SEED_DVS) {
+    await db.query(
+      `INSERT INTO layers (name, type, parent_id, url, groups)
+       VALUES ($1, 'dv', $2, $3, $4)
+       ON CONFLICT (type, name, parent_id) DO NOTHING`,
+      [dv.name, bundesverbandId, dv.url ?? null, dv.groups ?? null]
+    );
+  }
+}
+
+async function migrateDvToLayerId(table: 'events' | 'drafts'): Promise<void> {
+  const db = ensureClient();
+  await db.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS layer_id INTEGER REFERENCES layers(id);`);
+
+  const dvColumnExists = await db.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_name = $1 AND column_name = 'dv'
+     ) AS exists`,
+    [table]
+  );
+  if (!dvColumnExists.rows[0]?.exists) {
+    return;
+  }
+
+  await db.query(
+    `UPDATE ${table} t
+     SET layer_id = l.id
+     FROM layers l
+     WHERE t.layer_id IS NULL
+       AND l.type = 'dv'
+       AND l.name = t.dv`
+  );
+  const unmatched = await db.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM ${table} WHERE layer_id IS NULL AND dv IS NOT NULL`
+  );
+  const unmatchedCount = Number(unmatched.rows[0]?.count ?? '0');
+  if (unmatchedCount > 0) {
+    console.warn(`[migrateDvToLayerId] ${unmatchedCount} row(s) in "${table}" could not be matched from dv (free text) to a layer_id and need manual fixup.`);
+  }
+  await db.query(`ALTER TABLE ${table} DROP COLUMN IF EXISTS dv;`);
 }
 
 async function ensureBootstrapAuthor(): Promise<void> {
@@ -476,7 +577,7 @@ export function mapEventRow(row: EventRow): Event {
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? '',
     location: row.location ?? '',
-    dv: row.dv ?? '',
+    layerId: row.layer_id,
     authorId: row.author_id,
     createdAt: row.created_at,
     modifiedAt: row.modified_at,
@@ -500,7 +601,7 @@ export function mapDraftRow(row: DraftRow): Draft {
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? '',
     location: row.location ?? '',
-    dv: row.dv ?? '',
+    layerId: row.layer_id,
     authorId: row.author_id,
     createdAt: row.created_at,
     modifiedAt: row.modified_at,
@@ -516,6 +617,19 @@ export function mapDraftRow(row: DraftRow): Draft {
   return out;
 }
 
+export function mapLayerRow(row: LayerRow): Layer {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    parentId: row.parent_id,
+    url: row.url,
+    groups: row.groups,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export function mapEventUpdateRow(row: EventUpdateRow): EventUpdate {
   return {
     id: row.id,
@@ -529,9 +643,9 @@ export function mapEventUpdateRow(row: EventUpdateRow): EventUpdate {
 
 const EVENT_SELECT_WITH_LAST_UPDATE = `SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e`;
 
-export async function getEvents(dv?: string): Promise<Event[]> {
-  const query: QueryConfig = dv
-    ? { text: `${EVENT_SELECT_WITH_LAST_UPDATE} WHERE e.dv = $1 ORDER BY e.start_date ASC`, values: [dv] }
+export async function getEvents(layerId?: number): Promise<Event[]> {
+  const query: QueryConfig = layerId
+    ? { text: `${EVENT_SELECT_WITH_LAST_UPDATE} WHERE e.layer_id = $1 ORDER BY e.start_date ASC`, values: [layerId] }
     : { text: `${EVENT_SELECT_WITH_LAST_UPDATE} ORDER BY e.start_date ASC`, values: [] };
   const result = await ensureClient().query<EventRow>(query);
   return result.rows.map(mapEventRow);
@@ -545,24 +659,24 @@ export async function createAuthorEvent(event: EventInput, authorId: number | nu
   const description = event.description ?? '';
   const startDate = event.startDate ?? new Date().toISOString();
   const endDate = event.endDate ?? startDate;
-  const dv = event.dv ?? event.location ?? 'Unbekannt';
-  const location = event.location ?? event.dv ?? dv;
+  const location = event.location ?? '';
+  const layerId = event.layerId ?? null;
 
   const result = await ensureClient().query<EventRow>(
-    `INSERT INTO events (title, description, start_date, end_date, location, dv, topic, cta1_label, cta1_url, cta2_label, cta2_url, author_id)
+    `INSERT INTO events (title, description, start_date, end_date, location, layer_id, topic, cta1_label, cta1_url, cta2_label, cta2_url, author_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
-    [event.title, description, startDate, endDate, location, dv, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, authorId]
+    [event.title, description, startDate, endDate, location, layerId, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, authorId]
   );
   return mapEventRow(result.rows[0]);
 }
 
 export async function createAuthorDraft(draft: DraftInput, authorId: number): Promise<Draft> {
   const result = await ensureClient().query<DraftRow>(
-    `INSERT INTO drafts (title, description, start_date, end_date, location, dv, topic, cta1_label, cta1_url, cta2_label, cta2_url, author_id)
+    `INSERT INTO drafts (title, description, start_date, end_date, location, layer_id, topic, cta1_label, cta1_url, cta2_label, cta2_url, author_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING *`,
-    [draft.title, draft.description ?? null, draft.startDate ?? null, draft.endDate ?? null, draft.location ?? null, draft.dv ?? null, draft.topic ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, authorId]
+    [draft.title, draft.description ?? null, draft.startDate ?? null, draft.endDate ?? null, draft.location ?? null, draft.layerId ?? null, draft.topic ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, authorId]
   );
   return mapDraftRow(result.rows[0]);
 }
@@ -589,7 +703,7 @@ export async function updateAuthorEventById(id: number, authorId: number, event:
          start_date = $3,
          end_date = $4,
          location = $5,
-         dv = $6,
+         layer_id = $6,
          topic = $7,
          cta1_label = $8,
          cta1_url = $9,
@@ -598,7 +712,7 @@ export async function updateAuthorEventById(id: number, authorId: number, event:
          modified_at = NOW()
     WHERE id = $12 AND author_id = $13
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id, authorId]
+    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id, authorId]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
@@ -612,7 +726,7 @@ export async function updateEventById(id: number, event: EventInput): Promise<Ev
          start_date = $3,
          end_date = $4,
          location = $5,
-         dv = $6,
+         layer_id = $6,
          topic = $7,
          cta1_label = $8,
          cta1_url = $9,
@@ -621,7 +735,7 @@ export async function updateEventById(id: number, event: EventInput): Promise<Ev
          modified_at = NOW()
     WHERE id = $12
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.dv, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id]
+    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topic ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
@@ -657,7 +771,7 @@ export async function updateAuthorDraftById(id: number, authorId: number, draft:
          start_date = $3,
          end_date = $4,
          location = $5,
-         dv = $6,
+         layer_id = $6,
          topic = $7,
          cta1_label = $8,
          cta1_url = $9,
@@ -666,7 +780,7 @@ export async function updateAuthorDraftById(id: number, authorId: number, draft:
          modified_at = NOW()
     WHERE id = $12 AND author_id = $13
      RETURNING *`,
-    [draft.title, draft.description, draft.startDate, draft.endDate, draft.location, draft.dv, draft.topic ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, id, authorId]
+    [draft.title, draft.description, draft.startDate, draft.endDate, draft.location, draft.layerId ?? null, draft.topic ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, id, authorId]
   );
   return result.rows[0] ? mapDraftRow(result.rows[0]) : null;
 }
@@ -1021,6 +1135,65 @@ export async function changeAuthorPassword(
   );
   await revokeAuthorSessions(authorId);
   return 'success';
+}
+
+export async function getLayers(): Promise<Layer[]> {
+  const result = await ensureClient().query<LayerRow>('SELECT * FROM layers ORDER BY type ASC, name ASC');
+  return result.rows.map(mapLayerRow);
+}
+
+export async function getLayerById(id: number): Promise<Layer | null> {
+  const result = await ensureClient().query<LayerRow>('SELECT * FROM layers WHERE id = $1', [id]);
+  return result.rows[0] ? mapLayerRow(result.rows[0]) : null;
+}
+
+export async function createLayer(input: LayerInput): Promise<Layer> {
+  const result = await ensureClient().query<LayerRow>(
+    `INSERT INTO layers (name, type, parent_id, url)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [input.name, input.type, input.parentId ?? null, input.url ?? null]
+  );
+  return mapLayerRow(result.rows[0]);
+}
+
+export async function updateLayer(id: number, input: LayerInput): Promise<Layer | null> {
+  const result = await ensureClient().query<LayerRow>(
+    `UPDATE layers
+     SET name = $1,
+         type = $2,
+         parent_id = $3,
+         url = $4,
+         updated_at = NOW()
+     WHERE id = $5
+     RETURNING *`,
+    [input.name, input.type, input.parentId ?? null, input.url ?? null, id]
+  );
+  return result.rows[0] ? mapLayerRow(result.rows[0]) : null;
+}
+
+export type DeleteLayerResult = 'deleted' | 'not_found' | 'has_children' | 'in_use';
+
+export async function deleteLayer(id: number): Promise<DeleteLayerResult> {
+  const db = ensureClient();
+  const existing = await db.query('SELECT 1 FROM layers WHERE id = $1', [id]);
+  if (!existing.rows[0]) {
+    return 'not_found';
+  }
+
+  const children = await db.query('SELECT 1 FROM layers WHERE parent_id = $1 LIMIT 1', [id]);
+  if (children.rows[0]) {
+    return 'has_children';
+  }
+
+  const referencedByEvents = await db.query('SELECT 1 FROM events WHERE layer_id = $1 LIMIT 1', [id]);
+  const referencedByDrafts = await db.query('SELECT 1 FROM drafts WHERE layer_id = $1 LIMIT 1', [id]);
+  if (referencedByEvents.rows[0] || referencedByDrafts.rows[0]) {
+    return 'in_use';
+  }
+
+  await db.query('DELETE FROM layers WHERE id = $1', [id]);
+  return 'deleted';
 }
 
 export async function close(): Promise<void> {

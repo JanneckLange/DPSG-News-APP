@@ -13,7 +13,7 @@ class EventListTile extends StatelessWidget {
     super.key,
     required this.title,
     required this.location,
-    required this.dv,
+    required this.layerName,
     this.topic,
     this.startDate,
     this.createdBy,
@@ -28,7 +28,7 @@ class EventListTile extends StatelessWidget {
 
   final String title;
   final String location;
-  final String dv;
+  final String layerName;
   final String? topic;
   final DateTime? startDate;
   final String? createdBy;
@@ -82,14 +82,18 @@ class EventListTile extends StatelessWidget {
                         if (showNewBadge) ...[
                           const SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: scheme.secondaryContainer,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               'NEU',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
                                     color: scheme.onSecondaryContainer,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -101,10 +105,12 @@ class EventListTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.place, size: 16, color: scheme.onSurfaceVariant),
+                        Icon(Icons.place,
+                            size: 16, color: scheme.onSurfaceVariant),
                         const SizedBox(width: 4),
                         Expanded(
-                          child: Text(location, style: Theme.of(context).textTheme.bodySmall),
+                          child: Text(location,
+                              style: Theme.of(context).textTheme.bodySmall),
                         ),
                       ],
                     ),
@@ -123,15 +129,17 @@ class EventListTile extends StatelessWidget {
                         children: [
                           if (showDv)
                             Chip(
-                              label: Text(dv),
+                              label: Text(layerName),
                               visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                             ),
                           if (topic != null && topic!.isNotEmpty)
                             Chip(
                               label: Text(topic!),
                               visualDensity: VisualDensity.compact,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                               backgroundColor: scheme.secondaryContainer,
                             ),
                         ],

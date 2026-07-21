@@ -10,6 +10,7 @@ import '../../../core/services/notification_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../../core/theme/app_theme.dart';
 import '../../author/data/author_auth_provider.dart';
+import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../shared/utils/date_format_utils.dart';
 import '../../../shared/utils/url_utils.dart';
@@ -268,10 +269,12 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   Widget build(BuildContext context) {
     final title = widget.event['title']?.toString() ?? 'Unbenannt';
     final location = widget.event['location']?.toString() ?? 'Unbekannt';
-    final dv = widget.event['dv']?.toString() ?? 'Unbekannt';
+    final eventLayerId = (widget.event['layerId'] as num?)?.toInt();
+    final dv = ref.watch(layerNamesByIdProvider)[eventLayerId] ?? 'Unbekannt';
     final topic = widget.event['topic']?.toString();
     final description = widget.event['description']?.toString() ?? '';
-    final startDate = formatEventDateTime(widget.event['startDate']?.toString());
+    final startDate =
+        formatEventDateTime(widget.event['startDate']?.toString());
     final endDate = formatEventDateTime(widget.event['endDate']?.toString());
     final cta1Label = widget.event['cta1Label']?.toString();
     final cta1Url = widget.event['cta1Url']?.toString();
@@ -351,12 +354,18 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           const SizedBox(height: 16),
           SafeMarkdownBody(data: description),
           const SizedBox(height: 24),
-          if (cta1Label != null && cta1Url != null && cta1Label.isNotEmpty && cta1Url.isNotEmpty)
+          if (cta1Label != null &&
+              cta1Url != null &&
+              cta1Label.isNotEmpty &&
+              cta1Url.isNotEmpty)
             FilledButton(
               onPressed: () => _confirmAndOpenLink(cta1Url, cta1Label),
               child: Text(cta1Label),
             ),
-          if (cta2Label != null && cta2Url != null && cta2Label.isNotEmpty && cta2Url.isNotEmpty)
+          if (cta2Label != null &&
+              cta2Url != null &&
+              cta2Label.isNotEmpty &&
+              cta2Url.isNotEmpty)
             FilledButton(
               onPressed: () => _confirmAndOpenLink(cta2Url, cta2Label),
               child: Text(cta2Label),
@@ -374,7 +383,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 else
                   ..._updates.map((update) {
                     final authorUsername = update['authorUsername'] as String?;
-                    final createdAt = formatEventDateTime(update['createdAt'] as String?);
+                    final createdAt =
+                        formatEventDateTime(update['createdAt'] as String?);
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: Padding(
@@ -382,7 +392,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SafeMarkdownBody(data: update['message'] as String? ?? ''),
+                            SafeMarkdownBody(
+                                data: update['message'] as String? ?? ''),
                             const SizedBox(height: 8),
                             Text(
                               '${authorUsername ?? 'Unbekannt'} · $createdAt',
@@ -424,16 +435,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   }
 }
 
-class EventDetailsPreview extends StatelessWidget {
+class EventDetailsPreview extends ConsumerWidget {
   const EventDetailsPreview({super.key, required this.event});
 
   final Map<String, dynamic> event;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final title = event['title']?.toString() ?? 'Unbenannt';
     final location = event['location']?.toString() ?? 'Unbekannt';
-    final dv = event['dv']?.toString() ?? 'Unbekannt';
+    final eventLayerId = (event['layerId'] as num?)?.toInt();
+    final dv = ref.watch(layerNamesByIdProvider)[eventLayerId] ?? 'Unbekannt';
     final topic = event['topic']?.toString();
     final description = event['description']?.toString() ?? '';
     final startDate = formatEventDateTime(event['startDate']?.toString());
@@ -490,9 +502,15 @@ class EventDetailsPreview extends StatelessWidget {
         Wrap(
           spacing: 12,
           children: [
-            if (cta1Label != null && cta1Url != null && cta1Label.isNotEmpty && cta1Url.isNotEmpty)
+            if (cta1Label != null &&
+                cta1Url != null &&
+                cta1Label.isNotEmpty &&
+                cta1Url.isNotEmpty)
               OutlinedButton(onPressed: null, child: Text(cta1Label)),
-            if (cta2Label != null && cta2Url != null && cta2Label.isNotEmpty && cta2Url.isNotEmpty)
+            if (cta2Label != null &&
+                cta2Url != null &&
+                cta2Label.isNotEmpty &&
+                cta2Url.isNotEmpty)
               OutlinedButton(onPressed: null, child: Text(cta2Label)),
           ],
         ),

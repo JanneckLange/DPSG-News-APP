@@ -17,6 +17,16 @@ async function loginAuthor(username: string, password: string): Promise<string> 
   return response.body.token as string;
 }
 
+async function getLayerIdByName(name: string): Promise<number> {
+  const response = await request(app).get('/api/layers');
+  expect(response.status).toBe(200);
+  const layer = (response.body.layers as Array<{ id: number; name: string }>).find((l) => l.name === name);
+  if (!layer) {
+    throw new Error(`Layer "${name}" not found in seeded layers`);
+  }
+  return layer.id;
+}
+
 async function forceUpdateDraftModifiedAt(draftId: number, modifiedAt: string): Promise<void> {
   const databaseUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -78,6 +88,25 @@ describe('Drafts API e2e', () => {
     expect(typeof res.body.draft.timeUntilDeletion).toBe('number');
     expect(res.body.draft.timeUntilDeletion).toBeGreaterThan(0);
     expect(sendEventNotification).not.toHaveBeenCalled();
+  });
+
+  it('accepts a draft with a valid layerId and rejects an unknown layerId', async () => {
+    await createAuthorForTesting({ username: 'draft-author', password: 'pwd-123' });
+    const token = await loginAuthor('draft-author', 'pwd-123');
+    const koelnLayerId = await getLayerIdByName('Köln');
+
+    const validRes = await request(app)
+      .post('/api/author/drafts')
+      .set('authorization', `Bearer ${token}`)
+      .send({ title: 'Draft with layer', layerId: koelnLayerId });
+    expect(validRes.status).toBe(201);
+    expect(validRes.body.draft.layerId).toBe(koelnLayerId);
+
+    const invalidRes = await request(app)
+      .post('/api/author/drafts')
+      .set('authorization', `Bearer ${token}`)
+      .send({ title: 'Draft with bad layer', layerId: 999999 });
+    expect(invalidRes.status).toBe(400);
   });
 
   it('rejects a draft with an oversized CTA label', async () => {
@@ -219,6 +248,8 @@ describe('Drafts API e2e', () => {
     expect(ownEventsResponse.status).toBe(200);
     expect(ownEventsResponse.body.events).toHaveLength(0);
 
+    const koelnLayerId = await getLayerIdByName('Köln');
+
     const adminEditAttempt = await request(app)
       .put(`/api/events/${draftId}`)
       .set('authorization', `Bearer ${adminToken}`)
@@ -228,7 +259,7 @@ describe('Drafts API e2e', () => {
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(adminEditAttempt.status).toBe(404);
 
@@ -246,7 +277,7 @@ describe('Drafts API e2e', () => {
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(authorEditAttemptViaEventsPath.status).toBe(404);
   });

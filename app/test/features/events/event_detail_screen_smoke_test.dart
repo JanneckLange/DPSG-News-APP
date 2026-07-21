@@ -9,22 +9,63 @@ import 'package:dpsg_news_app/core/services/sync_service.dart' as sync_service;
 import 'package:dpsg_news_app/features/author/data/author_auth_provider.dart';
 import 'package:dpsg_news_app/features/events/data/remote_event_source.dart';
 import 'package:dpsg_news_app/features/events/presentation/event_detail_screen.dart';
-import 'package:dpsg_news_app/features/settings/data/settings_repository.dart' as settings_repo;
+import 'package:dpsg_news_app/features/settings/data/settings_repository.dart'
+    as settings_repo;
 
-import '../../widget_test.dart' show FakeSecureStorageService, TestAuthorAuthNotifier;
+import '../../widget_test.dart'
+    show FakeSecureStorageService, TestAuthorAuthNotifier;
+
+const _koelnLayerId = 1;
 
 class _FakeRemoteEventSource extends RemoteEventSource {
   _FakeRemoteEventSource() : super(baseUrl: Uri.parse('http://localhost'));
 
   @override
-  Future<List<Map<String, dynamic>>> fetchEventUpdates({required int eventId}) async => [];
+  Future<List<Map<String, dynamic>>> fetchEventUpdates(
+          {required int eventId}) async =>
+      [];
+
+  @override
+  Future<Map<String, dynamic>> fetchLayers() async => {
+        'lastChange': '2026-01-01T00:00:00.000Z',
+        'layers': [
+          {
+            'id': 0,
+            'name': 'Bundesverband DPSG',
+            'type': 'bundesverband',
+            'parentId': null,
+          },
+          {
+            'id': _koelnLayerId,
+            'name': 'Köln',
+            'type': 'dv',
+            'parentId': 0,
+          },
+        ],
+      };
+}
+
+// Wartet mit echter Verstreichzeit (statt nur tester.pump()) darauf, dass
+// finder etwas findet. Noetig, weil EventDetailScreen den Layer-Namen ueber
+// layerNamesByIdProvider aufloest, der seinerseits echten Hive-I/O braucht
+// (siehe layerTreeProvider._loadTree), um von "loading" auf "data" zu
+// wechseln - ein einzelnes kurzes Future.delayed ist dafuer nicht zuverlaessig
+// genug.
+Future<void> _pumpUntilFound(WidgetTester tester, Finder finder,
+    {int maxAttempts = 20,
+    Duration step = const Duration(milliseconds: 100)}) async {
+  for (var i = 0; i < maxAttempts; i++) {
+    if (tester.any(finder)) return;
+    await Future<void>.delayed(step);
+    await tester.pump();
+  }
 }
 
 final _sampleEvent = <String, dynamic>{
   'id': 1,
   'title': 'Sommerlager',
   'location': 'Zeltplatz',
-  'dv': 'Köln',
+  'layerId': _koelnLayerId,
   'topic': 'Pfadfinder',
   'startDate': '2026-08-01T10:00:00Z',
   'endDate': '2026-08-03T15:00:00Z',
@@ -43,8 +84,11 @@ void main() {
     await HiveService.getSettingsBox().clear();
   });
 
-  testWidgets('renders title in AppBar, DV/Topic chips and location placeholder', (tester) async {
-    final repository = settings_repo.SettingsRepository(HiveService.getSettingsBox());
+  testWidgets(
+      'renders title in AppBar, DV/Topic chips and location placeholder',
+      (tester) async {
+    final repository =
+        settings_repo.SettingsRepository(HiveService.getSettingsBox());
     final secureStorage = FakeSecureStorageService();
     final remote = _FakeRemoteEventSource();
 
@@ -61,7 +105,8 @@ void main() {
                 repository: repository,
                 remote: remote,
                 secureStorage: secureStorage,
-                initialState: const AuthorAuthState(isLoggedIn: false, isLocked: false),
+                initialState:
+                    const AuthorAuthState(isLoggedIn: false, isLocked: false),
               ),
             ),
           ],
@@ -72,6 +117,7 @@ void main() {
         ),
       );
       await tester.pump();
+      await _pumpUntilFound(tester, find.text('DV: Köln'));
       // Der markViewed()-Aufruf in initState ist bewusst "fire-and-forget"
       // (blockiert die UI nicht). Kurze reale Wartezeit, damit der Hive-
       // Schreibvorgang abschliesst, bevor Test/Container/Widget-Baum
@@ -87,8 +133,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shows the manage popup menu when the viewer owns the event', (tester) async {
-    final repository = settings_repo.SettingsRepository(HiveService.getSettingsBox());
+  testWidgets('shows the manage popup menu when the viewer owns the event',
+      (tester) async {
+    final repository =
+        settings_repo.SettingsRepository(HiveService.getSettingsBox());
     final secureStorage = FakeSecureStorageService();
     final remote = _FakeRemoteEventSource();
 
@@ -97,7 +145,8 @@ void main() {
         ProviderScope(
           overrides: [
             sync_service.remoteEventSourceProvider.overrideWithValue(remote),
-            settings_repo.settingsRepositoryProvider.overrideWithValue(repository),
+            settings_repo.settingsRepositoryProvider
+                .overrideWithValue(repository),
             authorAuthProvider.overrideWith(
               (ref) => TestAuthorAuthNotifier(
                 repository: repository,
@@ -142,8 +191,10 @@ void main() {
     expect(find.text('Löschen'), findsOneWidget);
   });
 
-  testWidgets('marks the event as viewed when the detail screen opens', (tester) async {
-    final repository = settings_repo.SettingsRepository(HiveService.getSettingsBox());
+  testWidgets('marks the event as viewed when the detail screen opens',
+      (tester) async {
+    final repository =
+        settings_repo.SettingsRepository(HiveService.getSettingsBox());
     final secureStorage = FakeSecureStorageService();
     final remote = _FakeRemoteEventSource();
 
@@ -155,7 +206,8 @@ void main() {
             repository: repository,
             remote: remote,
             secureStorage: secureStorage,
-            initialState: const AuthorAuthState(isLoggedIn: false, isLocked: false),
+            initialState:
+                const AuthorAuthState(isLoggedIn: false, isLocked: false),
           ),
         ),
       ],
@@ -180,6 +232,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     });
 
-    expect(container.read(settings_repo.eventViewedAtProvider).containsKey('1'), isTrue);
+    expect(container.read(settings_repo.eventViewedAtProvider).containsKey('1'),
+        isTrue);
   });
 }

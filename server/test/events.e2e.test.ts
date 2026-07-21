@@ -16,11 +16,26 @@ async function loginAuthor(username: string, password: string): Promise<string> 
   return response.body.token as string;
 }
 
+async function getLayerIdByName(name: string): Promise<number> {
+  const response = await request(app).get('/api/layers');
+  expect(response.status).toBe(200);
+  const layer = (response.body.layers as Array<{ id: number; name: string }>).find((l) => l.name === name);
+  if (!layer) {
+    throw new Error(`Layer "${name}" not found in seeded layers`);
+  }
+  return layer.id;
+}
+
+let koelnLayerId: number;
+let hamburgLayerId: number;
+
 beforeAll(async () => {
   process.env.TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
   process.env.AUTHOR_BOOTSTRAP_USERNAME = process.env.AUTHOR_BOOTSTRAP_USERNAME || 'bootstrap-admin';
   process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD = process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD || 'bootstrap-one-time-password';
   await connect();
+  koelnLayerId = await getLayerIdByName('Köln');
+  hamburgLayerId = await getLayerIdByName('Hamburg');
 });
 
 beforeEach(async () => {
@@ -36,7 +51,7 @@ describe('Events API e2e', () => {
       startDate: '2026-01-01T10:00:00Z',
       endDate: '2026-01-01T12:00:00Z',
       location: 'Ort',
-      dv: 'Köln',
+      layerId: koelnLayerId,
     });
 
     expect(response.status).toBe(401);
@@ -67,7 +82,7 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-04-01T10:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.event.endDate).toBe('2026-04-01T10:00:00.000Z');
@@ -80,7 +95,7 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-04-02T10:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(publicCreateResponse.status).toBe(201);
     expect(publicCreateResponse.body.event.endDate).toBe('2026-04-02T10:00:00.000Z');
@@ -94,7 +109,7 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-04-03T10:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(updateResponse.status).toBe(200);
     expect(updateResponse.body.event.endDate).toBe('2026-04-03T10:00:00.000Z');
@@ -110,7 +125,7 @@ describe('Events API e2e', () => {
       startDate: '2026-01-01T10:00:00Z',
       endDate: '2026-01-01T12:00:00Z',
       location: 'Ort',
-      dv: 'Köln',
+      layerId: koelnLayerId,
     };
 
     const createResponse = await request(app)
@@ -122,7 +137,7 @@ describe('Events API e2e', () => {
       title: eventBody.title,
       description: eventBody.description,
       location: eventBody.location,
-      dv: eventBody.dv,
+      layerId: eventBody.layerId,
       authorId: expect.any(Number),
     });
 
@@ -147,7 +162,7 @@ describe('Events API e2e', () => {
         startDate: '2026-05-01T10:00:00Z',
         endDate: '2026-05-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
         cta1Label: 'Anmelden',
         cta1Url: 'https://example.org/anmeldung',
         cta2Label: 'Mehr Infos',
@@ -180,7 +195,7 @@ describe('Events API e2e', () => {
         startDate: '2026-05-01T10:00:00Z',
         endDate: '2026-05-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
         cta1Label: 'Jetzt anmelden',
         cta1Url: 'https://example.org/anmeldung-neu',
       });
@@ -205,7 +220,7 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(response.status).toBe(400);
   });
@@ -222,16 +237,16 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
         cta1Label: 'Klick mich',
         cta1Url: 'javascript:alert(1)',
       });
     expect(response.status).toBe(400);
   });
 
-  it('rejects an unknown dv', async () => {
-    await createAuthorForTesting({ username: 'author-unknown-dv', password: 'secret-123' });
-    const token = await loginAuthor('author-unknown-dv', 'secret-123');
+  it('rejects an unknown layerId', async () => {
+    await createAuthorForTesting({ username: 'author-unknown-layer', password: 'secret-123' });
+    const token = await loginAuthor('author-unknown-layer', 'secret-123');
 
     const response = await request(app)
       .post('/api/author/events')
@@ -241,12 +256,12 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
         location: 'Ort',
-        dv: 'Atlantis',
+        layerId: 999999,
       });
     expect(response.status).toBe(400);
   });
 
-  it('rejects a topic that does not belong to the selected dv', async () => {
+  it('rejects a topic that does not belong to the selected layer', async () => {
     await createAuthorForTesting({ username: 'author-bad-topic', password: 'secret-123' });
     const token = await loginAuthor('author-bad-topic', 'secret-123');
 
@@ -258,7 +273,7 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
         topic: 'Rover',
       });
     expect(response.status).toBe(400);
@@ -279,7 +294,7 @@ describe('Events API e2e', () => {
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     await request(app)
       .post('/api/author/events')
@@ -290,7 +305,7 @@ describe('Events API e2e', () => {
         startDate: '2026-02-01T10:00:00Z',
         endDate: '2026-02-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Hamburg',
+        layerId: hamburgLayerId,
       });
 
     const publicResponse = await request(app).get('/api/events');
@@ -320,7 +335,7 @@ describe('Events API e2e', () => {
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
 
@@ -333,7 +348,7 @@ describe('Events API e2e', () => {
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(foreignUpdate.status).toBe(404);
 
@@ -346,7 +361,7 @@ describe('Events API e2e', () => {
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(ownUpdate.status).toBe(200);
     expect(ownUpdate.body.event.title).toBe('Updated');
@@ -386,7 +401,7 @@ describe('Events API e2e', () => {
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(createBlocked.status).toBe(403);
     expect(createBlocked.body).toEqual({ error: 'Password change required' });
@@ -408,7 +423,7 @@ describe('Events API e2e', () => {
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(createAllowed.status).toBe(401);
 
@@ -428,7 +443,7 @@ describe('Events API e2e', () => {
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(createAfterRelogin.status).toBe(201);
 
@@ -530,7 +545,7 @@ describe('Events API e2e', () => {
         startDate: '2026-05-01T10:00:00Z',
         endDate: '2026-05-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
 
     expect(response.status).toBe(201);
@@ -552,7 +567,7 @@ describe('Events API e2e', () => {
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
 
@@ -577,7 +592,7 @@ describe('Events API e2e', () => {
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
         location: 'Ort',
-        dv: 'Köln',
+        layerId: koelnLayerId,
       });
     expect(adminUpdate.status).toBe(200);
     expect(adminUpdate.body.event.title).toBe('Edited by admin');
