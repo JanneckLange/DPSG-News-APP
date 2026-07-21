@@ -44,7 +44,8 @@ class NotificationService {
   }
 
   Future<void> _initializeLocalNotifications() async {
-    const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const initializationSettingsIos = DarwinInitializationSettings();
     const initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -57,9 +58,9 @@ class NotificationService {
     });
 
     await _flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
-
   }
 
   Future<void> _requestPermission() async {
@@ -157,16 +158,16 @@ class NotificationService {
       return;
     }
 
-    final selectedDvs = settingsRepository.getSelectedDvs();
-    final selectedTopicsByDv = settingsRepository.getSelectedTopicsByDv();
+    final selectedLayerIds = settingsRepository.getSelectedLayerIds();
+    final selectedTopicsByLayer = settingsRepository.getSelectedTopicsByLayer();
     final savedEventIds = settingsRepository.getSavedEventIds();
     final topics = <String>{'events'};
 
-    for (final dv in selectedDvs) {
-      topics.add('events_${_normalizeTopicName(dv)}');
-      final selectedTopics = selectedTopicsByDv[dv] ?? <String>[];
+    for (final layerId in selectedLayerIds) {
+      topics.add('events_layer_$layerId');
+      final selectedTopics = selectedTopicsByLayer[layerId] ?? <String>[];
       for (final topic in selectedTopics) {
-        topics.add('events_${_normalizeTopicName(dv)}_${_normalizeTopicName(topic)}');
+        topics.add('events_layer_${layerId}_${_normalizeTopicName(topic)}');
       }
     }
 
@@ -175,8 +176,10 @@ class NotificationService {
     }
 
     final newTopics = topics.toList();
-    final removeTopics = currentTopics.where((topic) => !newTopics.contains(topic)).toList();
-    final addTopics = newTopics.where((topic) => !currentTopics.contains(topic)).toList();
+    final removeTopics =
+        currentTopics.where((topic) => !newTopics.contains(topic)).toList();
+    final addTopics =
+        newTopics.where((topic) => !currentTopics.contains(topic)).toList();
 
     if (removeTopics.isNotEmpty) {
       await _unsubscribeFromTopics(removeTopics);

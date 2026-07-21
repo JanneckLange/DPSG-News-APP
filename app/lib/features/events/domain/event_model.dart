@@ -6,7 +6,7 @@ class EventModel {
     required this.startDate,
     required this.endDate,
     required this.location,
-    required this.dv,
+    required this.layerId,
   });
 
   final String id;
@@ -15,7 +15,7 @@ class EventModel {
   final String startDate;
   final String endDate;
   final String location;
-  final String dv;
+  final int layerId;
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     return EventModel(
@@ -25,7 +25,7 @@ class EventModel {
       startDate: json['startDate'] as String,
       endDate: json['endDate'] as String,
       location: json['location'] as String,
-      dv: json['dv'] as String,
+      layerId: (json['layerId'] as num).toInt(),
     );
   }
 }

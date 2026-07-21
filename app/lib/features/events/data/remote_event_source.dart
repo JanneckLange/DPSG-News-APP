@@ -195,8 +195,8 @@ class RemoteEventSource {
     }
   }
 
-  Future<Map<String, dynamic>> fetchDvTree() async {
-    final uri = baseUrl.replace(path: '/api/dvs');
+  Future<Map<String, dynamic>> fetchLayers() async {
+    final uri = baseUrl.replace(path: '/api/layers');
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -204,7 +204,7 @@ class RemoteEventSource {
       stopwatch.stop();
 
       await logger?.logHttpRequestResult(
-        source: 'events.fetchDvTree',
+        source: 'events.fetchLayers',
         method: 'get',
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
@@ -217,7 +217,7 @@ class RemoteEventSource {
 
       if (response.statusCode != 200) {
         throw RemoteEventSourceException(
-          'Failed to fetch DV tree: ${response.statusCode}',
+          'Failed to fetch layers: ${response.statusCode}',
           statusCode: response.statusCode,
           serverMessage: _parseServerError(response.body),
         );
@@ -227,21 +227,21 @@ class RemoteEventSource {
     } on TimeoutException catch (error, stackTrace) {
       if (stopwatch.isRunning) stopwatch.stop();
       await logger?.logHttpRequestResult(
-        source: 'events.fetchDvTree',
+        source: 'events.fetchLayers',
         method: 'get',
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
         error: error,
       );
       throw RemoteEventSourceException(
-        'Timed out while fetching DV tree',
+        'Timed out while fetching layers',
         exception: error,
         stackTrace: stackTrace,
       );
     } on SocketException catch (error, stackTrace) {
       if (stopwatch.isRunning) stopwatch.stop();
       await logger?.logHttpRequestResult(
-        source: 'events.fetchDvTree',
+        source: 'events.fetchLayers',
         method: 'get',
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
@@ -255,14 +255,14 @@ class RemoteEventSource {
     } on http.ClientException catch (error, stackTrace) {
       if (stopwatch.isRunning) stopwatch.stop();
       await logger?.logHttpRequestResult(
-        source: 'events.fetchDvTree',
+        source: 'events.fetchLayers',
         method: 'get',
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
         error: error,
       );
       throw RemoteEventSourceException(
-        'Network error while fetching DV tree',
+        'Network error while fetching layers',
         exception: error,
         stackTrace: stackTrace,
       );

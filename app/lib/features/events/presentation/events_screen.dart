@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/analytics_service.dart';
 import '../../author/data/author_auth_provider.dart';
+import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/data/settings_repository.dart';
 import '../../../core/services/hive_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
@@ -36,39 +37,52 @@ class EventsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsAsync = ref.watch(eventsProvider);
     final settingsRepo = ref.watch(settingsRepositoryProvider);
-    final selectedDvs = settingsRepo.getSelectedDvs();
+    final selectedLayerIds = settingsRepo.getSelectedLayerIds();
+    final layerNamesById = ref.watch(layerNamesByIdProvider);
     final authorAuth = ref.watch(authorAuthProvider);
 
     final syncError = ref.watch(sync_service.eventSyncStatusProvider);
     final analytics = ref.read(analyticsServiceProvider);
 
     Widget buildContent(List<Map<String, dynamic>> events) {
-      final filteredEvents = selectedDvs.isEmpty
+      final filteredEvents = selectedLayerIds.isEmpty
           ? events
-          : events.where((event) => selectedDvs.contains(event['dv'] as String)).toList();
+          : events
+              .where((event) => selectedLayerIds
+                  .contains((event['layerId'] as num?)?.toInt()))
+              .toList();
 
       final listView = filteredEvents.isEmpty
           ? ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: const [Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Keine Events verfügbar.')))],
+              children: const [
+                Center(
+                    child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('Keine Events verfügbar.')))
+              ],
             )
           : ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: filteredEvents.length,
               itemBuilder: (context, index) {
                 final event = filteredEvents[index];
-                final eventAuthorId = event['authorId'] is num ? (event['authorId'] as num).toInt() : null;
+                final eventAuthorId = event['authorId'] is num
+                    ? (event['authorId'] as num).toInt()
+                    : null;
                 final canManageEvent = authorAuth.isLoggedIn &&
                     !authorAuth.isLocked &&
                     !authorAuth.requiresPasswordChange &&
-                    (authorAuth.isAdmin || eventAuthorId == authorAuth.authorId);
+                    (authorAuth.isAdmin ||
+                        eventAuthorId == authorAuth.authorId);
                 final canEdit = canManageEvent;
                 final canDelete = canManageEvent;
                 final createdBy = event['createdBy'] as String?;
+                final eventLayerId = (event['layerId'] as num?)?.toInt();
                 return EventListTile(
                   title: event['title'] as String? ?? '',
                   location: event['location'] as String? ?? '',
-                  dv: event['dv'] as String? ?? '',
+                  layerName: layerNamesById[eventLayerId] ?? 'Unbekannt',
                   createdBy: authorAuth.isAdmin ? createdBy : null,
                   onTap: () {
                     Navigator.of(context).push(
@@ -87,13 +101,17 @@ class EventsScreen extends ConsumerWidget {
                               target: event['title']?.toString() ?? 'unknown',
                             ),
                           );
-                          final changed = await Navigator.of(context).push<bool>(
+                          final changed =
+                              await Navigator.of(context).push<bool>(
                             MaterialPageRoute(
-                              builder: (context) => EventEditorPage(existingEvent: event),
+                              builder: (context) =>
+                                  EventEditorPage(existingEvent: event),
                             ),
                           );
                           if (changed == true) {
-                            await ref.read(sync_service.syncServiceProvider).syncEvents();
+                            await ref
+                                .read(sync_service.syncServiceProvider)
+                                .syncEvents();
                           }
                         }
                       : null,
@@ -111,14 +129,17 @@ class EventsScreen extends ConsumerWidget {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Event löschen'),
-                              content: const Text('Möchtest du dieses Event löschen?'),
+                              content: const Text(
+                                  'Möchtest du dieses Event löschen?'),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.of(context).pop(false),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
                                   child: const Text('Abbrechen'),
                                 ),
                                 FilledButton(
-                                  onPressed: () => Navigator.of(context).pop(true),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
                                   child: const Text('Löschen'),
                                 ),
                               ],
@@ -129,11 +150,15 @@ class EventsScreen extends ConsumerWidget {
                             if (token == null) {
                               return;
                             }
-                            await ref.read(sync_service.remoteEventSourceProvider).deleteEvent(
+                            await ref
+                                .read(sync_service.remoteEventSourceProvider)
+                                .deleteEvent(
                                   token: token,
                                   eventId: (event['id'] as num).toInt(),
                                 );
-                            await ref.read(sync_service.syncServiceProvider).syncEvents();
+                            await ref
+                                .read(sync_service.syncServiceProvider)
+                                .syncEvents();
                           }
                         }
                       : null,
@@ -147,7 +172,7 @@ class EventsScreen extends ConsumerWidget {
           screen: 'events',
           source: 'events_screen',
           additionalProperties: {
-            'selected_dv_count': selectedDvs.length,
+            'selected_dv_count': selectedLayerIds.length,
             'total_event_count': events.length,
           },
         ),

@@ -5,7 +5,7 @@ class EventListTile extends StatelessWidget {
     super.key,
     required this.title,
     required this.location,
-    required this.dv,
+    required this.layerName,
     this.createdBy,
     this.modifiedAt,
     this.onEdit,
@@ -15,7 +15,7 @@ class EventListTile extends StatelessWidget {
 
   final String title;
   final String location;
-  final String dv;
+  final String layerName;
   final String? createdBy;
   final String? modifiedAt;
   final VoidCallback? onEdit;
@@ -25,7 +25,7 @@ class EventListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = <Widget>[
-      Text(dv),
+      Text(layerName),
       if (onEdit != null)
         IconButton(
           icon: const Icon(Icons.edit),

@@ -8,6 +8,7 @@ import 'author_change_password_screen.dart';
 import 'author_login_screen.dart';
 import '../../events/presentation/event_editor_sheet.dart';
 import '../../events/presentation/event_list_tile.dart';
+import '../../settings/data/dv_tree_provider.dart';
 
 class AuthorScreen extends ConsumerStatefulWidget {
   const AuthorScreen({super.key});
@@ -117,6 +118,7 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authorAuthProvider);
+    final layerNamesById = ref.watch(layerNamesByIdProvider);
     if (!auth.isLoggedIn) {
       return Scaffold(
         appBar: AppBar(title: const Text('Autor')),
@@ -204,8 +206,12 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                                 for (final event in _events)
                                   EventListTile(
                                     title: event['title'] as String? ?? '',
-                                    location: event['location'] as String? ?? '',
-                                    dv: event['dv'] as String? ?? '',
+                                    location:
+                                        event['location'] as String? ?? '',
+                                    layerName: layerNamesById[
+                                            (event['layerId'] as num?)
+                                                ?.toInt()] ??
+                                        'Kein DV',
                                     onEdit: () =>
                                         _openForm(existingEvent: event),
                                     onDelete: () async {
@@ -217,15 +223,15 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                                               'Möchtest du dieses Event löschen?'),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.of(
-                                                      context)
-                                                  .pop(false),
+                                              onPressed: () =>
+                                                  Navigator.of(context)
+                                                      .pop(false),
                                               child: const Text('Abbrechen'),
                                             ),
                                             FilledButton(
-                                              onPressed: () => Navigator.of(
-                                                      context)
-                                                  .pop(true),
+                                              onPressed: () =>
+                                                  Navigator.of(context)
+                                                      .pop(true),
                                               child: const Text('Löschen'),
                                             ),
                                           ],
@@ -247,8 +253,12 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                                 for (final draft in _drafts)
                                   EventListTile(
                                     title: draft['title'] as String? ?? '',
-                                    location: draft['location'] as String? ?? '',
-                                    dv: draft['dv'] as String? ?? '',
+                                    location:
+                                        draft['location'] as String? ?? '',
+                                    layerName: layerNamesById[
+                                            (draft['layerId'] as num?)
+                                                ?.toInt()] ??
+                                        'Kein DV',
                                     onEdit: () =>
                                         _openForm(existingDraft: draft),
                                     onDelete: () async {
@@ -260,15 +270,15 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                                               'Möchtest du diesen Entwurf löschen?'),
                                           actions: [
                                             TextButton(
-                                              onPressed: () => Navigator.of(
-                                                      context)
-                                                  .pop(false),
+                                              onPressed: () =>
+                                                  Navigator.of(context)
+                                                      .pop(false),
                                               child: const Text('Abbrechen'),
                                             ),
                                             FilledButton(
-                                              onPressed: () => Navigator.of(
-                                                      context)
-                                                  .pop(true),
+                                              onPressed: () =>
+                                                  Navigator.of(context)
+                                                      .pop(true),
                                               child: const Text('Löschen'),
                                             ),
                                           ],

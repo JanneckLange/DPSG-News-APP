@@ -7,6 +7,7 @@ import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
+import '../../settings/domain/layer_model.dart';
 
 class EventEditorPage extends ConsumerStatefulWidget {
   const EventEditorPage({super.key, this.existingEvent, this.existingDraft})
@@ -33,7 +34,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   final _cta2UrlController = TextEditingController();
   DateTime? _startDate;
   DateTime? _endDate;
-  String? _selectedDv;
+  int? _selectedLayerId;
   String? _selectedTopic;
   bool _saving = false;
   bool _showCta1 = false;
@@ -47,9 +48,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     _stepHasError[1] = false;
     _stepHasError[2] = false;
 
-    // step 0: title, dv, startDate
+    // step 0: title, layer, startDate
     final title = _titleController.text.trim();
-    if (title.isEmpty || _selectedDv == null || _startDate == null) {
+    if (title.isEmpty || _selectedLayerId == null || _startDate == null) {
       _stepHasError[0] = true;
     }
 
@@ -82,14 +83,16 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _titleController.text = event['title'] as String? ?? '';
       _descriptionController.text = event['description'] as String? ?? '';
       _locationController.text = event['location'] as String? ?? '';
-      _selectedDv = event['dv'] as String?;
+      _selectedLayerId = (event['layerId'] as num?)?.toInt();
       _selectedTopic = event['topic'] as String?;
       _cta1LabelController.text = event['cta1Label'] as String? ?? '';
       _cta1UrlController.text = event['cta1Url'] as String? ?? '';
       _cta2LabelController.text = event['cta2Label'] as String? ?? '';
       _cta2UrlController.text = event['cta2Url'] as String? ?? '';
-      _showCta1 = _cta1LabelController.text.isNotEmpty || _cta1UrlController.text.isNotEmpty;
-      _showCta2 = _cta2LabelController.text.isNotEmpty || _cta2UrlController.text.isNotEmpty;
+      _showCta1 = _cta1LabelController.text.isNotEmpty ||
+          _cta1UrlController.text.isNotEmpty;
+      _showCta2 = _cta2LabelController.text.isNotEmpty ||
+          _cta2UrlController.text.isNotEmpty;
       _startDate = DateTime.tryParse(event['startDate'] as String? ?? '');
       _endDate = DateTime.tryParse(event['endDate'] as String? ?? '');
     }
@@ -138,7 +141,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     if (asDraft) {
       if (title.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Titel ist erforderlich, auch für Entwürfe.')),
+          const SnackBar(
+              content: Text('Titel ist erforderlich, auch für Entwürfe.')),
         );
         return;
       }
@@ -152,7 +156,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
         final first = _stepHasError.indexWhere((e) => e);
         if (first != -1) setState(() => _currentStep = first);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bitte Fehler in den markierten Schritten beheben.')),
+          const SnackBar(
+              content:
+                  Text('Bitte Fehler in den markierten Schritten beheben.')),
         );
         return;
       }
@@ -161,15 +167,21 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
         await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null) return;
     final remote = ref.read(sync_service.remoteEventSourceProvider);
+    final layerTree =
+        ref.read(layerTreeProvider).asData?.value ?? <LayerModel>[];
+    final layerNamesById = {
+      for (final layer in layerTree) layer.id: layer.name
+    };
+    final selectedLayerName = layerNamesById[_selectedLayerId];
     final payload = <String, dynamic>{
       'title': title,
       'description': _descriptionController.text.trim(),
       if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
       if (_endDate != null) 'endDate': _endDate!.toIso8601String(),
       'location': _locationController.text.trim().isEmpty
-          ? _selectedDv
+          ? selectedLayerName
           : _locationController.text.trim(),
-      if (_selectedDv != null) 'dv': _selectedDv,
+      if (_selectedLayerId != null) 'layerId': _selectedLayerId,
       if (_selectedTopic != null && _selectedTopic!.isNotEmpty)
         'topic': _selectedTopic,
       if (_showCta1 && _cta1LabelController.text.trim().isNotEmpty)
@@ -244,7 +256,12 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dvTreeAsync = ref.watch(dvTreeProvider);
+    final layerTreeAsync = ref.watch(layerTreeProvider);
+    final layerNamesById = {
+      for (final layer in layerTreeAsync.asData?.value ?? <LayerModel>[])
+        layer.id: layer.name,
+    };
+    final selectedLayerDisplayName = layerNamesById[_selectedLayerId];
     final title = _isEditingEvent
         ? 'Event bearbeiten'
         : _isEditingDraft
@@ -278,7 +295,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Text('Weiter'),
                       ),
@@ -310,17 +328,20 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                 title: const Text('Eckdaten'),
                 isActive: _currentStep >= 0,
                 state: _stepHasError[0]
-                  ? StepState.error
-                  : (_currentStep > 0 ? StepState.complete : StepState.indexed),
+                    ? StepState.error
+                    : (_currentStep > 0
+                        ? StepState.complete
+                        : StepState.indexed),
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextFormField(
                       controller: _titleController,
                       decoration: const InputDecoration(labelText: 'Titel'),
-                      validator: (value) => value == null || value.trim().isEmpty
-                          ? 'Titel ist erforderlich.'
-                          : null,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Titel ist erforderlich.'
+                              : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -334,7 +355,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
                         final selected = await _pickDateTime(_startDate);
-                        if (selected != null) setState(() => _startDate = selected);
+                        if (selected != null) {
+                          setState(() => _startDate = selected);
+                        }
                       },
                     ),
                     const SizedBox(height: 12),
@@ -343,63 +366,66 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                       subtitle: Text(_formatDateTime(_endDate)),
                       trailing: const Icon(Icons.calendar_today),
                       onTap: () async {
-                        final selected = await _pickDateTime(_endDate ?? _startDate);
-                        if (selected != null) setState(() => _endDate = selected);
+                        final selected =
+                            await _pickDateTime(_endDate ?? _startDate);
+                        if (selected != null) {
+                          setState(() => _endDate = selected);
+                        }
                       },
                     ),
                     const SizedBox(height: 12),
-                    dvTreeAsync.when(
-                      data: (dvs) {
-                        final options = dvs
-                            .map((dv) => dv['name'] as String?)
-                            .whereType<String>()
-                            .toSet()
+                    layerTreeAsync.when(
+                      data: (layers) {
+                        final dvs = layers
+                            .where((layer) => layer.type == 'dv')
                             .toList();
-                        if (_selectedDv != null &&
-                            !options.contains(_selectedDv)) {
+                        final optionIds = dvs.map((dv) => dv.id).toList();
+                        if (_selectedLayerId != null &&
+                            !optionIds.contains(_selectedLayerId)) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (mounted) {
                               setState(() {
-                                _selectedDv = null;
+                                _selectedLayerId = null;
                                 _selectedTopic = null;
                               });
                             }
                           });
                         }
-                        return DropdownButtonFormField<String>(
-                          initialValue:
-                              options.contains(_selectedDv) ? _selectedDv : null,
+                        return DropdownButtonFormField<int>(
+                          initialValue: optionIds.contains(_selectedLayerId)
+                              ? _selectedLayerId
+                              : null,
                           decoration: const InputDecoration(
                               labelText: 'Diözesanverband'),
-                          items: options
+                          items: dvs
                               .map((dv) => DropdownMenuItem(
-                                  value: dv, child: Text(dv)))
+                                  value: dv.id, child: Text(dv.name)))
                               .toList(),
                           onChanged: (value) => setState(() {
-                            _selectedDv = value;
+                            _selectedLayerId = value;
                             _selectedTopic = null;
                           }),
-                          validator: (value) => value == null || value.isEmpty
-                              ? 'Bitte DV wählen.'
-                              : null,
+                          validator: (value) =>
+                              value == null ? 'Bitte DV wählen.' : null,
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
                       error: (_, __) =>
                           const Text('DV-Liste konnte nicht geladen werden.'),
                     ),
                     const SizedBox(height: 12),
-                    if (_selectedDv != null)
-                      dvTreeAsync.when(
-                        data: (dvs) {
-                          final dvItem = dvs.firstWhere(
-                            (dv) => dv['name'] == _selectedDv,
-                            orElse: () => <String, dynamic>{},
-                          );
-                          final groups = (dvItem['groups'] as List<dynamic>?)
-                                  ?.whereType<String>()
-                                  .toList() ??
-                              <String>[];
+                    if (_selectedLayerId != null)
+                      layerTreeAsync.when(
+                        data: (layers) {
+                          final dvItem = layers
+                              .where(
+                                (layer) => layer.id == _selectedLayerId,
+                              )
+                              .toList();
+                          final groups = dvItem.isNotEmpty
+                              ? dvItem.first.groups ?? <String>[]
+                              : <String>[];
                           if (groups.isEmpty) return const SizedBox.shrink();
                           if (_selectedTopic != null &&
                               !groups.contains(_selectedTopic)) {
@@ -422,8 +448,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               ...groups.map((topic) => DropdownMenuItem(
                                   value: topic, child: Text(topic))),
                             ],
-                            onChanged: (value) => setState(
-                                () => _selectedTopic = value == '' ? null : value),
+                            onChanged: (value) => setState(() =>
+                                _selectedTopic = value == '' ? null : value),
                           );
                         },
                         loading: () => const SizedBox.shrink(),
@@ -436,23 +462,28 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                 title: const Text('Details'),
                 isActive: _currentStep >= 1,
                 state: _stepHasError[1]
-                  ? StepState.error
-                  : (_currentStep > 1 ? StepState.complete : StepState.indexed),
+                    ? StepState.error
+                    : (_currentStep > 1
+                        ? StepState.complete
+                        : StepState.indexed),
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextFormField(
                       controller: _descriptionController,
-                      decoration: const InputDecoration(labelText: 'Beschreibung'),
+                      decoration:
+                          const InputDecoration(labelText: 'Beschreibung'),
                       minLines: 4,
                       maxLines: 8,
-                      validator: (value) => value == null || value.trim().isEmpty
-                          ? 'Beschreibung ist erforderlich.'
-                          : null,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Beschreibung ist erforderlich.'
+                              : null,
                       // Note: per-step validation removed for navigation; validators remain for publish.
                     ),
                     const SizedBox(height: 20),
-                    const Text('Buttons', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Buttons',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     if (!_showCta1)
                       FilledButton.icon(
@@ -463,12 +494,14 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     if (_showCta1) ...[
                       TextFormField(
                         controller: _cta1LabelController,
-                        decoration: const InputDecoration(labelText: 'Button 1 Beschriftung'),
+                        decoration: const InputDecoration(
+                            labelText: 'Button 1 Beschriftung'),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _cta1UrlController,
-                        decoration: const InputDecoration(labelText: 'Button 1 URL'),
+                        decoration:
+                            const InputDecoration(labelText: 'Button 1 URL'),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -501,12 +534,14 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                       const Divider(height: 32),
                       TextFormField(
                         controller: _cta2LabelController,
-                        decoration: const InputDecoration(labelText: 'Button 2 Beschriftung'),
+                        decoration: const InputDecoration(
+                            labelText: 'Button 2 Beschriftung'),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _cta2UrlController,
-                        decoration: const InputDecoration(labelText: 'Button 2 URL'),
+                        decoration:
+                            const InputDecoration(labelText: 'Button 2 URL'),
                       ),
                       const SizedBox(height: 12),
                       TextButton.icon(
@@ -528,8 +563,10 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                 title: const Text('Vorschau'),
                 isActive: _currentStep >= 2,
                 state: _stepHasError[2]
-                  ? StepState.error
-                  : (_currentStep == 2 ? StepState.editing : StepState.indexed),
+                    ? StepState.error
+                    : (_currentStep == 2
+                        ? StepState.editing
+                        : StepState.indexed),
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -554,12 +591,17 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               spacing: 8,
                               runSpacing: 8,
                               children: [
-                                Chip(label: Text(_selectedDv ?? 'DV nicht ausgewählt')),
-                                if (_selectedTopic != null && _selectedTopic!.isNotEmpty)
+                                Chip(
+                                    label: Text(selectedLayerDisplayName ??
+                                        'DV nicht ausgewählt')),
+                                if (_selectedTopic != null &&
+                                    _selectedTopic!.isNotEmpty)
                                   Chip(label: Text(_selectedTopic!)),
-                                Chip(label: Text(_locationController.text.trim().isEmpty
-                                    ? 'Ort nicht gesetzt'
-                                    : _locationController.text.trim())),
+                                Chip(
+                                    label: Text(
+                                        _locationController.text.trim().isEmpty
+                                            ? 'Ort nicht gesetzt'
+                                            : _locationController.text.trim())),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -584,15 +626,19 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             Wrap(
                               spacing: 12,
                               children: [
-                                if (_showCta1 && _cta1LabelController.text.trim().isNotEmpty)
+                                if (_showCta1 &&
+                                    _cta1LabelController.text.trim().isNotEmpty)
                                   OutlinedButton(
                                     onPressed: null,
-                                    child: Text(_cta1LabelController.text.trim()),
+                                    child:
+                                        Text(_cta1LabelController.text.trim()),
                                   ),
-                                if (_showCta2 && _cta2LabelController.text.trim().isNotEmpty)
+                                if (_showCta2 &&
+                                    _cta2LabelController.text.trim().isNotEmpty)
                                   OutlinedButton(
                                     onPressed: null,
-                                    child: Text(_cta2LabelController.text.trim()),
+                                    child:
+                                        Text(_cta2LabelController.text.trim()),
                                   ),
                               ],
                             ),
@@ -606,8 +652,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                         if (!_isEditingEvent) ...[
                           Expanded(
                             child: FilledButton(
-                              onPressed:
-                                  _saving ? null : () => _saveEvent(asDraft: true),
+                              onPressed: _saving
+                                  ? null
+                                  : () => _saveEvent(asDraft: true),
                               child: const Text('Entwurf speichern'),
                             ),
                           ),
@@ -615,8 +662,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                         ],
                         Expanded(
                           child: FilledButton(
-                            onPressed:
-                                _saving ? null : () => _saveEvent(asDraft: false),
+                            onPressed: _saving
+                                ? null
+                                : () => _saveEvent(asDraft: false),
                             child: Text(_isEditingEvent
                                 ? 'Änderungen veröffentlichen'
                                 : 'Jetzt veröffentlichen'),

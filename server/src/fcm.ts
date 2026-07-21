@@ -39,7 +39,7 @@ export type EventNotificationPayload = {
   title: string;
   description: string;
   eventId?: number | string;
-  dv?: string;
+  layerId?: number;
   topic?: string;
 };
 
@@ -50,7 +50,7 @@ function normalizeTopicName(value: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
-export async function sendEventNotification({ title, description, eventId, dv, topic }: EventNotificationPayload): Promise<string> {
+export async function sendEventNotification({ title, description, eventId, layerId, topic }: EventNotificationPayload): Promise<string> {
   if (!firebaseMessagingEnabled) {
     console.warn('Skipping FCM event notification because Firebase is disabled.');
     return 'firebase-disabled';
@@ -64,9 +64,9 @@ export async function sendEventNotification({ title, description, eventId, dv, t
   const shortBody = body.length > 120 ? `${body.substring(0, 117)}...` : body;
 
   const topicName = topic != null && topic.trim().length > 0
-    ? `events_${normalizeTopicName(dv ?? '')}_${normalizeTopicName(topic)}`
-    : dv != null && dv.trim().length > 0
-      ? `events_${normalizeTopicName(dv)}`
+    ? `events_layer_${layerId ?? ''}_${normalizeTopicName(topic)}`
+    : layerId != null
+      ? `events_layer_${layerId}`
       : 'events';
   const message: Message = {
     topic: topicName,
@@ -77,7 +77,7 @@ export async function sendEventNotification({ title, description, eventId, dv, t
     data: {
       eventId: eventId?.toString() ?? '',
       type: 'event_created',
-      dv: dv ?? '',
+      layerId: layerId?.toString() ?? '',
     },
   };
 

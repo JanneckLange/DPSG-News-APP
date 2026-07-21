@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 
 import '../../../core/services/hive_service.dart';
+import '../domain/layer_model.dart';
 
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return SettingsRepository(HiveService.getSettingsBox());
@@ -250,8 +251,8 @@ class SettingsRepository {
   static const int defaultSubscribedEventsReminderDaysBefore = 1;
   static const int defaultDeadlineReminderDaysBefore = 2;
 
-  static const String selectedDvsKey = 'selected_dvs';
-  static const String selectedDvTopicsKey = 'selected_dv_topics';
+  static const String selectedLayerIdsKey = 'selected_layer_ids';
+  static const String selectedLayerTopicsKey = 'selected_layer_topics';
   static const String subscribedTopicsKey = 'subscribed_topics';
   static const String authorModeKey = 'author_mode';
   static const String apiBaseUrlKey = 'api_base_url';
@@ -272,8 +273,8 @@ class SettingsRepository {
       'subscribed_events_reminder_days_before';
   static const String deadlineReminderDaysBeforeKey =
       'deadline_reminder_days_before';
-  static const String dvTreeKey = 'dv_tree';
-  static const String dvTreeLastChangeKey = 'dv_tree_last_change';
+  static const String layerTreeKey = 'layer_tree';
+  static const String layerTreeLastChangeKey = 'layer_tree_last_change';
   static const String authorAuthTokenKey =
       'author_auth_token'; // legacy migration key
   static const String authorIdKey = 'author_id';
@@ -288,46 +289,56 @@ class SettingsRepository {
 
   final Box _box;
 
-  List<String> getSelectedDvs() {
-    final raw = _box.get(selectedDvsKey) as List<dynamic>?;
-    if (raw == null) return <String>[];
-    return raw.whereType<String>().toList();
+  List<int> getSelectedLayerIds() {
+    final raw = _box.get(selectedLayerIdsKey) as List<dynamic>?;
+    if (raw == null) return <int>[];
+    return raw.whereType<num>().map((value) => value.toInt()).toList();
   }
 
-  Future<void> setSelectedDvs(List<String> dvs) async {
-    final currentTopics = getSelectedTopicsByDv();
-    currentTopics.removeWhere((key, _) => !dvs.contains(key));
+  Future<void> setSelectedLayerIds(List<int> layerIds) async {
+    final currentTopics = getSelectedTopicsByLayer();
+    currentTopics.removeWhere((key, _) => !layerIds.contains(key));
     await Future.wait([
-      _box.put(selectedDvsKey, dvs),
-      _box.put(selectedDvTopicsKey, currentTopics)
+      _box.put(selectedLayerIdsKey, layerIds),
+      _box.put(
+        selectedLayerTopicsKey,
+        currentTopics.map((key, value) => MapEntry(key.toString(), value)),
+      ),
     ]);
   }
 
-  List<String> getSelectedTopicsForDv(String dv) {
-    final topicsMap = getSelectedTopicsByDv();
-    return topicsMap[dv] ?? <String>[];
+  List<String> getSelectedTopicsForLayer(int layerId) {
+    final topicsMap = getSelectedTopicsByLayer();
+    return topicsMap[layerId] ?? <String>[];
   }
 
-  Map<String, List<String>> getSelectedTopicsByDv() {
-    final raw = _box.get(selectedDvTopicsKey) as Map<dynamic, dynamic>?;
-    if (raw == null) return <String, List<String>>{};
-    return raw.map<String, List<String>>((key, value) {
+  Map<int, List<String>> getSelectedTopicsByLayer() {
+    final raw = _box.get(selectedLayerTopicsKey) as Map<dynamic, dynamic>?;
+    if (raw == null) return <int, List<String>>{};
+    return raw.map<int, List<String>>((key, value) {
       final values =
           value is List ? value.whereType<String>().toList() : <String>[];
-      return MapEntry(key as String, values);
+      return MapEntry(int.parse(key.toString()), values);
     });
   }
 
-  Future<void> setSelectedTopicsForDv(String dv, List<String> topics) async {
-    final map = getSelectedTopicsByDv();
-    map[dv] = topics;
-    await _box.put(selectedDvTopicsKey, map);
+  Future<void> setSelectedTopicsForLayer(
+      int layerId, List<String> topics) async {
+    final map = getSelectedTopicsByLayer();
+    map[layerId] = topics;
+    await _box.put(
+      selectedLayerTopicsKey,
+      map.map((key, value) => MapEntry(key.toString(), value)),
+    );
   }
 
-  Future<void> removeSelectedTopicsForDv(String dv) async {
-    final map = getSelectedTopicsByDv();
-    map.remove(dv);
-    await _box.put(selectedDvTopicsKey, map);
+  Future<void> removeSelectedTopicsForLayer(int layerId) async {
+    final map = getSelectedTopicsByLayer();
+    map.remove(layerId);
+    await _box.put(
+      selectedLayerTopicsKey,
+      map.map((key, value) => MapEntry(key.toString(), value)),
+    );
   }
 
   List<String> getSubscribedTopics() {
@@ -340,9 +351,9 @@ class SettingsRepository {
     await _box.put(subscribedTopicsKey, topics);
   }
 
-  String? getSelectedDv() {
-    final dvs = getSelectedDvs();
-    return dvs.isNotEmpty ? dvs.first : null;
+  int? getSelectedLayerId() {
+    final layerIds = getSelectedLayerIds();
+    return layerIds.isNotEmpty ? layerIds.first : null;
   }
 
   bool getAuthorMode() => _box.get(authorModeKey, defaultValue: false) as bool;
@@ -465,22 +476,23 @@ class SettingsRepository {
     await _box.put(apiBaseUrlKey, url.trim());
   }
 
-  Future<void> setDvTree(
-      List<Map<String, dynamic>> tree, String lastChange) async {
-    await _box.put(dvTreeKey, tree);
-    await _box.put(dvTreeLastChangeKey, lastChange);
+  Future<void> setLayerTree(List<LayerModel> layers, String lastChange) async {
+    await _box.put(
+        layerTreeKey, layers.map((layer) => layer.toJson()).toList());
+    await _box.put(layerTreeLastChangeKey, lastChange);
   }
 
-  List<Map<String, dynamic>>? getDvTree() {
-    final raw = _box.get(dvTreeKey) as List<dynamic>?;
+  List<LayerModel>? getLayerTree() {
+    final raw = _box.get(layerTreeKey) as List<dynamic>?;
     if (raw == null) return null;
     return raw
         .whereType<Map>()
-        .map((item) => Map<String, dynamic>.from(item))
+        .map((item) => LayerModel.fromJson(Map<String, dynamic>.from(item)))
         .toList();
   }
 
-  String? getDvTreeLastChange() => _box.get(dvTreeLastChangeKey) as String?;
+  String? getLayerTreeLastChange() =>
+      _box.get(layerTreeLastChangeKey) as String?;
 
   String? getLegacyAuthorAuthToken() => _box.get(authorAuthTokenKey) as String?;
 

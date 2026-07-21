@@ -2,18 +2,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../events/data/remote_event_source.dart';
 import '../../../core/services/sync_service.dart';
+import '../domain/layer_model.dart';
 import 'settings_repository.dart' as settings_repo;
 
-final dvTreeProvider = StateNotifierProvider<DvTreeNotifier, AsyncValue<List<Map<String, dynamic>>>>(
+final layerTreeProvider =
+    StateNotifierProvider<LayerTreeNotifier, AsyncValue<List<LayerModel>>>(
   (ref) {
     final repository = ref.read(settingsRepositoryProvider);
     final remoteSource = ref.read(remoteEventSourceProvider);
-    return DvTreeNotifier(repository, remoteSource);
+    return LayerTreeNotifier(repository, remoteSource);
   },
 );
 
-class DvTreeNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>>> {
-  DvTreeNotifier(this._repository, this._remoteSource) : super(const AsyncValue.loading()) {
+/// Layer-Namen nach id, zum Aufloesen von `layerId` in Anzeige-Widgets.
+/// Waehrend der Baum noch laedt oder eine id unbekannt ist, bleibt der
+/// entsprechende Eintrag im Map einfach unauffindbar (Aufrufer legen einen
+/// Fallback-Text fest).
+final layerNamesByIdProvider = Provider<Map<int, String>>((ref) {
+  final layers = ref.watch(layerTreeProvider).asData?.value ?? <LayerModel>[];
+  return {for (final layer in layers) layer.id: layer.name};
+});
+
+class LayerTreeNotifier extends StateNotifier<AsyncValue<List<LayerModel>>> {
+  LayerTreeNotifier(this._repository, this._remoteSource)
+      : super(const AsyncValue.loading()) {
     _loadTree();
   }
 
@@ -21,20 +33,23 @@ class DvTreeNotifier extends StateNotifier<AsyncValue<List<Map<String, dynamic>>
   final RemoteEventSource _remoteSource;
 
   Future<void> _loadTree() async {
-    final localTree = _repository.getDvTree();
+    final localTree = _repository.getLayerTree();
     if (localTree != null) {
       state = AsyncValue.data(localTree);
     }
 
     try {
-      final response = await _remoteSource.fetchDvTree();
-      final lastTreeChange = response['lastTreeChange'] as String? ?? '';
-      final dvs = List<Map<String, dynamic>>.from(response['dvs'] as List<dynamic>);
-      final currentVersion = _repository.getDvTreeLastChange();
-      if (currentVersion == null || currentVersion != lastTreeChange) {
-        await _repository.setDvTree(dvs, lastTreeChange);
+      final response = await _remoteSource.fetchLayers();
+      final lastChange = response['lastChange'] as String? ?? '';
+      final layers =
+          List<Map<String, dynamic>>.from(response['layers'] as List<dynamic>)
+              .map(LayerModel.fromJson)
+              .toList();
+      final currentVersion = _repository.getLayerTreeLastChange();
+      if (currentVersion == null || currentVersion != lastChange) {
+        await _repository.setLayerTree(layers, lastChange);
       }
-      state = AsyncValue.data(dvs);
+      state = AsyncValue.data(layers);
     } catch (error, stackTrace) {
       if (localTree == null) {
         state = AsyncValue.error(error, stackTrace);

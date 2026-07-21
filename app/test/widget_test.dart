@@ -25,18 +25,27 @@ class FakeRemoteEventSource extends RemoteEventSource {
       {
         'title': 'Test Event',
         'location': 'Testort',
-        'dv': 'Köln',
+        'layerId': 1,
       },
     ];
   }
 
   @override
-  Future<Map<String, dynamic>> fetchDvTree() async {
+  Future<Map<String, dynamic>> fetchLayers() async {
     return {
-      'lastTreeChange': '2026-01-01T00:00:00.000Z',
-      'dvs': [
+      'lastChange': '2026-01-01T00:00:00.000Z',
+      'layers': [
         {
+          'id': 0,
+          'name': 'Bundesverband DPSG',
+          'type': 'bundesverband',
+          'parentId': null,
+        },
+        {
+          'id': 1,
           'name': 'Hamburg',
+          'type': 'dv',
+          'parentId': 0,
           'url': 'https://example.com/hamburg',
           'groups': ['Rover', 'Leitung'],
         },
@@ -436,7 +445,8 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          sync_service.remoteEventSourceProvider.overrideWithValue(FakeRemoteEventSource()),
+          sync_service.remoteEventSourceProvider
+              .overrideWithValue(FakeRemoteEventSource()),
         ],
         child: const MaterialApp(home: DebugToolsScreen()),
       ),

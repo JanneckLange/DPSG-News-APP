@@ -18,6 +18,7 @@ import 'features/author/presentation/author_screen.dart';
 import 'features/author/data/author_auth_provider.dart';
 import 'features/calendar/presentation/calendar_screen.dart';
 import 'features/events/presentation/events_screen.dart';
+import 'features/settings/data/dv_tree_provider.dart';
 import 'features/settings/data/settings_repository.dart' as settings_repository;
 import 'features/settings/presentation/settings_screen.dart';
 
@@ -50,13 +51,15 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     unawaited(_logger.logInfo('lifecycle', 'app_started'));
     unawaited(_analytics.initialize());
     unawaited(_analytics.trackScreenView('app_start'));
-    unawaited(_analytics.trackFeatureEvent('app_started', screen: 'app', source: 'launch'));
+    unawaited(_analytics.trackFeatureEvent('app_started',
+        screen: 'app', source: 'launch'));
     unawaited(_usageTracking.flushPendingSession());
     _usageTracking.startSession();
 
     Future.microtask(() async {
       log('App initState: starting notification initialization');
-      await ref.read(notificationServiceProvider)
+      await ref
+          .read(notificationServiceProvider)
           .initialize()
           .then((_) => log('NotificationService initialize completed'))
           .catchError((error, stack) {
@@ -115,14 +118,18 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
 
     final destinations = <NavigationDestination>[
       const NavigationDestination(icon: Icon(Icons.event), label: 'Events'),
-      const NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Kalender'),
-      if (authorAuth.isLoggedIn) const NavigationDestination(icon: Icon(Icons.edit), label: 'Autor'),
-      const NavigationDestination(icon: Icon(Icons.settings), label: 'Einstellungen'),
+      const NavigationDestination(
+          icon: Icon(Icons.calendar_month), label: 'Kalender'),
+      if (authorAuth.isLoggedIn)
+        const NavigationDestination(icon: Icon(Icons.edit), label: 'Autor'),
+      const NavigationDestination(
+          icon: Icon(Icons.settings), label: 'Einstellungen'),
     ];
 
     final safeIndex = currentIndex.clamp(0, pages.length - 1);
     if (currentIndex != safeIndex) {
-      Future.microtask(() => ref.read(currentIndexProvider.notifier).state = safeIndex);
+      Future.microtask(
+          () => ref.read(currentIndexProvider.notifier).state = safeIndex);
     }
 
     final effectiveThemeMode = switch (appThemeMode) {
@@ -136,26 +143,37 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
         ? locale
         : const Locale('de', 'DE');
     final eventsAsync = ref.watch(eventsProvider);
-    final settingsRepo = ref.watch(settings_repository.settingsRepositoryProvider);
-    final selectedDvs = settingsRepo.getSelectedDvs();
+    final settingsRepo =
+        ref.watch(settings_repository.settingsRepositoryProvider);
+    final selectedLayerIds = settingsRepo.getSelectedLayerIds();
+    final layerNamesById = ref.watch(layerNamesByIdProvider);
     final displayedEvents = eventsAsync.valueOrNull ?? <Map<String, dynamic>>[];
-    final filteredEvents = selectedDvs.isEmpty
+    final filteredEvents = selectedLayerIds.isEmpty
         ? displayedEvents
-        : displayedEvents.where((event) => selectedDvs.contains(event['dv'] as String?)).toList();
+        : displayedEvents
+            .where((event) =>
+                selectedLayerIds.contains((event['layerId'] as num?)?.toInt()))
+            .toList();
+    final selectedDvNames = selectedLayerIds
+        .map((id) => layerNamesById[id])
+        .whereType<String>()
+        .toList();
     final wiredashMetadata = WiredashMetadataService.buildSafeCustomMetadata(
       locale: safeLocale,
       platform: defaultTargetPlatform,
-      isReleaseMode: !const bool.fromEnvironment('dart.vm.product', defaultValue: false),
+      isReleaseMode:
+          !const bool.fromEnvironment('dart.vm.product', defaultValue: false),
       appThemeMode: appThemeMode,
       isLoggedIn: authorAuth.isLoggedIn,
       displayedEventCount: filteredEvents.length,
-      selectedDvs: selectedDvs,
+      selectedDvs: selectedDvNames,
     );
 
     final materialApp = MaterialApp(
       title: 'DPSG News APP',
       theme: ThemeData(primarySwatch: Colors.blue),
-      darkTheme: ThemeData(brightness: Brightness.dark, colorSchemeSeed: Colors.blue),
+      darkTheme:
+          ThemeData(brightness: Brightness.dark, colorSchemeSeed: Colors.blue),
       themeMode: effectiveThemeMode,
       navigatorKey: navigatorKey,
       navigatorObservers: [
@@ -188,7 +206,8 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     );
 
     if (!AppConfig.hasWiredashConfig) {
-      debugPrint('Wiredash config missing: projectId=${AppConfig.wiredashProjectId.isNotEmpty}, secret=${AppConfig.wiredashSecret.isNotEmpty}');
+      debugPrint(
+          'Wiredash config missing: projectId=${AppConfig.wiredashProjectId.isNotEmpty}, secret=${AppConfig.wiredashSecret.isNotEmpty}');
       return materialApp;
     }
 
