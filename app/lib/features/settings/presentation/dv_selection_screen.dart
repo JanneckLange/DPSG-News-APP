@@ -9,14 +9,41 @@ import '../data/dv_tree_provider.dart';
 import '../data/settings_repository.dart';
 import '../domain/layer_model.dart';
 
-class DvSelectionScreen extends ConsumerStatefulWidget {
+class DvSelectionScreen extends StatelessWidget {
   const DvSelectionScreen({super.key});
 
   @override
-  ConsumerState<DvSelectionScreen> createState() => _DvSelectionScreenState();
+  Widget build(BuildContext context) {
+    final editorKey = GlobalKey<DvSelectionEditorState>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('DVs und Topics'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await editorKey.currentState?.save();
+              if (context.mounted) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Speichern'),
+          ),
+        ],
+      ),
+      body: DvSelectionEditor(key: editorKey),
+    );
+  }
 }
 
-class _DvSelectionScreenState extends ConsumerState<DvSelectionScreen> {
+class DvSelectionEditor extends ConsumerStatefulWidget {
+  const DvSelectionEditor({super.key});
+
+  @override
+  ConsumerState<DvSelectionEditor> createState() => DvSelectionEditorState();
+}
+
+class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
   late final Set<int> _selectedLayerIds;
   late final Map<int, List<String>> _selectedTopicsByLayer;
 
@@ -32,107 +59,96 @@ class _DvSelectionScreenState extends ConsumerState<DvSelectionScreen> {
   Widget build(BuildContext context) {
     final layerTreeAsync = ref.watch(layerTreeProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('DVs und Topics'),
-        actions: [
-          TextButton(
-            onPressed: _saveSelection,
-            child: const Text('Speichern'),
-          ),
-        ],
-      ),
-      body: layerTreeAsync.when(
-        data: (layers) {
-          final dvs = layers.where((layer) => layer.type == 'dv').toList();
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: dvs.length,
-            itemBuilder: (context, index) {
-              final dv = dvs[index];
-              final groups = dv.groups ?? <String>[];
-              final isSelected = _selectedLayerIds.contains(dv.id);
-              final selectedTopics =
-                  _selectedTopicsByLayer[dv.id] ?? <String>[];
+    return layerTreeAsync.when(
+      data: (layers) {
+        final dvs = layers.where((layer) => layer.type == 'dv').toList();
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          itemCount: dvs.length,
+          itemBuilder: (context, index) {
+            final dv = dvs[index];
+            final groups = dv.groups ?? <String>[];
+            final isSelected = _selectedLayerIds.contains(dv.id);
+            final selectedTopics = _selectedTopicsByLayer[dv.id] ?? <String>[];
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 4, bottom: 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CheckboxListTile(
-                        title: Text(dv.name),
-                        subtitle: dv.url != null ? Text(dv.url!) : null,
-                        value: isSelected,
-                        onChanged: (checked) {
-                          setState(() {
-                            if (checked == true) {
-                              _selectedLayerIds.add(dv.id);
-                            } else {
-                              _selectedLayerIds.remove(dv.id);
-                              _selectedTopicsByLayer.remove(dv.id);
-                            }
-                          });
-                        },
-                      ),
-                      if (isSelected && groups.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(
-                              left: 16, right: 16, bottom: 4),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  selectedTopics.isEmpty
-                                      ? 'Keine spezifischen Topics ausgewählt.'
-                                      : 'Topics: ${selectedTopics.join(', ')}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CheckboxListTile(
+                      title: Text(dv.name),
+                      subtitle: dv.url != null ? Text(dv.url!) : null,
+                      value: isSelected,
+                      onChanged: (checked) {
+                        setState(() {
+                          if (checked == true) {
+                            _selectedLayerIds.add(dv.id);
+                          } else {
+                            _selectedLayerIds.remove(dv.id);
+                            _selectedTopicsByLayer.remove(dv.id);
+                          }
+                        });
+                      },
+                    ),
+                    if (isSelected && groups.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            left: 16, right: 16, bottom: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                selectedTopics.isEmpty
+                                    ? 'Keine spezifischen Topics ausgewählt.'
+                                    : 'Topics: ${selectedTopics.join(', ')}',
+                                style: const TextStyle(fontSize: 12),
                               ),
-                              TextButton(
-                                onPressed: () async {
-                                  final updated = await _showTopicDialog(
-                                    context,
-                                    dv.name,
-                                    groups,
-                                    selectedTopics,
-                                  );
-                                  if (updated != null) {
-                                    setState(() {
-                                      _selectedTopicsByLayer[dv.id] = updated;
-                                    });
-                                  }
-                                },
-                                child: const Text('Topics wählen'),
-                              ),
-                            ],
-                          ),
+                            ),
+                            TextButton(
+                              onPressed: () async {
+                                final updated = await _showTopicDialog(
+                                  context,
+                                  dv.name,
+                                  groups,
+                                  selectedTopics,
+                                );
+                                if (updated != null) {
+                                  setState(() {
+                                    _selectedTopicsByLayer[dv.id] = updated;
+                                  });
+                                }
+                              },
+                              child: const Text('Topics wählen'),
+                            ),
+                          ],
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('DV-Liste konnte nicht geladen werden: $error'),
-            ),
-          );
-        },
-      ),
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('DV-Liste konnte nicht geladen werden: $error'),
+          ),
+        );
+      },
     );
   }
 
-  Future<void> _saveSelection() async {
+  /// Persistiert die aktuelle Auswahl (DVs und Topics je DV) via SettingsRepository.
+  Future<List<String>> save() async {
     final repository = ref.read(settingsRepositoryProvider);
     final analytics = ref.read(analyticsServiceProvider);
     final layerTree =
@@ -161,9 +177,7 @@ class _DvSelectionScreenState extends ConsumerState<DvSelectionScreen> {
       ..sort();
     unawaited(analytics.trackDvSelectionChanged(selectedNames));
 
-    if (mounted) {
-      Navigator.of(context).pop(true);
-    }
+    return selectedNames;
   }
 
   Future<List<String>?> _showTopicDialog(

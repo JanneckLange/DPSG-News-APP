@@ -3,76 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
-import '../data/author_auth_provider.dart';
-import 'author_change_password_screen.dart';
-import 'author_login_screen.dart';
+import '../../../shared/widgets/dashboard_stat_row.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/skeleton_card_list.dart';
+import '../../../shared/widgets/stat_tile.dart';
+import '../../events/presentation/event_detail_screen.dart';
 import '../../events/presentation/event_editor_sheet.dart';
 import '../../events/presentation/event_list_tile.dart';
 import '../../settings/data/dv_tree_provider.dart';
+import '../data/author_auth_provider.dart';
+import '../data/own_events_provider.dart';
+import 'author_change_password_screen.dart';
+import 'author_dashboard_stats.dart';
+import 'author_login_screen.dart';
+import 'stale_events_screen.dart';
 
-class AuthorScreen extends ConsumerStatefulWidget {
+class AuthorScreen extends ConsumerWidget {
   const AuthorScreen({super.key});
 
-  @override
-  ConsumerState<AuthorScreen> createState() => _AuthorScreenState();
-}
-
-class _AuthorScreenState extends ConsumerState<AuthorScreen> {
-  List<Map<String, dynamic>> _events = <Map<String, dynamic>>[];
-  List<Map<String, dynamic>> _drafts = <Map<String, dynamic>>[];
-  bool _isLoading = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadOwnData());
-  }
-
-  Future<void> _loadOwnData() async {
-    final auth = ref.read(authorAuthProvider);
-    if (!auth.isLoggedIn || auth.isLocked || auth.requiresPasswordChange) {
-      if (!mounted) return;
-      setState(() {
-        _events = <Map<String, dynamic>>[];
-        _drafts = <Map<String, dynamic>>[];
-        _error = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final token =
-          await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-      if (token == null) {
-        throw StateError('Nicht eingeloggt');
-      }
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final results = await Future.wait([
-        remote.fetchOwnEvents(token: token),
-        remote.fetchOwnDrafts(token: token),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _events = results[0];
-        _drafts = results[1];
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _error = error.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _openForm({
+  Future<void> _openForm(
+    BuildContext context,
+    WidgetRef ref, {
     Map<String, dynamic>? existingEvent,
     Map<String, dynamic>? existingDraft,
   }) async {
@@ -85,38 +36,68 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
       ),
     );
     if (result == true) {
-      await _loadOwnData();
+      ref.invalidate(ownEventsProvider);
+      ref.invalidate(ownDraftsProvider);
+      // Haelt die oeffentliche Events-Liste (Hive-Cache) sofort aktuell,
+      // statt auf die Sync-Drossel zu warten.
+      await ref.read(sync_service.syncServiceProvider).syncEvents(force: true);
     }
   }
 
-  Future<void> _deleteEvent(int eventId) async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
-    try {
-      await remote.deleteOwnEvent(token: token, eventId: eventId);
-      await _loadOwnData();
-    } catch (error) {
-      if (mounted) showErrorToast(ref, describeRemoteError(error));
-    }
-  }
-
-  Future<void> _deleteDraft(int draftId) async {
+  Future<void> _deleteDraft(
+      BuildContext context, WidgetRef ref, int draftId) async {
     final token =
         await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null) return;
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
       await remote.deleteDraft(token: token, draftId: draftId);
-      await _loadOwnData();
+      ref.invalidate(ownDraftsProvider);
     } catch (error) {
-      if (mounted) showErrorToast(ref, describeRemoteError(error));
+      if (context.mounted) showErrorToast(ref, describeRemoteError(error));
     }
   }
 
+  Future<void> _refresh(WidgetRef ref) async {
+    ref.invalidate(ownEventsProvider);
+    ref.invalidate(ownDraftsProvider);
+    await Future.wait([
+      ref.read(ownEventsProvider.future),
+      ref.read(ownDraftsProvider.future),
+    ]);
+  }
+
+  List<StatTile> _buildStatTiles(
+      BuildContext context, AuthorDashboardStats stats) {
+    return [
+      StatTile(
+          icon: Icons.public,
+          value: '${stats.onlineCount}',
+          label: 'Events online'),
+      StatTile(
+          icon: Icons.calendar_month,
+          value: '${stats.thisMonthCount}',
+          label: 'Diesen Monat'),
+      StatTile(
+        icon: Icons.warning_amber,
+        value: '${stats.staleCount}',
+        label: 'Lange kein Update',
+        color:
+            stats.staleCount > 0 ? Theme.of(context).colorScheme.error : null,
+        onTap: stats.staleCount == 0
+            ? null
+            : () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        StaleEventsScreen(events: stats.staleEvents),
+                  ),
+                ),
+      ),
+    ];
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authorAuthProvider);
     final layerNamesById = ref.watch(layerNamesByIdProvider);
     if (!auth.isLoggedIn) {
@@ -124,12 +105,11 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
         appBar: AppBar(title: const Text('Autor')),
         body: Center(
           child: FilledButton.icon(
-            onPressed: () async {
-              await Navigator.of(context).push(
+            onPressed: () {
+              Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (context) => const AuthorLoginScreen()),
               );
-              await _loadOwnData();
             },
             icon: const Icon(Icons.login),
             label: const Text('Autoren-Login'),
@@ -143,10 +123,7 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
         appBar: AppBar(title: const Text('Autor')),
         body: Center(
           child: FilledButton.icon(
-            onPressed: () async {
-              await ref.read(authorAuthProvider.notifier).unlock();
-              await _loadOwnData();
-            },
+            onPressed: () => ref.read(authorAuthProvider.notifier).unlock(),
             icon: const Icon(Icons.lock_open),
             label: const Text('Mit Biometrie entsperren'),
           ),
@@ -165,7 +142,6 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
                     builder: (context) => const AuthorChangePasswordScreen()),
               );
               await ref.read(authorAuthProvider.notifier).refreshSession();
-              await _loadOwnData();
             },
             icon: const Icon(Icons.password),
             label: const Text('Passwort ändern'),
@@ -174,129 +150,120 @@ class _AuthorScreenState extends ConsumerState<AuthorScreen> {
       );
     }
 
+    final eventsAsync = ref.watch(ownEventsProvider);
+    final draftsAsync = ref.watch(ownDraftsProvider);
+
+    Widget body;
+    if (eventsAsync.isLoading || draftsAsync.isLoading) {
+      body = const SkeletonCardList();
+    } else if (eventsAsync.hasError) {
+      body = ListView(children: [
+        Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('${eventsAsync.error}')),
+      ]);
+    } else if (draftsAsync.hasError) {
+      body = ListView(children: [
+        Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('${draftsAsync.error}')),
+      ]);
+    } else {
+      final events = eventsAsync.value ?? <Map<String, dynamic>>[];
+      final drafts = draftsAsync.value ?? <Map<String, dynamic>>[];
+      final stats = AuthorDashboardStats.fromEvents(events);
+
+      body = ListView(
+        children: [
+          DashboardStatRow(tiles: _buildStatTiles(context, stats)),
+          if (events.isEmpty && drafts.isEmpty)
+            EmptyState(
+              icon: Icons.event_note,
+              message: 'Noch keine eigenen Events vorhanden.',
+              actionLabel: 'Erstes Event erstellen',
+              onAction: () => _openForm(context, ref),
+            )
+          else ...[
+            if (events.isNotEmpty)
+              ExpansionTile(
+                title: Text('Eigene Events (${events.length})'),
+                initiallyExpanded: false,
+                children: [
+                  for (final event in events)
+                    EventListTile(
+                      title: event['title'] as String? ?? '',
+                      location: event['location'] as String? ?? '',
+                      layerName:
+                          layerNamesById[(event['layerId'] as num?)?.toInt()] ??
+                              'Kein DV',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                EventDetailScreen(event: event),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            if (drafts.isNotEmpty)
+              ExpansionTile(
+                title: Text('Entwürfe (${drafts.length})'),
+                initiallyExpanded: false,
+                children: [
+                  for (final draft in drafts)
+                    EventListTile(
+                      title: draft['title'] as String? ?? '',
+                      location: draft['location'] as String? ?? '',
+                      layerName:
+                          layerNamesById[(draft['layerId'] as num?)?.toInt()] ??
+                              'Kein DV',
+                      onEdit: () =>
+                          _openForm(context, ref, existingDraft: draft),
+                      onDelete: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Entwurf löschen'),
+                            content: const Text(
+                                'Möchtest du diesen Entwurf löschen?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Abbrechen'),
+                              ),
+                              FilledButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: const Text('Löschen'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          if (!context.mounted) return;
+                          await _deleteDraft(
+                              context, ref, (draft['id'] as num).toInt());
+                        }
+                      },
+                    ),
+                ],
+              ),
+          ],
+        ],
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meine Events'),
-      ),
+      appBar: AppBar(title: const Text('Meine Events')),
       body: RefreshIndicator(
-        onRefresh: _loadOwnData,
-        child: _isLoading
-            ? ListView(children: const [
-                SizedBox(height: 240),
-                Center(child: CircularProgressIndicator())
-              ])
-            : _error != null
-                ? ListView(children: [
-                    Padding(
-                        padding: const EdgeInsets.all(24), child: Text(_error!))
-                  ])
-                : (_events.isEmpty && _drafts.isEmpty)
-                    ? ListView(children: const [
-                        Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Text('Noch keine eigenen Events vorhanden.'))
-                      ])
-                    : ListView(
-                        children: [
-                          if (_events.isNotEmpty)
-                            ExpansionTile(
-                              title: Text('Eigene Events (${_events.length})'),
-                              initiallyExpanded: false,
-                              children: [
-                                for (final event in _events)
-                                  EventListTile(
-                                    title: event['title'] as String? ?? '',
-                                    location:
-                                        event['location'] as String? ?? '',
-                                    layerName: layerNamesById[
-                                            (event['layerId'] as num?)
-                                                ?.toInt()] ??
-                                        'Kein DV',
-                                    onEdit: () =>
-                                        _openForm(existingEvent: event),
-                                    onDelete: () async {
-                                      final confirmed = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text('Event löschen'),
-                                          content: const Text(
-                                              'Möchtest du dieses Event löschen?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context)
-                                                      .pop(false),
-                                              child: const Text('Abbrechen'),
-                                            ),
-                                            FilledButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context)
-                                                      .pop(true),
-                                              child: const Text('Löschen'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      if (confirmed == true) {
-                                        await _deleteEvent(
-                                            (event['id'] as num).toInt());
-                                      }
-                                    },
-                                  ),
-                              ],
-                            ),
-                          if (_drafts.isNotEmpty)
-                            ExpansionTile(
-                              title: Text('Entwürfe (${_drafts.length})'),
-                              initiallyExpanded: false,
-                              children: [
-                                for (final draft in _drafts)
-                                  EventListTile(
-                                    title: draft['title'] as String? ?? '',
-                                    location:
-                                        draft['location'] as String? ?? '',
-                                    layerName: layerNamesById[
-                                            (draft['layerId'] as num?)
-                                                ?.toInt()] ??
-                                        'Kein DV',
-                                    onEdit: () =>
-                                        _openForm(existingDraft: draft),
-                                    onDelete: () async {
-                                      final confirmed = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text('Entwurf löschen'),
-                                          content: const Text(
-                                              'Möchtest du diesen Entwurf löschen?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context)
-                                                      .pop(false),
-                                              child: const Text('Abbrechen'),
-                                            ),
-                                            FilledButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context)
-                                                      .pop(true),
-                                              child: const Text('Löschen'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      if (confirmed == true) {
-                                        await _deleteDraft(
-                                            (draft['id'] as num).toInt());
-                                      }
-                                    },
-                                  ),
-                              ],
-                            ),
-                        ],
-                      ),
+        onRefresh: () => _refresh(ref),
+        child: body,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openForm,
+        onPressed: () => _openForm(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Weiteres Event erstellen'),
       ),

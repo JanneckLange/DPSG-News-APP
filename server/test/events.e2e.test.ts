@@ -149,6 +149,136 @@ describe('Events API e2e', () => {
     expect(ownResponse.body.events[0].title).toBe('Test Event');
   });
 
+  it('persists and returns CTA button fields through create and update', async () => {
+    await createAuthorForTesting({ username: 'author-cta', password: 'secret-123' });
+    const token = await loginAuthor('author-cta', 'secret-123');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event mit Buttons',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        endDate: '2026-05-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        cta1Label: 'Anmelden',
+        cta1Url: 'https://example.org/anmeldung',
+        cta2Label: 'Mehr Infos',
+        cta2Url: 'https://example.org/infos',
+      });
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.event).toMatchObject({
+      cta1Label: 'Anmelden',
+      cta1Url: 'https://example.org/anmeldung',
+      cta2Label: 'Mehr Infos',
+      cta2Url: 'https://example.org/infos',
+    });
+
+    const eventId = createResponse.body.event.id as number;
+    const publicResponse = await request(app).get('/api/events');
+    expect(publicResponse.status).toBe(200);
+    expect(publicResponse.body.events[0]).toMatchObject({
+      cta1Label: 'Anmelden',
+      cta1Url: 'https://example.org/anmeldung',
+      cta2Label: 'Mehr Infos',
+      cta2Url: 'https://example.org/infos',
+    });
+
+    const updateResponse = await request(app)
+      .put(`/api/author/events/${eventId}`)
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event mit Buttons aktualisiert',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        endDate: '2026-05-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        cta1Label: 'Jetzt anmelden',
+        cta1Url: 'https://example.org/anmeldung-neu',
+      });
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body.event).toMatchObject({
+      cta1Label: 'Jetzt anmelden',
+      cta1Url: 'https://example.org/anmeldung-neu',
+    });
+    expect(updateResponse.body.event.cta2Label).toBeUndefined();
+    expect(updateResponse.body.event.cta2Url).toBeUndefined();
+  });
+
+  it('rejects events with an oversized title', async () => {
+    await createAuthorForTesting({ username: 'author-oversized', password: 'secret-123' });
+    const token = await loginAuthor('author-oversized', 'secret-123');
+
+    const response = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'x'.repeat(101),
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects a CTA URL with a javascript: scheme', async () => {
+    await createAuthorForTesting({ username: 'author-xss', password: 'secret-123' });
+    const token = await loginAuthor('author-xss', 'secret-123');
+
+    const response = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        cta1Label: 'Klick mich',
+        cta1Url: 'javascript:alert(1)',
+      });
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects an unknown layerId', async () => {
+    await createAuthorForTesting({ username: 'author-unknown-layer', password: 'secret-123' });
+    const token = await loginAuthor('author-unknown-layer', 'secret-123');
+
+    const response = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: 999999,
+      });
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects a topic that does not belong to the selected layer', async () => {
+    await createAuthorForTesting({ username: 'author-bad-topic', password: 'secret-123' });
+    const token = await loginAuthor('author-bad-topic', 'secret-123');
+
+    const response = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        topic: 'Rover',
+      });
+    expect(response.status).toBe(400);
+  });
+
   it('shows all events in public endpoint but only own events in author endpoint', async () => {
     await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
     await createAuthorForTesting({ username: 'author-b', password: 'secret-456' });

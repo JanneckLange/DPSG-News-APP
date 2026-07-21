@@ -98,7 +98,7 @@ describe('Database helper', () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ layerId: 7 });
     expect(mockQuery).toHaveBeenLastCalledWith({
-      text: 'SELECT * FROM events ORDER BY start_date ASC',
+      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e ORDER BY e.start_date ASC',
       values: [],
     });
 
@@ -106,7 +106,7 @@ describe('Database helper', () => {
     events = await getEvents(7);
     expect(events[0]).toMatchObject({ layerId: 7 });
     expect(mockQuery).toHaveBeenLastCalledWith({
-      text: 'SELECT * FROM events WHERE layer_id = $1 ORDER BY start_date ASC',
+      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e WHERE e.layer_id = $1 ORDER BY e.start_date ASC',
       values: [7],
     });
   });

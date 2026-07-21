@@ -33,12 +33,11 @@ describe('Health endpoint', () => {
     }
   });
 
-  it('returns tree version and build metadata', async () => {
+  it('returns build metadata', async () => {
     const response = await request(app).get('/health');
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('ok');
-    expect(response.body.treeVersion).toBe('2026-07-01T00:00:00Z');
     expect(response.body.build).toEqual({
       buildTimeUtc: '2026-07-01T12:00:00Z',
       gitShaShort: '0123456789ab',

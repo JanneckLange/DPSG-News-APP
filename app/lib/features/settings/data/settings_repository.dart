@@ -68,6 +68,12 @@ final savedEventIdsProvider =
   return SavedEventIdsNotifier(repository);
 });
 
+final eventViewedAtProvider =
+    StateNotifierProvider<EventViewedAtNotifier, Map<String, DateTime>>((ref) {
+  final repository = ref.read(settingsRepositoryProvider);
+  return EventViewedAtNotifier(repository);
+});
+
 final autoSaveEventOnCtaClickProvider =
     StateNotifierProvider<AutoSaveEventOnCtaClickNotifier, bool>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
@@ -85,6 +91,12 @@ final deadlineReminderDaysBeforeProvider =
     StateNotifierProvider<DeadlineReminderDaysBeforeNotifier, int>((ref) {
   final repository = ref.read(settingsRepositoryProvider);
   return DeadlineReminderDaysBeforeNotifier(repository);
+});
+
+final hasSeenWelcomeProvider =
+    StateNotifierProvider<HasSeenWelcomeNotifier, bool>((ref) {
+  final repository = ref.read(settingsRepositoryProvider);
+  return HasSeenWelcomeNotifier(repository);
 });
 
 class AuthorModeNotifier extends StateNotifier<bool> {
@@ -211,6 +223,20 @@ class SavedEventIdsNotifier extends StateNotifier<Set<String>> {
   }
 }
 
+class EventViewedAtNotifier extends StateNotifier<Map<String, DateTime>> {
+  EventViewedAtNotifier(this._repository)
+      : super(_repository.getEventViewedAt());
+
+  final SettingsRepository _repository;
+
+  Future<void> markViewed(String eventId) async {
+    if (eventId.isEmpty) return;
+    final updated = {...state, eventId: DateTime.now()};
+    await _repository.setEventViewedAt(updated);
+    state = updated;
+  }
+}
+
 class AutoSaveEventOnCtaClickNotifier extends StateNotifier<bool> {
   AutoSaveEventOnCtaClickNotifier(this._repository)
       : super(_repository.getAutoSaveEventOnCtaClick());
@@ -247,6 +273,18 @@ class DeadlineReminderDaysBeforeNotifier extends StateNotifier<int> {
   }
 }
 
+class HasSeenWelcomeNotifier extends StateNotifier<bool> {
+  HasSeenWelcomeNotifier(this._repository)
+      : super(_repository.getHasSeenWelcome());
+
+  final SettingsRepository _repository;
+
+  Future<void> setHasSeenWelcome(bool value) async {
+    await _repository.setHasSeenWelcome(value);
+    state = value;
+  }
+}
+
 class SettingsRepository {
   static const int defaultSubscribedEventsReminderDaysBefore = 1;
   static const int defaultDeadlineReminderDaysBefore = 2;
@@ -262,6 +300,7 @@ class SettingsRepository {
   static const String notificationsEnabledKey = 'notifications_enabled';
   static const String newEventPushEnabledKey = 'new_event_push_enabled';
   static const String savedEventIdsKey = 'saved_event_ids';
+  static const String eventViewedAtKey = 'event_viewed_at';
   static const String autoSaveEventOnCtaClickKey =
       'auto_save_event_on_cta_click';
   static const String subscribedEventsReminderEnabledKey =
@@ -273,6 +312,7 @@ class SettingsRepository {
       'subscribed_events_reminder_days_before';
   static const String deadlineReminderDaysBeforeKey =
       'deadline_reminder_days_before';
+  static const String hasSeenWelcomeKey = 'has_seen_welcome';
   static const String layerTreeKey = 'layer_tree';
   static const String layerTreeLastChangeKey = 'layer_tree_last_change';
   static const String authorAuthTokenKey =
@@ -419,6 +459,24 @@ class SettingsRepository {
     await _box.put(savedEventIdsKey, eventIds);
   }
 
+  Map<String, DateTime> getEventViewedAt() {
+    final raw = _box.get(eventViewedAtKey) as Map<dynamic, dynamic>?;
+    if (raw == null) return <String, DateTime>{};
+    final result = <String, DateTime>{};
+    for (final entry in raw.entries) {
+      final parsed = DateTime.tryParse(entry.value?.toString() ?? '');
+      if (parsed != null) result[entry.key as String] = parsed;
+    }
+    return result;
+  }
+
+  Future<void> setEventViewedAt(Map<String, DateTime> viewedAt) async {
+    final serialized = viewedAt.map(
+      (key, value) => MapEntry(key, value.toUtc().toIso8601String()),
+    );
+    await _box.put(eventViewedAtKey, serialized);
+  }
+
   bool getAutoSaveEventOnCtaClick() =>
       _box.get(autoSaveEventOnCtaClickKey, defaultValue: true) as bool;
 
@@ -464,6 +522,12 @@ class SettingsRepository {
     if (days > 10) return 10;
     return days;
   }
+
+  bool getHasSeenWelcome() =>
+      _box.get(hasSeenWelcomeKey, defaultValue: false) as bool;
+
+  Future<void> setHasSeenWelcome(bool value) async =>
+      _box.put(hasSeenWelcomeKey, value);
 
   String? getApiBaseUrl() => _box.get(apiBaseUrlKey) as String?;
 

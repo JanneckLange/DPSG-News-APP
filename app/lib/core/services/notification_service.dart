@@ -118,10 +118,9 @@ class NotificationService {
   }
 
   Future<void> _subscribeToTopics(List<String> topics) async {
-    final messaging = FirebaseMessaging.instance;
     for (final topic in topics) {
       try {
-        await messaging.subscribeToTopic(topic);
+        await FirebaseMessaging.instance.subscribeToTopic(topic);
         log('Subscribed to topic: $topic');
       } catch (error, stack) {
         log('Failed to subscribe to topic $topic: $error');
@@ -131,10 +130,9 @@ class NotificationService {
   }
 
   Future<void> _unsubscribeFromTopics(List<String> topics) async {
-    final messaging = FirebaseMessaging.instance;
     for (final topic in topics) {
       try {
-        await messaging.unsubscribeFromTopic(topic);
+        await FirebaseMessaging.instance.unsubscribeFromTopic(topic);
         log('Unsubscribed from topic: $topic');
       } catch (error, stack) {
         log('Failed to unsubscribe from topic $topic: $error');
