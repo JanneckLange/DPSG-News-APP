@@ -97,6 +97,9 @@ cd .claude/worktrees/profil-bearbeiten
 claude
 ```
 
+start any session and say 'caveman mode', or run /caveman in Claude Code
+measure what caveman save you: run /caveman-stats (numbers are estimates)
+
 ### 1. Neues Feature starten
 
 ```bash
