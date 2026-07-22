@@ -1110,43 +1110,51 @@ export type AuthorRecord = {
   isAdmin: boolean;
   isActive: boolean;
   requiresPasswordChange: boolean;
+  adminLayerId: number | null;
 };
 
-export async function listAuthors(): Promise<AuthorRecord[]> {
-  const result = await ensureClient().query<AuthorRow>(
-    'SELECT * FROM authors ORDER BY username ASC'
-  );
-  return result.rows.map((row) => ({
+function mapAuthorRecord(row: AuthorRow): AuthorRecord {
+  return {
     id: row.id,
     username: row.username,
     isAdmin: row.is_admin,
     isActive: row.is_active,
     requiresPasswordChange: row.must_change_password,
-  }));
+    adminLayerId: row.admin_layer_id,
+  };
+}
+
+export async function listAuthors(): Promise<AuthorRecord[]> {
+  const result = await ensureClient().query<AuthorRow>(
+    'SELECT * FROM authors ORDER BY username ASC'
+  );
+  return result.rows.map(mapAuthorRecord);
+}
+
+export async function getAuthorById(authorId: number): Promise<AuthorRecord | null> {
+  const result = await ensureClient().query<AuthorRow>('SELECT * FROM authors WHERE id = $1', [authorId]);
+  return result.rows[0] ? mapAuthorRecord(result.rows[0]) : null;
 }
 
 export async function createAuthor(options: {
   username: string;
   isAdmin?: boolean;
+  adminLayerId?: number | null;
 }): Promise<{ author: AuthorRecord; oneTimePassword: string }> {
   const oneTimePassword = randomUUID().split('-')[0];
   const result = await ensureClient().query<AuthorRow>(
-    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
-     VALUES ($1, $2, $3, TRUE, TRUE, $4)
+    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin, admin_layer_id)
+     VALUES ($1, $2, $3, TRUE, TRUE, $4, $5)
      RETURNING *`,
-    [options.username, hashPassword(randomUUID()), hashPassword(oneTimePassword), options.isAdmin ?? false]
+    [
+      options.username,
+      hashPassword(randomUUID()),
+      hashPassword(oneTimePassword),
+      options.isAdmin ?? false,
+      options.adminLayerId ?? null,
+    ]
   );
-  const row = result.rows[0];
-  return {
-    author: {
-      id: row.id,
-      username: row.username,
-      isAdmin: row.is_admin,
-      isActive: row.is_active,
-      requiresPasswordChange: row.must_change_password,
-    },
-    oneTimePassword,
-  };
+  return { author: mapAuthorRecord(result.rows[0]), oneTimePassword };
 }
 
 export async function setAuthorActive(authorId: number, isActive: boolean): Promise<boolean> {

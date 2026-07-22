@@ -15,6 +15,7 @@ import {
   deleteEventById,
   deleteLayer,
   deleteTopic,
+  getAuthorById,
   getAuthorDrafts,
   getAuthorEvents,
   getAuthorSession,
@@ -953,7 +954,17 @@ app.post('/api/admin/users', async (req: Request, res: Response) => {
     if (!username) {
       return respondBadRequest(req, res, 'Username is required');
     }
-    const result = await createAuthor({ username, isAdmin });
+    let adminLayerId: number | undefined;
+    if (isAdmin) {
+      adminLayerId = parseLayerId(req.body.layerId);
+      if (!adminLayerId || !await isKnownLayerId(adminLayerId)) {
+        return respondBadRequest(req, res, 'Invalid layerId');
+      }
+      if (!await requireLayerScope(res, adminLayerId)) {
+        return;
+      }
+    }
+    const result = await createAuthor({ username, isAdmin, adminLayerId });
     res.status(201).json(result);
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -1005,6 +1016,10 @@ app.delete('/api/admin/users/:id', async (req: Request, res: Response) => {
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid user id');
     }
+    const target = await getAuthorById(id);
+    if (target?.isAdmin && !await requireLayerScope(res, target.adminLayerId)) {
+      return;
+    }
     const deleted = await deleteAuthorById(id);
     if (!deleted) {
       return res.status(409).json({ error: 'User must be deactivated before deletion' });
@@ -1027,6 +1042,10 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid user id');
+    }
+    const target = await getAuthorById(id);
+    if (target?.isAdmin && !await requireLayerScope(res, target.adminLayerId)) {
+      return;
     }
     const oneTimePassword = await resetAuthorPassword(id);
     if (!oneTimePassword) {
