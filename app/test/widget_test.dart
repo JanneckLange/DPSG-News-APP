@@ -386,7 +386,7 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Admin-Bereich'), findsOneWidget);
-    expect(find.text('Nutzer anlegen'), findsOneWidget);
+    expect(find.text('Layer & Themen verwalten'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
