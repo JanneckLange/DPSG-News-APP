@@ -41,4 +41,19 @@ jobs:
           prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
+          # show_full_output: reveals the actual SDK request/response in the job log
+          # instead of just the redacted result summary, so failures are diagnosable
+          # without a separate artifact download.
+          show_full_output: true
+
+      - name: Upload Claude execution log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-review-execution-log
+          # Written by claude-code-action regardless of success/failure; see
+          # "Log saved to ..." line in the job log for the exact path.
+          path: /home/runner/work/_temp/claude-execution-output.json
+          if-no-files-found: warn
+          retention-days: 14
 
