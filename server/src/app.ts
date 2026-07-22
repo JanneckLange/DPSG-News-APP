@@ -23,6 +23,7 @@ import {
   getEvents,
   getLayerById,
   getLayers,
+  getLayerSubtree,
   getTopicById,
   getTopics,
   isLayerInAdminScope,
@@ -1055,6 +1056,29 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to reset password' });
+  }
+});
+
+app.get('/api/admin/layers', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const author = res.locals.author as { adminLayerId?: number | null } | undefined;
+    if (!author?.adminLayerId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const layers = await getLayerSubtree(author.adminLayerId);
+    res.json({ layers });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load layers' });
   }
 });
 

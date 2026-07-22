@@ -6,7 +6,7 @@ import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import 'admin_otp_dialog.dart';
 import 'admin_user_detail_screen.dart';
-import 'topic_admin_screen.dart';
+import 'layer_admin_screen.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
@@ -118,9 +118,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
-  void _openTopicAdmin() {
+  void _openLayerAdmin() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const TopicAdminScreen()),
+      MaterialPageRoute(builder: (context) => const LayerAdminScreen()),
     );
   }
 
@@ -156,12 +156,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             child: Card(
               margin: EdgeInsets.zero,
               child: ListTile(
-                leading: const Icon(Icons.label_outline),
-                title: const Text('Themen verwalten'),
-                subtitle:
-                    const Text('Themen je Layer anlegen, umbenennen, löschen'),
+                leading: const Icon(Icons.account_tree_outlined),
+                title: const Text('Layer & Themen verwalten'),
+                subtitle: const Text(
+                    'Layer-Baum, Unterlayer und Themen anlegen, umbenennen, löschen'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: _openTopicAdmin,
+                onTap: _openLayerAdmin,
               ),
             ),
           ),

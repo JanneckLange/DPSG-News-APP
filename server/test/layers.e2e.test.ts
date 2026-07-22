@@ -233,6 +233,50 @@ describe('Layers API e2e', () => {
     expect(deleteInScope.status).toBe(204);
   });
 
+  it('returns only the admin\'s own layer branch on GET /api/admin/layers', async () => {
+    const layersResponse = await request(app).get('/api/layers');
+    const layers = layersResponse.body.layers as Array<{ id: number; name: string; type: string; parentId: number | null }>;
+    const bundesverband = layers.find((l) => l.type === 'bundesverband')!;
+    const koelnLayer = layers.find((l) => l.name === 'Köln' && l.type === 'dv')!;
+    const otherDvLayer = layers.find((l) => l.type === 'dv' && l.id !== koelnLayer.id)!;
+
+    const unauthenticated = await request(app).get('/api/admin/layers');
+    expect(unauthenticated.status).toBe(401);
+
+    await createAuthorForTesting({ username: 'author-admin-layers-get', password: 'secret-123' });
+    const authorToken = await loginAuthor('author-admin-layers-get', 'secret-123');
+    const nonAdmin = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${authorToken}`);
+    expect(nonAdmin.status).toBe(403);
+
+    await createAuthorForTesting({
+      username: 'admin-layers-scoped-get',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerId: koelnLayer.id,
+    });
+    const scopedToken = await loginAuthor('admin-layers-scoped-get', 'admin-123');
+    const scopedResponse = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${scopedToken}`);
+    expect(scopedResponse.status).toBe(200);
+    const scopedLayers = scopedResponse.body.layers as Array<{ id: number }>;
+    expect(scopedLayers.map((l) => l.id)).toContain(koelnLayer.id);
+    expect(scopedLayers.map((l) => l.id)).not.toContain(otherDvLayer.id);
+    expect(scopedLayers.map((l) => l.id)).not.toContain(bundesverband.id);
+
+    await createAuthorForTesting({
+      username: 'admin-layers-root-get',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerId: bundesverband.id,
+    });
+    const rootToken = await loginAuthor('admin-layers-root-get', 'admin-123');
+    const rootResponse = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${rootToken}`);
+    expect(rootResponse.status).toBe(200);
+    const rootLayers = rootResponse.body.layers as Array<{ id: number }>;
+    expect(rootLayers.map((l) => l.id)).toContain(koelnLayer.id);
+    expect(rootLayers.map((l) => l.id)).toContain(otherDvLayer.id);
+    expect(rootLayers.map((l) => l.id)).toContain(bundesverband.id);
+  });
+
   it('rejects creating or updating events with an unknown layerId', async () => {
     await createAuthorForTesting({ username: 'author-b', password: 'secret-123' });
     const token = await loginAuthor('author-b', 'secret-123');
