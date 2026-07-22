@@ -27,6 +27,16 @@ async function getLayerIdByName(name: string): Promise<number> {
   return layer.id;
 }
 
+async function getTopicIdByName(layerId: number, name: string): Promise<number> {
+  const response = await request(app).get('/api/topics').query({ layerId });
+  expect(response.status).toBe(200);
+  const topic = (response.body.topics as Array<{ id: number; name: string }>).find((t) => t.name === name);
+  if (!topic) {
+    throw new Error(`Topic "${name}" not found for layer ${layerId}`);
+  }
+  return topic.id;
+}
+
 async function forceUpdateDraftModifiedAt(draftId: number, modifiedAt: string): Promise<void> {
   const databaseUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -107,6 +117,20 @@ describe('Drafts API e2e', () => {
       .set('authorization', `Bearer ${token}`)
       .send({ title: 'Draft with bad layer', layerId: 999999 });
     expect(invalidRes.status).toBe(400);
+  });
+
+  it('accepts a draft with a valid topicId for the selected layer', async () => {
+    await createAuthorForTesting({ username: 'draft-author-topic', password: 'pwd-123' });
+    const token = await loginAuthor('draft-author-topic', 'pwd-123');
+    const hamburgLayerId = await getLayerIdByName('Hamburg');
+    const roverTopicId = await getTopicIdByName(hamburgLayerId, 'Rover');
+
+    const res = await request(app)
+      .post('/api/author/drafts')
+      .set('authorization', `Bearer ${token}`)
+      .send({ title: 'Draft with topic', layerId: hamburgLayerId, topicId: roverTopicId });
+    expect(res.status).toBe(201);
+    expect(res.body.draft.topicId).toBe(roverTopicId);
   });
 
   it('rejects a draft with an oversized CTA label', async () => {

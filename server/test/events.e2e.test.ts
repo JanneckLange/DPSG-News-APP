@@ -26,8 +26,19 @@ async function getLayerIdByName(name: string): Promise<number> {
   return layer.id;
 }
 
+async function getTopicIdByName(layerId: number, name: string): Promise<number> {
+  const response = await request(app).get('/api/topics').query({ layerId });
+  expect(response.status).toBe(200);
+  const topic = (response.body.topics as Array<{ id: number; name: string }>).find((t) => t.name === name);
+  if (!topic) {
+    throw new Error(`Topic "${name}" not found for layer ${layerId}`);
+  }
+  return topic.id;
+}
+
 let koelnLayerId: number;
 let hamburgLayerId: number;
+let hamburgRoverTopicId: number;
 
 beforeAll(async () => {
   process.env.TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
@@ -36,6 +47,7 @@ beforeAll(async () => {
   await connect();
   koelnLayerId = await getLayerIdByName('Köln');
   hamburgLayerId = await getLayerIdByName('Hamburg');
+  hamburgRoverTopicId = await getTopicIdByName(hamburgLayerId, 'Rover');
 });
 
 beforeEach(async () => {
@@ -261,7 +273,7 @@ describe('Events API e2e', () => {
     expect(response.status).toBe(400);
   });
 
-  it('rejects a topic that does not belong to the selected layer', async () => {
+  it('rejects a topicId that does not belong to the selected layer', async () => {
     await createAuthorForTesting({ username: 'author-bad-topic', password: 'secret-123' });
     const token = await loginAuthor('author-bad-topic', 'secret-123');
 
@@ -274,9 +286,28 @@ describe('Events API e2e', () => {
         startDate: '2026-05-01T10:00:00Z',
         location: 'Ort',
         layerId: koelnLayerId,
-        topic: 'Rover',
+        topicId: hamburgRoverTopicId,
       });
     expect(response.status).toBe(400);
+  });
+
+  it('accepts a topicId that belongs to the selected layer', async () => {
+    await createAuthorForTesting({ username: 'author-good-topic', password: 'secret-123' });
+    const token = await loginAuthor('author-good-topic', 'secret-123');
+
+    const response = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: hamburgLayerId,
+        topicId: hamburgRoverTopicId,
+      });
+    expect(response.status).toBe(201);
+    expect(response.body.event.topicId).toBe(hamburgRoverTopicId);
   });
 
   it('shows all events in public endpoint but only own events in author endpoint', async () => {

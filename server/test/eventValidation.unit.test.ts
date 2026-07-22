@@ -14,7 +14,7 @@ describe('validateEventTextFields', () => {
       title: 'Sommerlager',
       description: 'Ein tolles Lager',
       location: 'Zeltplatz',
-      topic: undefined,
+      topicId: undefined,
       cta1Label: 'Anmelden',
       cta1Url: 'https://example.org/anmeldung',
     });
@@ -66,25 +66,30 @@ describe('validateEventTextFields', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('rejects a topic that does not belong to the selected layer', () => {
+  it('rejects a topicId that does not belong to the selected layer', () => {
     const result = validateEventTextFields(
-      { title: 'Test', topic: 'Nicht existent' },
-      ['Wölflinge', 'Rover'],
+      { title: 'Test', topicId: 999 },
+      [1, 2],
     );
-    expect(result).toEqual({ valid: false, error: expect.stringContaining('topic') });
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('topicId') });
   });
 
-  it('accepts a topic that belongs to the selected layer', () => {
+  it('accepts a topicId that belongs to the selected layer', () => {
     const result = validateEventTextFields(
-      { title: 'Test', topic: 'Rover' },
-      ['Wölflinge', 'Rover'],
+      { title: 'Test', topicId: 2 },
+      [1, 2],
     );
     expect(result.valid).toBe(true);
   });
 
-  it('rejects a topic when the selected layer has no groups', () => {
-    const result = validateEventTextFields({ title: 'Test', topic: 'Rover' });
+  it('rejects a topicId when the selected layer has no known topics', () => {
+    const result = validateEventTextFields({ title: 'Test', topicId: 2 });
     expect(result.valid).toBe(false);
+  });
+
+  it('rejects a non-numeric topicId instead of crashing', () => {
+    const result = validateEventTextFields({ title: 'Test', topicId: 'Rover' as unknown as number }, [1, 2]);
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('topicId') });
   });
 
   it('rejects a description that exceeds the max length', () => {
