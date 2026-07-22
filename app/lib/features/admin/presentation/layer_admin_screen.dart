@@ -6,6 +6,9 @@ import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../settings/domain/layer_model.dart';
 import '../domain/topic_model.dart';
+import 'admin_otp_dialog.dart';
+import 'widgets/layer_multi_select_dialog.dart';
+import 'widgets/topic_multi_select_dialog.dart';
 
 class LayerAdminScreen extends ConsumerStatefulWidget {
   const LayerAdminScreen({super.key});
@@ -147,6 +150,132 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
       showErrorToast(
         ref,
         'Layer konnte nicht angelegt werden: ${describeRemoteError(error)}',
+      );
+    }
+  }
+
+  Future<void> _createAdmin(int layerId) async {
+    final username = await _showNameDialog(
+      title: 'Admin anlegen',
+      confirmLabel: 'Weiter',
+      label: 'Username',
+    );
+    if (username == null) return;
+    if (!mounted) return;
+
+    final selectedLayerIds = await showLayerMultiSelectDialog(
+      context,
+      layers: _layers,
+      initialSelectedIds: {layerId},
+      title: 'Layer für Admin auswählen',
+    );
+    if (selectedLayerIds == null || selectedLayerIds.isEmpty) {
+      if (mounted) {
+        showErrorToast(ref, 'Admin benötigt mindestens einen Layer.');
+      }
+      return;
+    }
+
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) return;
+    final remote = ref.read(sync_service.remoteEventSourceProvider);
+    try {
+      final response = await remote.createAdminUser(
+        token: token,
+        username: username,
+        isAdmin: true,
+        layerIds: selectedLayerIds.toList(),
+      );
+      if (!mounted) return;
+      await showAdminOtpDialog(
+        context,
+        otp: response['oneTimePassword'] as String,
+        title: 'Admin angelegt',
+        message: 'Bitte diese Daten jetzt sicher speichern.',
+        username: username,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      showErrorToast(
+        ref,
+        'Admin konnte nicht angelegt werden: ${describeRemoteError(error)}',
+      );
+    }
+  }
+
+  Future<void> _createAuthor(int layerId) async {
+    final username = await _showNameDialog(
+      title: 'Autor anlegen',
+      confirmLabel: 'Weiter',
+      label: 'Username',
+    );
+    if (username == null) return;
+    if (!mounted) return;
+
+    final selectedLayerIds = await showLayerMultiSelectDialog(
+          context,
+          layers: _layers,
+          initialSelectedIds: {layerId},
+          title: 'Layer für Autor auswählen (optional)',
+        ) ??
+        <int>{};
+
+    Set<int> selectedTopicIds = <int>{};
+    if (selectedLayerIds.isNotEmpty) {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
+      final availableTopics = <TopicModel>[];
+      for (final id in selectedLayerIds) {
+        final response = await remote.fetchTopics(layerId: id);
+        availableTopics.addAll(
+          List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
+              .map(TopicModel.fromJson),
+        );
+      }
+      if (availableTopics.isNotEmpty && mounted) {
+        selectedTopicIds = await showTopicMultiSelectDialog(
+              context,
+              title: 'Topics für Autor auswählen (optional)',
+              availableTopics: availableTopics,
+              initialSelectedTopicIds: const <int>{},
+            ) ??
+            <int>{};
+      }
+    }
+
+    final token =
+        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (token == null) return;
+    final remote = ref.read(sync_service.remoteEventSourceProvider);
+    try {
+      final response = await remote.createAdminUser(
+        token: token,
+        username: username,
+        isAdmin: false,
+      );
+      final newUserId =
+          ((response['author'] as Map<String, dynamic>)['id'] as num).toInt();
+      for (final id in selectedLayerIds) {
+        await remote.addAuthorLayerGrant(
+            token: token, userId: newUserId, layerId: id);
+      }
+      for (final id in selectedTopicIds) {
+        await remote.addAuthorTopicGrant(
+            token: token, userId: newUserId, topicId: id);
+      }
+      if (!mounted) return;
+      await showAdminOtpDialog(
+        context,
+        otp: response['oneTimePassword'] as String,
+        title: 'Autor angelegt',
+        message: 'Bitte diese Daten jetzt sicher speichern.',
+        username: username,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      showErrorToast(
+        ref,
+        'Autor konnte nicht angelegt werden: ${describeRemoteError(error)}',
       );
     }
   }
@@ -314,6 +443,7 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     required String title,
     required String confirmLabel,
     String? initialValue,
+    String label = 'Name',
   }) {
     return showDialog<String>(
       context: context,
@@ -321,6 +451,7 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
         title: title,
         confirmLabel: confirmLabel,
         initialValue: initialValue,
+        label: label,
       ),
     );
   }
@@ -342,6 +473,16 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
           tooltip: 'Unterlayer anlegen',
           icon: const Icon(Icons.add),
           onPressed: () => _createChildLayer(layer.id),
+        ),
+        IconButton(
+          tooltip: 'Admin anlegen',
+          icon: const Icon(Icons.admin_panel_settings),
+          onPressed: () => _createAdmin(layer.id),
+        ),
+        IconButton(
+          tooltip: 'Autor anlegen',
+          icon: const Icon(Icons.person_add_alt),
+          onPressed: () => _createAuthor(layer.id),
         ),
         IconButton(
           tooltip: 'Umbenennen',
@@ -538,11 +679,13 @@ class _NameDialog extends StatefulWidget {
     required this.title,
     required this.confirmLabel,
     this.initialValue,
+    this.label = 'Name',
   });
 
   final String title;
   final String confirmLabel;
   final String? initialValue;
+  final String label;
 
   @override
   State<_NameDialog> createState() => _NameDialogState();
@@ -568,9 +711,9 @@ class _NameDialogState extends State<_NameDialog> {
         child: TextFormField(
           controller: _controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Name'),
+          decoration: InputDecoration(labelText: widget.label),
           validator: (value) => value == null || value.trim().isEmpty
-              ? 'Bitte einen Namen eingeben.'
+              ? 'Bitte einen Wert eingeben.'
               : null,
         ),
       ),

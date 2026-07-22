@@ -66,6 +66,7 @@ class FakeAdminRemoteEventSource extends FakeRemoteEventSource {
     required String token,
     required String username,
     bool isAdmin = false,
+    List<int>? layerIds,
   }) async {
     return {
       'author': {'username': username},

@@ -205,7 +205,7 @@ describe('Topics admin CRUD e2e', () => {
       username: 'admin-topics-scoped',
       password: 'admin-123',
       isAdmin: true,
-      adminLayerId: koelnLayerId,
+      adminLayerIds: [koelnLayerId],
     });
     const adminToken = await loginAuthor('admin-topics-scoped', 'admin-123');
 

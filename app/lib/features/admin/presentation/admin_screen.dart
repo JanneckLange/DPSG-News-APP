@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../author/data/author_auth_provider.dart';
-import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
-import 'admin_otp_dialog.dart';
 import 'admin_user_detail_screen.dart';
 import 'layer_admin_screen.dart';
 
@@ -61,52 +59,6 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
-  Future<void> _createUser() async {
-    final result = await showDialog<Map<String, dynamic>?>(
-      context: context,
-      builder: (context) => const _CreateUserDialog(),
-    );
-    if (result == null) {
-      return;
-    }
-
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) {
-      return;
-    }
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
-    try {
-      final response = await remote.createAdminUser(
-        token: token,
-        username: result['username'] as String,
-        isAdmin: result['isAdmin'] == true,
-      );
-      if (!mounted) {
-        return;
-      }
-      await _loadUsers();
-      if (!mounted) {
-        return;
-      }
-      await showAdminOtpDialog(
-        context,
-        otp: response['oneTimePassword'] as String,
-        title: 'Nutzer angelegt',
-        message: 'Bitte diese Daten jetzt sicher speichern.',
-        username: result['username'] as String,
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      showErrorToast(
-        ref,
-        'Nutzer konnte nicht angelegt werden: ${describeRemoteError(error)}',
-      );
-    }
-  }
-
   Future<void> _openDetails(Map<String, dynamic> user) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -143,11 +95,6 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             icon: const Icon(Icons.refresh),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createUser,
-        icon: const Icon(Icons.person_add),
-        label: const Text('Nutzer anlegen'),
       ),
       body: Column(
         children: [
@@ -221,78 +168,6 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _CreateUserDialog extends StatefulWidget {
-  const _CreateUserDialog();
-
-  @override
-  State<_CreateUserDialog> createState() => _CreateUserDialogState();
-}
-
-class _CreateUserDialogState extends State<_CreateUserDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  bool _isAdmin = false;
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
-    }
-    Navigator.of(context).pop({
-      'username': _usernameController.text.trim(),
-      'isAdmin': _isAdmin,
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      scrollable: true,
-      title: const Text('Nutzer anlegen'),
-      content: Form(
-        key: _formKey,
-        child: AutofillGroup(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Username'),
-                autofillHints: const [AutofillHints.username],
-                textInputAction: TextInputAction.done,
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Bitte Username eingeben.'
-                    : null,
-              ),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _isAdmin,
-                onChanged: (value) => setState(() => _isAdmin = value ?? false),
-                title: const Text('Admin'),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Abbrechen'),
-        ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Anlegen'),
-        ),
-      ],
     );
   }
 }

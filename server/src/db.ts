@@ -186,11 +186,13 @@ type AuthorRow = {
   admin_layer_id: number | null;
 };
 
+type AuthorRowWithAdminLayers = AuthorRow & { admin_layer_ids: number[] };
+
 export type AuthorIdentity = {
   id: number;
   username: string;
   isAdmin: boolean;
-  adminLayerId: number | null;
+  adminLayerIds: number[];
 };
 
 export type AuthSession = {
@@ -339,7 +341,7 @@ function createRefreshTokenValue(): string {
   return `${randomUUID()}${randomUUID()}`;
 }
 
-async function createAuthorLoginSession(author: AuthorRow, requiresPasswordChange: boolean): Promise<AuthLoginSession> {
+async function createAuthorLoginSession(author: AuthorRowWithAdminLayers, requiresPasswordChange: boolean): Promise<AuthLoginSession> {
   const db = ensureClient();
   const token = randomUUID();
   const accessExpiresAt = buildTokenExpiry(accessSessionTtlMinutes());
@@ -533,6 +535,9 @@ export async function connect(): Promise<void> {
   await cleanupExpiredDrafts(true);
   await ensureBootstrapAuthor();
   await migrateAdminLayerId();
+  await migrateAuthorAdminLayers();
+  await migrateAuthorLayerGrants();
+  await migrateAuthorTopicGrants();
 }
 
 async function ensureSeedLayers(): Promise<void> {
@@ -574,6 +579,59 @@ async function migrateAdminLayerId(): Promise<void> {
      SET admin_layer_id = (SELECT id FROM layers WHERE type = 'bundesverband' AND parent_id IS NULL)
      WHERE is_admin = TRUE AND admin_layer_id IS NULL`
   );
+}
+
+// Ersetzt die alte Einzel-Layer-Zuordnung (admin_layer_id) durch eine
+// Viele-zu-viele-Zuordnung: ein Admin kann mehreren Layern zugeordnet sein,
+// jeweils mit "Layer und darunter"-Vererbung bei der Autorisierung. Die
+// admin_layer_id-Spalte bleibt unangetastet (nicht-destruktiv) und wird nur
+// einmalig fuer das Backfill gelesen; neuer Code schreibt sie nicht mehr.
+async function migrateAuthorAdminLayers(): Promise<void> {
+  const db = ensureClient();
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS author_admin_layers (
+      author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+      layer_id INTEGER NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (author_id, layer_id)
+    );
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS author_admin_layers_layer_id_idx ON author_admin_layers(layer_id);`);
+  await db.query(`
+    INSERT INTO author_admin_layers (author_id, layer_id)
+    SELECT id, admin_layer_id FROM authors
+    WHERE is_admin = TRUE AND admin_layer_id IS NOT NULL
+    ON CONFLICT (author_id, layer_id) DO NOTHING
+  `);
+}
+
+// Issue #15: flache (nicht vererbte) Autoren-Rechtezuordnung fuer
+// Nicht-Admin-Autoren. Anders als bei author_admin_layers gilt hier
+// ausschliesslich der exakt zugeordnete Layer/Topic, keine Subtree-Vererbung.
+async function migrateAuthorLayerGrants(): Promise<void> {
+  const db = ensureClient();
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS author_layer_grants (
+      author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+      layer_id INTEGER NOT NULL REFERENCES layers(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (author_id, layer_id)
+    );
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS author_layer_grants_layer_id_idx ON author_layer_grants(layer_id);`);
+}
+
+async function migrateAuthorTopicGrants(): Promise<void> {
+  const db = ensureClient();
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS author_topic_grants (
+      author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+      topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (author_id, topic_id)
+    );
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS author_topic_grants_topic_id_idx ON author_topic_grants(topic_id);`);
 }
 
 async function migrateTopicToTopicId(table: 'events' | 'drafts'): Promise<void> {
@@ -920,9 +978,15 @@ export async function clearAuthorData(): Promise<void> {
   await ensureClient().query('DELETE FROM authors');
 }
 
-function normalizeAuthor(row: AuthorRow): AuthorIdentity {
-  return { id: row.id, username: row.username, isAdmin: row.is_admin, adminLayerId: row.admin_layer_id };
+function normalizeAuthor(row: AuthorRowWithAdminLayers): AuthorIdentity {
+  return { id: row.id, username: row.username, isAdmin: row.is_admin, adminLayerIds: row.admin_layer_ids };
 }
+
+const ADMIN_LAYER_IDS_SUBQUERY = `(
+  SELECT COALESCE(array_agg(layer_id), ARRAY[]::int[])
+  FROM author_admin_layers
+  WHERE author_id = a.id
+) AS admin_layer_ids`;
 
 export async function createAuthorForTesting(options: {
   username: string;
@@ -930,36 +994,50 @@ export async function createAuthorForTesting(options: {
   oneTimePassword?: string;
   mustChangePassword?: boolean;
   isAdmin?: boolean;
-  adminLayerId?: number | null;
+  adminLayerIds?: number[];
 }): Promise<AuthorIdentity> {
   const db = ensureClient();
-  let adminLayerId = options.adminLayerId ?? null;
-  if ((options.isAdmin ?? false) && adminLayerId == null) {
+  let adminLayerIds = options.adminLayerIds ?? [];
+  if ((options.isAdmin ?? false) && adminLayerIds.length === 0) {
     const root = await db.query<{ id: number }>(
       `SELECT id FROM layers WHERE type = 'bundesverband' AND parent_id IS NULL LIMIT 1`
     );
-    adminLayerId = root.rows[0]?.id ?? null;
+    const rootId = root.rows[0]?.id;
+    adminLayerIds = rootId ? [rootId] : [];
   }
-  const result = await db.query<AuthorRow>(
-    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin, admin_layer_id)
-     VALUES ($1, $2, $3, $4, TRUE, $5, $6)
-     RETURNING *`,
-    [
-      options.username,
-      hashPassword(options.password),
-      options.oneTimePassword ? hashPassword(options.oneTimePassword) : null,
-      options.mustChangePassword ?? false,
-      options.isAdmin ?? false,
-      adminLayerId,
-    ]
-  );
-  return normalizeAuthor(result.rows[0]);
+  await db.query('BEGIN');
+  try {
+    const result = await db.query<AuthorRow>(
+      `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
+       VALUES ($1, $2, $3, $4, TRUE, $5)
+       RETURNING *`,
+      [
+        options.username,
+        hashPassword(options.password),
+        options.oneTimePassword ? hashPassword(options.oneTimePassword) : null,
+        options.mustChangePassword ?? false,
+        options.isAdmin ?? false,
+      ]
+    );
+    const author = result.rows[0];
+    for (const layerId of adminLayerIds) {
+      await db.query(
+        `INSERT INTO author_admin_layers (author_id, layer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [author.id, layerId]
+      );
+    }
+    await db.query('COMMIT');
+    return normalizeAuthor({ ...author, admin_layer_ids: adminLayerIds });
+  } catch (error) {
+    await db.query('ROLLBACK');
+    throw error;
+  }
 }
 
 export async function loginAuthor(username: string, password: string): Promise<AuthLoginSession | null> {
   await cleanupExpiredSessions();
-  const result = await ensureClient().query<AuthorRow>(
-    'SELECT * FROM authors WHERE username = $1 AND is_active = TRUE LIMIT 1',
+  const result = await ensureClient().query<AuthorRowWithAdminLayers>(
+    `SELECT a.*, ${ADMIN_LAYER_IDS_SUBQUERY} FROM authors a WHERE a.username = $1 AND a.is_active = TRUE LIMIT 1`,
     [username]
   );
   const author = result.rows[0];
@@ -992,8 +1070,8 @@ export async function loginAuthor(username: string, password: string): Promise<A
 
 export async function getAuthorSession(token: string): Promise<AuthSession | null> {
   await cleanupExpiredSessions();
-  const result = await ensureClient().query<(AuthorRow & { expires_at: string })>(
-    `SELECT a.*, s.expires_at
+  const result = await ensureClient().query<(AuthorRowWithAdminLayers & { expires_at: string })>(
+    `SELECT a.*, s.expires_at, ${ADMIN_LAYER_IDS_SUBQUERY}
      FROM author_sessions s
      JOIN authors a ON a.id = s.author_id
      LEFT JOIN author_refresh_sessions r ON r.token_hash = s.refresh_token_hash
@@ -1024,7 +1102,7 @@ export async function refreshAuthorSession(refreshToken: string): Promise<AuthLo
   await cleanupExpiredSessions();
   const db = ensureClient();
   const refreshTokenHash = hashToken(refreshToken);
-  const candidateResult = await db.query<(AuthorRow & {
+  const candidateResult = await db.query<(AuthorRowWithAdminLayers & {
     token_hash: string;
     family_id: string;
     expires_at: string;
@@ -1036,7 +1114,8 @@ export async function refreshAuthorSession(refreshToken: string): Promise<AuthLo
             r.expires_at,
             r.revoked_at,
             r.replaced_by_token_hash,
-            a.*
+            a.*,
+            ${ADMIN_LAYER_IDS_SUBQUERY}
      FROM author_refresh_sessions r
      JOIN authors a ON a.id = r.author_id
      WHERE r.token_hash = $1
@@ -1110,51 +1189,84 @@ export type AuthorRecord = {
   isAdmin: boolean;
   isActive: boolean;
   requiresPasswordChange: boolean;
-  adminLayerId: number | null;
+  adminLayerIds: number[];
+  layerGrantIds: number[];
+  topicGrantIds: number[];
 };
 
-function mapAuthorRecord(row: AuthorRow): AuthorRecord {
+type AuthorRowWithGrants = AuthorRowWithAdminLayers & {
+  layer_grant_ids: number[];
+  topic_grant_ids: number[];
+};
+
+const AUTHOR_GRANTS_SELECT = `
+  SELECT a.*,
+    ${ADMIN_LAYER_IDS_SUBQUERY},
+    (SELECT COALESCE(array_agg(layer_id), ARRAY[]::int[]) FROM author_layer_grants WHERE author_id = a.id) AS layer_grant_ids,
+    (SELECT COALESCE(array_agg(topic_id), ARRAY[]::int[]) FROM author_topic_grants WHERE author_id = a.id) AS topic_grant_ids
+  FROM authors a
+`;
+
+function mapAuthorRecord(row: AuthorRowWithGrants): AuthorRecord {
   return {
     id: row.id,
     username: row.username,
     isAdmin: row.is_admin,
     isActive: row.is_active,
     requiresPasswordChange: row.must_change_password,
-    adminLayerId: row.admin_layer_id,
+    adminLayerIds: row.admin_layer_ids,
+    layerGrantIds: row.layer_grant_ids,
+    topicGrantIds: row.topic_grant_ids,
   };
 }
 
 export async function listAuthors(): Promise<AuthorRecord[]> {
-  const result = await ensureClient().query<AuthorRow>(
-    'SELECT * FROM authors ORDER BY username ASC'
+  const result = await ensureClient().query<AuthorRowWithGrants>(
+    `${AUTHOR_GRANTS_SELECT} ORDER BY a.username ASC`
   );
   return result.rows.map(mapAuthorRecord);
 }
 
 export async function getAuthorById(authorId: number): Promise<AuthorRecord | null> {
-  const result = await ensureClient().query<AuthorRow>('SELECT * FROM authors WHERE id = $1', [authorId]);
+  const result = await ensureClient().query<AuthorRowWithGrants>(
+    `${AUTHOR_GRANTS_SELECT} WHERE a.id = $1`,
+    [authorId]
+  );
   return result.rows[0] ? mapAuthorRecord(result.rows[0]) : null;
 }
 
 export async function createAuthor(options: {
   username: string;
   isAdmin?: boolean;
-  adminLayerId?: number | null;
+  adminLayerIds?: number[];
 }): Promise<{ author: AuthorRecord; oneTimePassword: string }> {
+  const db = ensureClient();
   const oneTimePassword = randomUUID().split('-')[0];
-  const result = await ensureClient().query<AuthorRow>(
-    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin, admin_layer_id)
-     VALUES ($1, $2, $3, TRUE, TRUE, $4, $5)
-     RETURNING *`,
-    [
-      options.username,
-      hashPassword(randomUUID()),
-      hashPassword(oneTimePassword),
-      options.isAdmin ?? false,
-      options.adminLayerId ?? null,
-    ]
-  );
-  return { author: mapAuthorRecord(result.rows[0]), oneTimePassword };
+  const adminLayerIds = options.isAdmin ? (options.adminLayerIds ?? []) : [];
+  await db.query('BEGIN');
+  try {
+    const result = await db.query<AuthorRow>(
+      `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
+       VALUES ($1, $2, $3, TRUE, TRUE, $4)
+       RETURNING *`,
+      [options.username, hashPassword(randomUUID()), hashPassword(oneTimePassword), options.isAdmin ?? false]
+    );
+    const author = result.rows[0];
+    for (const layerId of adminLayerIds) {
+      await db.query(
+        `INSERT INTO author_admin_layers (author_id, layer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [author.id, layerId]
+      );
+    }
+    await db.query('COMMIT');
+    return {
+      author: mapAuthorRecord({ ...author, admin_layer_ids: adminLayerIds, layer_grant_ids: [], topic_grant_ids: [] }),
+      oneTimePassword,
+    };
+  } catch (error) {
+    await db.query('ROLLBACK');
+    throw error;
+  }
 }
 
 export async function setAuthorActive(authorId: number, isActive: boolean): Promise<boolean> {
@@ -1263,7 +1375,10 @@ export async function getLayerById(id: number): Promise<Layer | null> {
   return result.rows[0] ? mapLayerRow(result.rows[0]) : null;
 }
 
-export async function isLayerInAdminScope(adminLayerId: number, targetLayerId: number): Promise<boolean> {
+export async function isLayerInAdminScope(adminLayerIds: number[], targetLayerId: number): Promise<boolean> {
+  if (adminLayerIds.length === 0) {
+    return false;
+  }
   const result = await ensureClient().query(
     `WITH RECURSIVE ancestors AS (
        SELECT id, parent_id FROM layers WHERE id = $1
@@ -1271,24 +1386,105 @@ export async function isLayerInAdminScope(adminLayerId: number, targetLayerId: n
        SELECT l.id, l.parent_id FROM layers l
        JOIN ancestors a ON l.id = a.parent_id
      )
-     SELECT 1 FROM ancestors WHERE id = $2 LIMIT 1`,
-    [targetLayerId, adminLayerId]
+     SELECT 1 FROM ancestors WHERE id = ANY($2::int[]) LIMIT 1`,
+    [targetLayerId, adminLayerIds]
   );
   return result.rows.length > 0;
 }
 
-export async function getLayerSubtree(rootLayerId: number): Promise<Layer[]> {
+export async function getLayerSubtree(rootLayerIds: number[]): Promise<Layer[]> {
+  if (rootLayerIds.length === 0) {
+    return [];
+  }
   const result = await ensureClient().query<LayerRow>(
     `WITH RECURSIVE descendants AS (
-       SELECT * FROM layers WHERE id = $1
+       SELECT * FROM layers WHERE id = ANY($1::int[])
        UNION ALL
        SELECT l.* FROM layers l
        JOIN descendants d ON l.parent_id = d.id
      )
-     SELECT * FROM descendants ORDER BY type ASC, name ASC`,
-    [rootLayerId]
+     SELECT DISTINCT * FROM descendants ORDER BY type ASC, name ASC`,
+    [rootLayerIds]
   );
   return result.rows.map(mapLayerRow);
+}
+
+export type RemoveAdminLayerResult = 'removed' | 'not_found' | 'last_layer';
+
+export async function getAdminLayerIds(authorId: number): Promise<number[]> {
+  const result = await ensureClient().query<{ layer_id: number }>(
+    'SELECT layer_id FROM author_admin_layers WHERE author_id = $1 ORDER BY layer_id ASC',
+    [authorId]
+  );
+  return result.rows.map((row) => row.layer_id);
+}
+
+export async function addAdminLayer(authorId: number, layerId: number): Promise<void> {
+  await ensureClient().query(
+    'INSERT INTO author_admin_layers (author_id, layer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+    [authorId, layerId]
+  );
+}
+
+export async function removeAdminLayer(authorId: number, layerId: number): Promise<RemoveAdminLayerResult> {
+  const db = ensureClient();
+  const current = await db.query<{ layer_id: number }>(
+    'SELECT layer_id FROM author_admin_layers WHERE author_id = $1',
+    [authorId]
+  );
+  const hasLayer = current.rows.some((row) => row.layer_id === layerId);
+  if (!hasLayer) {
+    return 'not_found';
+  }
+  if (current.rows.length <= 1) {
+    return 'last_layer';
+  }
+  await db.query('DELETE FROM author_admin_layers WHERE author_id = $1 AND layer_id = $2', [authorId, layerId]);
+  return 'removed';
+}
+
+export async function getAuthorLayerGrantIds(authorId: number): Promise<number[]> {
+  const result = await ensureClient().query<{ layer_id: number }>(
+    'SELECT layer_id FROM author_layer_grants WHERE author_id = $1 ORDER BY layer_id ASC',
+    [authorId]
+  );
+  return result.rows.map((row) => row.layer_id);
+}
+
+export async function addAuthorLayerGrant(authorId: number, layerId: number): Promise<void> {
+  await ensureClient().query(
+    'INSERT INTO author_layer_grants (author_id, layer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+    [authorId, layerId]
+  );
+}
+
+export async function removeAuthorLayerGrant(authorId: number, layerId: number): Promise<void> {
+  await ensureClient().query(
+    'DELETE FROM author_layer_grants WHERE author_id = $1 AND layer_id = $2',
+    [authorId, layerId]
+  );
+}
+
+export async function getAuthorTopicGrantIds(authorId: number): Promise<number[]> {
+  const result = await ensureClient().query<{ topic_id: number }>(
+    'SELECT topic_id FROM author_topic_grants WHERE author_id = $1 ORDER BY topic_id ASC',
+    [authorId]
+  );
+  return result.rows.map((row) => row.topic_id);
+}
+
+export async function addAuthorTopicGrant(authorId: number, topicId: number): Promise<void> {
+  await ensureClient().query(
+    'INSERT INTO author_topic_grants (author_id, topic_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+    [authorId, topicId]
+  );
+}
+
+export async function removeAuthorTopicGrant(authorId: number, topicId: number): Promise<void> {
+  await ensureClient().query(
+    'DELETE FROM author_topic_grants WHERE author_id = $1 AND topic_id = $2',
+    [authorId, topicId]
+  );
 }
 
 export async function getTopics(layerId?: number): Promise<Topic[]> {
