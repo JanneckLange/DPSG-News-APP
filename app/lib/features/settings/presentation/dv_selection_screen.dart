@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/analytics_service.dart';
+import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/sync_service.dart' as sync_service;
+import '../../admin/domain/topic_model.dart';
 import '../data/dv_tree_provider.dart';
 import '../data/settings_repository.dart';
 import '../domain/layer_model.dart';
@@ -46,6 +49,8 @@ class DvSelectionEditor extends ConsumerStatefulWidget {
 class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
   late final Set<int> _selectedLayerIds;
   late final Map<int, List<String>> _selectedTopicsByLayer;
+  final Map<int, List<TopicModel>> _topicsCache = {};
+  final Set<int> _loadingTopicsForLayer = {};
 
   @override
   void initState() {
@@ -53,6 +58,49 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
     final repository = ref.read(settingsRepositoryProvider);
     _selectedLayerIds = repository.getSelectedLayerIds().toSet();
     _selectedTopicsByLayer = repository.getSelectedTopicsByLayer();
+  }
+
+  Future<List<TopicModel>> _fetchTopicsForLayer(int layerId) async {
+    final remote = ref.read(sync_service.remoteEventSourceProvider);
+    final response = await remote.fetchTopics(layerId: layerId);
+    return List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
+        .map(TopicModel.fromJson)
+        .toList();
+  }
+
+  /// Laedt die Topics eines DVs beim Oeffnen des Auswahldialogs (lazy) und
+  /// zeigt den Dialog nur an, wenn tatsaechlich Topics vorhanden sind.
+  Future<void> _openTopicDialog(LayerModel dv, List<String> currentTopics) async {
+    setState(() => _loadingTopicsForLayer.add(dv.id));
+    List<TopicModel> topics;
+    try {
+      topics = await _fetchTopicsForLayer(dv.id);
+    } catch (error) {
+      if (mounted) {
+        showErrorToast(
+          ref,
+          'Topics für ${dv.name} konnten nicht geladen werden: ${describeRemoteError(error)}',
+        );
+        setState(() => _loadingTopicsForLayer.remove(dv.id));
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _topicsCache[dv.id] = topics;
+      _loadingTopicsForLayer.remove(dv.id);
+    });
+    if (topics.isEmpty) return;
+
+    final updated = await _showTopicDialog(
+      context,
+      dv.name,
+      topics.map((topic) => topic.name).toList(),
+      currentTopics,
+    );
+    if (updated != null && mounted) {
+      setState(() => _selectedTopicsByLayer[dv.id] = updated);
+    }
   }
 
   @override
@@ -67,9 +115,10 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
           itemCount: dvs.length,
           itemBuilder: (context, index) {
             final dv = dvs[index];
-            final groups = dv.groups ?? <String>[];
             final isSelected = _selectedLayerIds.contains(dv.id);
             final selectedTopics = _selectedTopicsByLayer[dv.id] ?? <String>[];
+            final knownEmptyTopics = _topicsCache[dv.id]?.isEmpty ?? false;
+            final isLoadingTopics = _loadingTopicsForLayer.contains(dv.id);
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
@@ -95,7 +144,7 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
                         });
                       },
                     ),
-                    if (isSelected && groups.isNotEmpty)
+                    if (isSelected && !knownEmptyTopics)
                       Padding(
                         padding: const EdgeInsets.only(
                             left: 16, right: 16, bottom: 4),
@@ -110,20 +159,17 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () async {
-                                final updated = await _showTopicDialog(
-                                  context,
-                                  dv.name,
-                                  groups,
-                                  selectedTopics,
-                                );
-                                if (updated != null) {
-                                  setState(() {
-                                    _selectedTopicsByLayer[dv.id] = updated;
-                                  });
-                                }
-                              },
-                              child: const Text('Topics wählen'),
+                              onPressed: isLoadingTopics
+                                  ? null
+                                  : () => _openTopicDialog(dv, selectedTopics),
+                              child: isLoadingTopics
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Text('Topics wählen'),
                             ),
                           ],
                         ),
