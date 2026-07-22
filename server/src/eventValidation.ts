@@ -56,28 +56,25 @@ function validateOptionalCtaUrl(fieldName: string, value: unknown): FieldValidat
   return VALID_RESULT;
 }
 
-function validateTopic(availableGroups: string[] | null | undefined, value: unknown): FieldValidation {
+function validateTopic(validTopicIds: number[] | null | undefined, value: unknown): FieldValidation {
   if (value === undefined || value === null) {
     return VALID_RESULT;
   }
-  if (typeof value !== 'string') {
-    return invalid("Field 'topic' must be a string");
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return invalid("Field 'topicId' must be a number");
   }
-  if (value.length === 0) {
-    return VALID_RESULT;
-  }
-  if (!availableGroups || !availableGroups.includes(value)) {
-    return invalid("Field 'topic' must be a known topic for the selected layer");
+  if (!validTopicIds || !validTopicIds.includes(value)) {
+    return invalid("Field 'topicId' must be a known topic for the selected layer");
   }
   return VALID_RESULT;
 }
 
-export function validateEventTextFields(body: Record<string, unknown>, layerGroups?: string[] | null): FieldValidation {
+export function validateEventTextFields(body: Record<string, unknown>, validTopicIds?: number[] | null): FieldValidation {
   const checks: FieldValidation[] = [
     validateOptionalText('title', body.title, MAX_TITLE_LENGTH),
     validateOptionalText('description', body.description, MAX_LONG_TEXT_LENGTH),
     validateOptionalText('location', body.location, MAX_LOCATION_LENGTH),
-    validateTopic(layerGroups, body.topic),
+    validateTopic(validTopicIds, body.topicId),
     validateOptionalText('cta1Label', body.cta1Label, MAX_LABEL_LENGTH),
     validateOptionalCtaUrl('cta1Url', body.cta1Url),
     validateOptionalText('cta2Label', body.cta2Label, MAX_LABEL_LENGTH),

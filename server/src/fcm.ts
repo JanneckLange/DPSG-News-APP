@@ -1,6 +1,7 @@
 import { initializeApp, cert, getApps, ServiceAccount } from 'firebase-admin/app';
 import { getMessaging, Message } from 'firebase-admin/messaging';
 import fs from 'fs';
+import { getTopicById } from './db';
 
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 let firebaseMessagingEnabled = false;
@@ -40,7 +41,7 @@ export type EventNotificationPayload = {
   description: string;
   eventId?: number | string;
   layerId?: number;
-  topic?: string;
+  topicId?: number;
 };
 
 function normalizeTopicName(value: string): string {
@@ -50,7 +51,7 @@ function normalizeTopicName(value: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
-export async function sendEventNotification({ title, description, eventId, layerId, topic }: EventNotificationPayload): Promise<string> {
+export async function sendEventNotification({ title, description, eventId, layerId, topicId }: EventNotificationPayload): Promise<string> {
   if (!firebaseMessagingEnabled) {
     console.warn('Skipping FCM event notification because Firebase is disabled.');
     return 'firebase-disabled';
@@ -63,8 +64,11 @@ export async function sendEventNotification({ title, description, eventId, layer
       : '';
   const shortBody = body.length > 120 ? `${body.substring(0, 117)}...` : body;
 
-  const topicName = topic != null && topic.trim().length > 0
-    ? `events_layer_${layerId ?? ''}_${normalizeTopicName(topic)}`
+  // The FCM topic slug must stay derived from the topic's *name*, not its id, so it keeps
+  // matching the subscription topics the Flutter client already builds from the topic name.
+  const topic = topicId != null ? await getTopicById(topicId) : null;
+  const topicName = topic != null
+    ? `events_layer_${layerId ?? ''}_${normalizeTopicName(topic.name)}`
     : layerId != null
       ? `events_layer_${layerId}`
       : 'events';
