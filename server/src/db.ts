@@ -183,6 +183,7 @@ type AuthorRow = {
   must_change_password: boolean;
   is_active: boolean;
   is_admin: boolean;
+  admin_layer_id: number | null;
 };
 
 export type AuthorIdentity = {
@@ -530,6 +531,7 @@ export async function connect(): Promise<void> {
   await cleanupExpiredSessions(true);
   await cleanupExpiredDrafts(true);
   await ensureBootstrapAuthor();
+  await migrateAdminLayerId();
 }
 
 async function ensureSeedLayers(): Promise<void> {
@@ -561,6 +563,16 @@ async function ensureSeedLayers(): Promise<void> {
       );
     }
   }
+}
+
+async function migrateAdminLayerId(): Promise<void> {
+  const db = ensureClient();
+  await db.query(`ALTER TABLE authors ADD COLUMN IF NOT EXISTS admin_layer_id INTEGER REFERENCES layers(id);`);
+  await db.query(
+    `UPDATE authors
+     SET admin_layer_id = (SELECT id FROM layers WHERE type = 'bundesverband' AND parent_id IS NULL)
+     WHERE is_admin = TRUE AND admin_layer_id IS NULL`
+  );
 }
 
 async function migrateTopicToTopicId(table: 'events' | 'drafts'): Promise<void> {
