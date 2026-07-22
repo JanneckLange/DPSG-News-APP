@@ -24,6 +24,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   List<Map<String, dynamic>> _contributions = <Map<String, dynamic>>[];
   bool _loadingContributions = true;
   String? _error;
+  int _contributionsRequestId = 0;
 
   @override
   void initState() {
@@ -33,10 +34,11 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _loadContributions() async {
+    final requestId = ++_contributionsRequestId;
     final token =
         await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (!mounted || requestId != _contributionsRequestId) return;
     if (token == null) {
-      if (!mounted) return;
       setState(() {
         _loadingContributions = false;
         _error = 'Kein Zugriff';
@@ -53,7 +55,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       final remote = ref.read(sync_service.remoteEventSourceProvider);
       final events = await remote.fetchEvents(token: token);
       final userId = (_user['id'] as num).toInt();
-      if (!mounted) return;
+      if (!mounted || requestId != _contributionsRequestId) return;
       setState(() {
         _contributions = events.where((event) {
           final authorId = event['authorId'];
@@ -61,10 +63,10 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
         }).toList();
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || requestId != _contributionsRequestId) return;
       setState(() => _error = error.toString());
     } finally {
-      if (mounted) {
+      if (mounted && requestId == _contributionsRequestId) {
         setState(() => _loadingContributions = false);
       }
     }

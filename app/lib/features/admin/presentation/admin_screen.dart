@@ -6,6 +6,7 @@ import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import 'admin_otp_dialog.dart';
 import 'admin_user_detail_screen.dart';
+import 'topic_admin_screen.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
@@ -18,6 +19,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   List<Map<String, dynamic>> _users = <Map<String, dynamic>>[];
   bool _loading = true;
   String? _error;
+  int _usersRequestId = 0;
 
   @override
   void initState() {
@@ -26,11 +28,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   }
 
   Future<void> _loadUsers() async {
+    final requestId = ++_usersRequestId;
     final auth = ref.read(authorAuthProvider);
     final token =
         await ref.read(authorAuthProvider.notifier).getValidAccessToken();
+    if (!mounted || requestId != _usersRequestId) return;
     if (token == null || !auth.isAdmin) {
-      if (!mounted) return;
       setState(() {
         _loading = false;
         _error = 'Kein Zugriff';
@@ -46,13 +49,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     try {
       final remote = ref.read(sync_service.remoteEventSourceProvider);
       final users = await remote.fetchAdminUsers(token: token);
-      if (!mounted) return;
+      if (!mounted || requestId != _usersRequestId) return;
       setState(() => _users = users);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || requestId != _usersRequestId) return;
       setState(() => _error = error.toString());
     } finally {
-      if (mounted) {
+      if (mounted && requestId == _usersRequestId) {
         setState(() => _loading = false);
       }
     }
@@ -115,6 +118,12 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
+  void _openTopicAdmin() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const TopicAdminScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authorAuthProvider);
@@ -140,55 +149,77 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         icon: const Icon(Icons.person_add),
         label: const Text('Nutzer anlegen'),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadUsers,
-        child: _loading
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 240),
-                  Center(child: CircularProgressIndicator())
-                ],
-              )
-            : _error != null
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(_error!))
-                    ],
-                  )
-                : ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _users.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final user = _users[index];
-                      final isActive = user['isActive'] as bool? ?? false;
-                      return Card(
-                        child: ListTile(
-                          onTap: () => _openDetails(user),
-                          title: Text(user['username'] as String? ?? ''),
-                          subtitle: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              Chip(
-                                  label:
-                                      Text(isActive ? 'Aktiv' : 'Deaktiviert')),
-                              if (user['isAdmin'] == true)
-                                const Chip(label: Text('Admin')),
-                              if (user['requiresPasswordChange'] == true)
-                                const Chip(label: Text('Reset offen')),
-                            ],
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.label_outline),
+                title: const Text('Themen verwalten'),
+                subtitle:
+                    const Text('Themen je Layer anlegen, umbenennen, löschen'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _openTopicAdmin,
+              ),
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadUsers,
+              child: _loading
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 240),
+                        Center(child: CircularProgressIndicator())
+                      ],
+                    )
+                  : _error != null
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(_error!))
+                          ],
+                        )
+                      : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _users.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 8),
+                          itemBuilder: (context, index) {
+                            final user = _users[index];
+                            final isActive = user['isActive'] as bool? ?? false;
+                            return Card(
+                              child: ListTile(
+                                onTap: () => _openDetails(user),
+                                title: Text(user['username'] as String? ?? ''),
+                                subtitle: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    Chip(
+                                        label: Text(isActive
+                                            ? 'Aktiv'
+                                            : 'Deaktiviert')),
+                                    if (user['isAdmin'] == true)
+                                      const Chip(label: Text('Admin')),
+                                    if (user['requiresPasswordChange'] == true)
+                                      const Chip(label: Text('Reset offen')),
+                                  ],
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+            ),
+          ),
+        ],
       ),
     );
   }
