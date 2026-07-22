@@ -249,6 +249,10 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: string }).code === '23505';
 }
 
+function isForeignKeyViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: string }).code === '23503';
+}
+
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
@@ -1040,8 +1044,8 @@ app.post('/api/admin/layers', async (req: Request, res: Response) => {
     const type = typeof req.body.type === 'string' ? req.body.type.trim() : '';
     const url = typeof req.body.url === 'string' ? req.body.url.trim() : undefined;
     const parentId = req.body.parentId != null ? parseLayerId(req.body.parentId) : null;
-    if (!name || !type) {
-      return respondBadRequest(req, res, 'name and type are required');
+    if (!name || !type || name.length > MAX_TITLE_LENGTH) {
+      return respondBadRequest(req, res, `name and type are required, name must not exceed ${MAX_TITLE_LENGTH} characters`);
     }
     if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
       return respondBadRequest(req, res, 'Invalid parentId');
@@ -1051,6 +1055,9 @@ app.post('/api/admin/layers', async (req: Request, res: Response) => {
   } catch (error) {
     if (isUniqueViolation(error)) {
       return res.status(409).json({ error: 'A layer with this name already exists at this position' });
+    }
+    if (isForeignKeyViolation(error)) {
+      return respondBadRequest(req, res, 'Invalid parentId');
     }
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to create layer' });
@@ -1082,8 +1089,8 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
     const parentId = req.body.parentId !== undefined
       ? (req.body.parentId != null ? parseLayerId(req.body.parentId) : null)
       : existing.parentId;
-    if (!name || !type) {
-      return respondBadRequest(req, res, 'name and type are required');
+    if (!name || !type || name.length > MAX_TITLE_LENGTH) {
+      return respondBadRequest(req, res, `name and type are required, name must not exceed ${MAX_TITLE_LENGTH} characters`);
     }
     if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
       return respondBadRequest(req, res, 'Invalid parentId');
@@ -1096,6 +1103,9 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
   } catch (error) {
     if (isUniqueViolation(error)) {
       return res.status(409).json({ error: 'A layer with this name already exists at this position' });
+    }
+    if (isForeignKeyViolation(error)) {
+      return respondBadRequest(req, res, 'Invalid parentId');
     }
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to update layer' });
@@ -1158,6 +1168,9 @@ app.post('/api/admin/topics', async (req: Request, res: Response) => {
   } catch (error) {
     if (isUniqueViolation(error)) {
       return res.status(409).json({ error: 'A topic with this name already exists for this layer' });
+    }
+    if (isForeignKeyViolation(error)) {
+      return respondBadRequest(req, res, 'Invalid layerId');
     }
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to create topic' });

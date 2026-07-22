@@ -8,6 +8,7 @@ jest.mock('../src/fcm', () => ({
 import request from 'supertest';
 import app from '../src/app';
 import { clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
+import { MAX_TITLE_LENGTH } from '../src/eventValidation';
 
 async function getLayerIdByName(name: string): Promise<number> {
   const response = await request(app).get('/api/layers');
@@ -170,6 +171,33 @@ describe('Topics admin CRUD e2e', () => {
       .set('authorization', `Bearer ${adminToken}`)
       .send({ name: 'Ungültig', layerId: 999999 });
     expect(response.status).toBe(400);
+  });
+
+  it('rejects creating or renaming a topic with an oversized name', async () => {
+    await createAuthorForTesting({ username: 'admin-topics-oversized', password: 'admin-123', isAdmin: true });
+    const adminToken = await loginAuthor('admin-topics-oversized', 'admin-123');
+    const oversizedName = 'a'.repeat(MAX_TITLE_LENGTH + 1);
+
+    const createResponse = await request(app)
+      .post('/api/admin/topics')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: oversizedName, layerId: koelnLayerId });
+    expect(createResponse.status).toBe(400);
+
+    const validCreateResponse = await request(app)
+      .post('/api/admin/topics')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Kurzer Name', layerId: koelnLayerId });
+    expect(validCreateResponse.status).toBe(201);
+    const createdTopic = validCreateResponse.body.topic as { id: number };
+
+    const renameResponse = await request(app)
+      .patch(`/api/admin/topics/${createdTopic.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: oversizedName });
+    expect(renameResponse.status).toBe(400);
+
+    await request(app).delete(`/api/admin/topics/${createdTopic.id}`).set('authorization', `Bearer ${adminToken}`);
   });
 
   it('returns 404 when updating or deleting an unknown topic', async () => {
