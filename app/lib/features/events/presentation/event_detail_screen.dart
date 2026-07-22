@@ -18,6 +18,7 @@ import '../../../shared/widgets/labeled_chip.dart';
 import '../../../shared/widgets/location_placeholder.dart';
 import '../../../shared/widgets/safe_markdown_body.dart';
 import '../../../shared/widgets/section_card.dart';
+import '../../admin/domain/topic_model.dart';
 import 'event_editor_sheet.dart';
 
 class EventDetailScreen extends ConsumerStatefulWidget {
@@ -35,6 +36,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   List<Map<String, dynamic>> _updates = <Map<String, dynamic>>[];
   bool _loadingUpdates = true;
   bool _postingUpdate = false;
+  String? _topicName;
 
   @override
   void initState() {
@@ -53,6 +55,29 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       }
     });
     _loadUpdates();
+    _loadTopicName();
+  }
+
+  /// Loest den Themennamen ueber die Topics des Layers auf; das Thema ist rein
+  /// informativ, daher bleibt der Chip bei einem Fehler einfach ausgeblendet.
+  Future<void> _loadTopicName() async {
+    final topicId = (widget.event['topicId'] as num?)?.toInt();
+    final layerId = (widget.event['layerId'] as num?)?.toInt();
+    if (topicId == null || layerId == null) return;
+    try {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
+      final response = await remote.fetchTopics(layerId: layerId);
+      final topics =
+          List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
+              .map(TopicModel.fromJson)
+              .toList();
+      final match = topics.where((topic) => topic.id == topicId);
+      if (!mounted || match.isEmpty) return;
+      setState(() => _topicName = match.first.name);
+    } catch (_) {
+      // Anzeige bleibt ohne Thema-Chip, kein Fehler-Feedback fuer diese
+      // rein informative Zusatzinformation noetig.
+    }
   }
 
   @override
@@ -271,7 +296,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     final location = widget.event['location']?.toString() ?? 'Unbekannt';
     final eventLayerId = (widget.event['layerId'] as num?)?.toInt();
     final dv = ref.watch(layerNamesByIdProvider)[eventLayerId] ?? 'Unbekannt';
-    final topic = widget.event['topic']?.toString();
+    final topic = _topicName;
     final description = widget.event['description']?.toString() ?? '';
     final startDate =
         formatEventDateTime(widget.event['startDate']?.toString());

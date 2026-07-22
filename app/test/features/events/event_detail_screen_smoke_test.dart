@@ -16,6 +16,7 @@ import '../../widget_test.dart'
     show FakeSecureStorageService, TestAuthorAuthNotifier;
 
 const _koelnLayerId = 1;
+const _pfadfinderTopicId = 5;
 
 class _FakeRemoteEventSource extends RemoteEventSource {
   _FakeRemoteEventSource() : super(baseUrl: Uri.parse('http://localhost'));
@@ -43,6 +44,19 @@ class _FakeRemoteEventSource extends RemoteEventSource {
           },
         ],
       };
+
+  @override
+  Future<Map<String, dynamic>> fetchTopics({int? layerId}) async => {
+        'topics': [
+          {
+            'id': _pfadfinderTopicId,
+            'name': 'Pfadfinder',
+            'layerId': _koelnLayerId,
+            'createdAt': '2026-01-01T00:00:00.000Z',
+            'updatedAt': '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      };
 }
 
 // Wartet mit echter Verstreichzeit (statt nur tester.pump()) darauf, dass
@@ -66,7 +80,7 @@ final _sampleEvent = <String, dynamic>{
   'title': 'Sommerlager',
   'location': 'Zeltplatz',
   'layerId': _koelnLayerId,
-  'topic': 'Pfadfinder',
+  'topicId': _pfadfinderTopicId,
   'startDate': '2026-08-01T10:00:00Z',
   'endDate': '2026-08-03T15:00:00Z',
   'description': 'Ein tolles Lager.',
@@ -118,6 +132,7 @@ void main() {
       );
       await tester.pump();
       await _pumpUntilFound(tester, find.text('DV: Köln'));
+      await _pumpUntilFound(tester, find.text('Thema: Pfadfinder'));
       // Der markViewed()-Aufruf in initState ist bewusst "fire-and-forget"
       // (blockiert die UI nicht). Kurze reale Wartezeit, damit der Hive-
       // Schreibvorgang abschliesst, bevor Test/Container/Widget-Baum

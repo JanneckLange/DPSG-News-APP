@@ -5,7 +5,6 @@ class LayerModel {
     required this.type,
     required this.parentId,
     this.url,
-    this.groups,
   });
 
   final int id;
@@ -13,7 +12,6 @@ class LayerModel {
   final String type;
   final int? parentId;
   final String? url;
-  final List<String>? groups;
 
   factory LayerModel.fromJson(Map<String, dynamic> json) {
     return LayerModel(
@@ -22,9 +20,6 @@ class LayerModel {
       type: json['type'] as String,
       parentId: (json['parentId'] as num?)?.toInt(),
       url: json['url'] as String?,
-      groups: json['groups'] != null
-          ? List<String>.from(json['groups'] as List<dynamic>)
-          : null,
     );
   }
 
@@ -35,7 +30,6 @@ class LayerModel {
       'type': type,
       'parentId': parentId,
       'url': url,
-      'groups': groups,
     };
   }
 }

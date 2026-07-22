@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../../shared/utils/date_format_utils.dart';
+import '../../admin/domain/topic_model.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/domain/layer_model.dart';
@@ -34,7 +37,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   DateTime? _startDate;
   DateTime? _endDate;
   int? _selectedLayerId;
-  String? _selectedTopic;
+  int? _selectedTopicId;
+  List<TopicModel> _topics = <TopicModel>[];
+  bool _loadingTopics = false;
   bool _saving = false;
   bool _showCta1 = false;
   bool _showCta2 = false;
@@ -83,7 +88,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _descriptionController.text = event['description'] as String? ?? '';
       _locationController.text = event['location'] as String? ?? '';
       _selectedLayerId = (event['layerId'] as num?)?.toInt();
-      _selectedTopic = event['topic'] as String?;
+      _selectedTopicId = (event['topicId'] as num?)?.toInt();
       _cta1LabelController.text = event['cta1Label'] as String? ?? '';
       _cta1UrlController.text = event['cta1Url'] as String? ?? '';
       _cta2LabelController.text = event['cta2Label'] as String? ?? '';
@@ -95,6 +100,79 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _startDate = DateTime.tryParse(event['startDate'] as String? ?? '');
       _endDate = DateTime.tryParse(event['endDate'] as String? ?? '');
     }
+    if (_selectedLayerId != null) {
+      unawaited(_loadTopicsForLayer(_selectedLayerId!));
+    }
+  }
+
+  Future<void> _loadTopicsForLayer(int layerId) async {
+    setState(() {
+      _loadingTopics = true;
+      _topics = <TopicModel>[];
+    });
+    try {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
+      final response = await remote.fetchTopics(layerId: layerId);
+      final topics =
+          List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
+              .map(TopicModel.fromJson)
+              .toList();
+      if (!mounted) return;
+      setState(() {
+        _topics = topics;
+        if (_selectedTopicId != null &&
+            !topics.any((topic) => topic.id == _selectedTopicId)) {
+          _selectedTopicId = null;
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      showErrorToast(
+        ref,
+        'Themen konnten nicht geladen werden: ${describeRemoteError(error)}',
+      );
+    } finally {
+      if (mounted) setState(() => _loadingTopics = false);
+    }
+  }
+
+  String? get _selectedTopicName {
+    if (_selectedTopicId == null) return null;
+    for (final topic in _topics) {
+      if (topic.id == _selectedTopicId) return topic.name;
+    }
+    return null;
+  }
+
+  Widget _buildTopicDropdown() {
+    if (_loadingTopics) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (_topics.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return DropdownButtonFormField<int?>(
+      initialValue: _topics.any((topic) => topic.id == _selectedTopicId)
+          ? _selectedTopicId
+          : null,
+      decoration: const InputDecoration(labelText: 'Topic (optional)'),
+      items: [
+        const DropdownMenuItem<int?>(
+            value: null, child: Text('Standard (DV-Channel)')),
+        ..._topics.map((topic) =>
+            DropdownMenuItem<int?>(value: topic.id, child: Text(topic.name))),
+      ],
+      onChanged: (value) => setState(() => _selectedTopicId = value),
+    );
   }
 
   @override
@@ -181,8 +259,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
           ? selectedLayerName
           : _locationController.text.trim(),
       if (_selectedLayerId != null) 'layerId': _selectedLayerId,
-      if (_selectedTopic != null && _selectedTopic!.isNotEmpty)
-        'topic': _selectedTopic,
+      if (_selectedTopicId != null) 'topicId': _selectedTopicId,
       if (_showCta1 && _cta1LabelController.text.trim().isNotEmpty)
         'cta1Label': _cta1LabelController.text.trim(),
       if (_showCta1 && _cta1UrlController.text.trim().isNotEmpty)
@@ -385,7 +462,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             if (mounted) {
                               setState(() {
                                 _selectedLayerId = null;
-                                _selectedTopic = null;
+                                _selectedTopicId = null;
                               });
                             }
                           });
@@ -400,10 +477,16 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               .map((dv) => DropdownMenuItem(
                                   value: dv.id, child: Text(dv.name)))
                               .toList(),
-                          onChanged: (value) => setState(() {
-                            _selectedLayerId = value;
-                            _selectedTopic = null;
-                          }),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedLayerId = value;
+                              _selectedTopicId = null;
+                              _topics = <TopicModel>[];
+                            });
+                            if (value != null) {
+                              unawaited(_loadTopicsForLayer(value));
+                            }
+                          },
                           validator: (value) =>
                               value == null ? 'Bitte DV wählen.' : null,
                         );
@@ -414,46 +497,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                           const Text('DV-Liste konnte nicht geladen werden.'),
                     ),
                     const SizedBox(height: 12),
-                    if (_selectedLayerId != null)
-                      layerTreeAsync.when(
-                        data: (layers) {
-                          final dvItem = layers
-                              .where(
-                                (layer) => layer.id == _selectedLayerId,
-                              )
-                              .toList();
-                          final groups = dvItem.isNotEmpty
-                              ? dvItem.first.groups ?? <String>[]
-                              : <String>[];
-                          if (groups.isEmpty) return const SizedBox.shrink();
-                          if (_selectedTopic != null &&
-                              !groups.contains(_selectedTopic)) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) {
-                                setState(() => _selectedTopic = null);
-                              }
-                            });
-                          }
-                          return DropdownButtonFormField<String>(
-                            initialValue: groups.contains(_selectedTopic)
-                                ? _selectedTopic
-                                : null,
-                            decoration: const InputDecoration(
-                                labelText: 'Topic (optional)'),
-                            items: [
-                              const DropdownMenuItem(
-                                  value: '',
-                                  child: Text('Standard (DV-Channel)')),
-                              ...groups.map((topic) => DropdownMenuItem(
-                                  value: topic, child: Text(topic))),
-                            ],
-                            onChanged: (value) => setState(() =>
-                                _selectedTopic = value == '' ? null : value),
-                          );
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
-                      ),
+                    if (_selectedLayerId != null) _buildTopicDropdown(),
                   ],
                 ),
               ),
@@ -593,9 +637,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                                 Chip(
                                     label: Text(selectedLayerDisplayName ??
                                         'DV nicht ausgewählt')),
-                                if (_selectedTopic != null &&
-                                    _selectedTopic!.isNotEmpty)
-                                  Chip(label: Text(_selectedTopic!)),
+                                if (_selectedTopicName != null)
+                                  Chip(label: Text(_selectedTopicName!)),
                                 Chip(
                                     label: Text(
                                         _locationController.text.trim().isEmpty
