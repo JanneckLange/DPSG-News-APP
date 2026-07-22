@@ -1277,6 +1277,20 @@ export async function isLayerInAdminScope(adminLayerId: number, targetLayerId: n
   return result.rows.length > 0;
 }
 
+export async function getLayerSubtree(rootLayerId: number): Promise<Layer[]> {
+  const result = await ensureClient().query<LayerRow>(
+    `WITH RECURSIVE descendants AS (
+       SELECT * FROM layers WHERE id = $1
+       UNION ALL
+       SELECT l.* FROM layers l
+       JOIN descendants d ON l.parent_id = d.id
+     )
+     SELECT * FROM descendants ORDER BY type ASC, name ASC`,
+    [rootLayerId]
+  );
+  return result.rows.map(mapLayerRow);
+}
+
 export async function getTopics(layerId?: number): Promise<Topic[]> {
   const query: QueryConfig = layerId
     ? { text: 'SELECT * FROM topics WHERE layer_id = $1 ORDER BY name ASC', values: [layerId] }
