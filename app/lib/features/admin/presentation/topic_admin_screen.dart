@@ -159,42 +159,15 @@ class _TopicAdminScreenState extends ConsumerState<TopicAdminScreen> {
     required String title,
     required String confirmLabel,
     String? initialValue,
-  }) async {
-    final controller = TextEditingController(text: initialValue ?? '');
-    final formKey = GlobalKey<FormState>();
-    final result = await showDialog<String>(
+  }) {
+    return showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(labelText: 'Name'),
-            validator: (value) => value == null || value.trim().isEmpty
-                ? 'Bitte einen Namen eingeben.'
-                : null,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Abbrechen'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                Navigator.of(context).pop(controller.text.trim());
-              }
-            },
-            child: Text(confirmLabel),
-          ),
-        ],
+      builder: (context) => _TopicNameDialog(
+        title: title,
+        confirmLabel: confirmLabel,
+        initialValue: initialValue,
       ),
     );
-    controller.dispose();
-    return result;
   }
 
   Widget _buildTopicList() {
@@ -305,6 +278,65 @@ class _TopicAdminScreenState extends ConsumerState<TopicAdminScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TopicNameDialog extends StatefulWidget {
+  const _TopicNameDialog({
+    required this.title,
+    required this.confirmLabel,
+    this.initialValue,
+  });
+
+  final String title;
+  final String confirmLabel;
+  final String? initialValue;
+
+  @override
+  State<_TopicNameDialog> createState() => _TopicNameDialogState();
+}
+
+class _TopicNameDialogState extends State<_TopicNameDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialValue ?? '');
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Name'),
+          validator: (value) => value == null || value.trim().isEmpty
+              ? 'Bitte einen Namen eingeben.'
+              : null,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              Navigator.of(context).pop(_controller.text.trim());
+            }
+          },
+          child: Text(widget.confirmLabel),
+        ),
+      ],
     );
   }
 }
