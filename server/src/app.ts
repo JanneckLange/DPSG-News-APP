@@ -1,6 +1,9 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import {
+  addAdminLayer,
+  addAuthorLayerGrant,
+  addAuthorTopicGrant,
   changeAuthorPassword,
   createAuthor,
   createAuthorDraft,
@@ -15,10 +18,13 @@ import {
   deleteEventById,
   deleteLayer,
   deleteTopic,
+  getAdminLayerIds,
   getAuthorById,
   getAuthorDrafts,
   getAuthorEvents,
+  getAuthorLayerGrantIds,
   getAuthorSession,
+  getAuthorTopicGrantIds,
   getEventUpdates,
   getEvents,
   getLayerById,
@@ -31,6 +37,9 @@ import {
   logoutAuthor,
   listAuthors,
   refreshAuthorSession,
+  removeAdminLayer,
+  removeAuthorLayerGrant,
+  removeAuthorTopicGrant,
   resetAuthorPassword,
   setAuthorActive,
   updateAuthorDraftById,
@@ -226,10 +235,29 @@ function requireAdminSession(res: Response): boolean {
 }
 
 async function requireLayerScope(res: Response, targetLayerId: number | null | undefined): Promise<boolean> {
-  const author = res.locals.author as { adminLayerId?: number | null } | undefined;
-  if (!targetLayerId || !author?.adminLayerId || !await isLayerInAdminScope(author.adminLayerId, targetLayerId)) {
+  const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
+  if (!targetLayerId || !author?.adminLayerIds?.length || !await isLayerInAdminScope(author.adminLayerIds, targetLayerId)) {
     res.status(403).json({ error: 'Forbidden' });
     return false;
+  }
+  return true;
+}
+
+// Fuer Aktionen gegen einen ANDEREN Admin (delete/reset-password/Layer-Verwaltung):
+// jeder Layer des Ziel-Admins muss im Scope des handelnden Admins liegen, nicht nur
+// irgendeiner davon - sonst koennte ein niedriger-scoped Admin einen Account
+// beeinflussen, der auch Rechte ausserhalb seiner eigenen Reichweite haelt.
+async function requireLayerScopeForAll(res: Response, targetLayerIds: number[]): Promise<boolean> {
+  const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
+  if (!targetLayerIds.length || !author?.adminLayerIds?.length) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  for (const targetLayerId of targetLayerIds) {
+    if (!await isLayerInAdminScope(author.adminLayerIds, targetLayerId)) {
+      res.status(403).json({ error: 'Forbidden' });
+      return false;
+    }
   }
   return true;
 }
@@ -955,17 +983,23 @@ app.post('/api/admin/users', async (req: Request, res: Response) => {
     if (!username) {
       return respondBadRequest(req, res, 'Username is required');
     }
-    let adminLayerId: number | undefined;
+    let adminLayerIds: number[] = [];
     if (isAdmin) {
-      adminLayerId = parseLayerId(req.body.layerId);
-      if (!adminLayerId || !await isKnownLayerId(adminLayerId)) {
-        return respondBadRequest(req, res, 'Invalid layerId');
+      const rawLayerIds = Array.isArray(req.body.layerIds) ? req.body.layerIds : [];
+      adminLayerIds = rawLayerIds.map(parseLayerId).filter((id: number | undefined): id is number => id !== undefined);
+      if (adminLayerIds.length === 0 || adminLayerIds.length !== rawLayerIds.length) {
+        return respondBadRequest(req, res, 'Invalid layerIds');
       }
-      if (!await requireLayerScope(res, adminLayerId)) {
+      for (const layerId of adminLayerIds) {
+        if (!await isKnownLayerId(layerId)) {
+          return respondBadRequest(req, res, 'Invalid layerIds');
+        }
+      }
+      if (!await requireLayerScopeForAll(res, adminLayerIds)) {
         return;
       }
     }
-    const result = await createAuthor({ username, isAdmin, adminLayerId });
+    const result = await createAuthor({ username, isAdmin, adminLayerIds });
     res.status(201).json(result);
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -1018,7 +1052,7 @@ app.delete('/api/admin/users/:id', async (req: Request, res: Response) => {
       return respondBadRequest(req, res, 'Invalid user id');
     }
     const target = await getAuthorById(id);
-    if (target?.isAdmin && !await requireLayerScope(res, target.adminLayerId)) {
+    if (target?.isAdmin && !await requireLayerScopeForAll(res, target.adminLayerIds)) {
       return;
     }
     const deleted = await deleteAuthorById(id);
@@ -1045,7 +1079,7 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
       return respondBadRequest(req, res, 'Invalid user id');
     }
     const target = await getAuthorById(id);
-    if (target?.isAdmin && !await requireLayerScope(res, target.adminLayerId)) {
+    if (target?.isAdmin && !await requireLayerScopeForAll(res, target.adminLayerIds)) {
       return;
     }
     const oneTimePassword = await resetAuthorPassword(id);
@@ -1056,6 +1090,236 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to reset password' });
+  }
+});
+
+app.post('/api/admin/users/:id/admin-layers', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid user id');
+    }
+    const target = await getAuthorById(id);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (!target.isAdmin) {
+      return respondBadRequest(req, res, 'User is not an admin');
+    }
+    const layerId = parseLayerId(req.body.layerId);
+    if (!layerId || !await isKnownLayerId(layerId)) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    if (!await requireLayerScopeForAll(res, target.adminLayerIds)) {
+      return;
+    }
+    if (!await requireLayerScope(res, layerId)) {
+      return;
+    }
+    await addAdminLayer(target.id, layerId);
+    res.status(201).json({ adminLayerIds: await getAdminLayerIds(target.id) });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to add admin layer' });
+  }
+});
+
+app.delete('/api/admin/users/:id/admin-layers/:layerId', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    const layerId = Number(req.params.layerId);
+    if (Number.isNaN(id) || id <= 0 || Number.isNaN(layerId) || layerId <= 0) {
+      return respondBadRequest(req, res, 'Invalid user or layer id');
+    }
+    const target = await getAuthorById(id);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (!target.isAdmin) {
+      return respondBadRequest(req, res, 'User is not an admin');
+    }
+    if (!await requireLayerScopeForAll(res, target.adminLayerIds)) {
+      return;
+    }
+    if (!await requireLayerScope(res, layerId)) {
+      return;
+    }
+    const result = await removeAdminLayer(target.id, layerId);
+    if (result === 'not_found') {
+      return res.status(404).json({ error: 'Layer not assigned to this admin' });
+    }
+    if (result === 'last_layer') {
+      return res.status(409).json({ error: 'Admin muss mindestens einem Layer zugeordnet bleiben' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to remove admin layer' });
+  }
+});
+
+app.post('/api/admin/users/:id/layer-grants', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid user id');
+    }
+    const target = await getAuthorById(id);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (target.isAdmin) {
+      return respondBadRequest(req, res, 'User is an admin; use admin-layers endpoint');
+    }
+    const layerId = parseLayerId(req.body.layerId);
+    if (!layerId || !await isKnownLayerId(layerId)) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    if (!await requireLayerScope(res, layerId)) {
+      return;
+    }
+    await addAuthorLayerGrant(target.id, layerId);
+    res.status(201).json({ layerGrantIds: await getAuthorLayerGrantIds(target.id) });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to add layer grant' });
+  }
+});
+
+app.delete('/api/admin/users/:id/layer-grants/:layerId', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    const layerId = Number(req.params.layerId);
+    if (Number.isNaN(id) || id <= 0 || Number.isNaN(layerId) || layerId <= 0) {
+      return respondBadRequest(req, res, 'Invalid user or layer id');
+    }
+    const target = await getAuthorById(id);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (target.isAdmin) {
+      return respondBadRequest(req, res, 'User is an admin; use admin-layers endpoint');
+    }
+    if (!await requireLayerScope(res, layerId)) {
+      return;
+    }
+    await removeAuthorLayerGrant(target.id, layerId);
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to remove layer grant' });
+  }
+});
+
+app.post('/api/admin/users/:id/topic-grants', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid user id');
+    }
+    const target = await getAuthorById(id);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (target.isAdmin) {
+      return respondBadRequest(req, res, 'User is an admin; grants are for non-admin authors only');
+    }
+    const topicId = parseLayerId(req.body.topicId);
+    if (!topicId) {
+      return respondBadRequest(req, res, 'Invalid topicId');
+    }
+    const topic = await getTopicById(topicId);
+    if (!topic) {
+      return respondBadRequest(req, res, 'Invalid topicId');
+    }
+    if (!await requireLayerScope(res, topic.layerId)) {
+      return;
+    }
+    await addAuthorTopicGrant(target.id, topicId);
+    res.status(201).json({ topicGrantIds: await getAuthorTopicGrantIds(target.id) });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to add topic grant' });
+  }
+});
+
+app.delete('/api/admin/users/:id/topic-grants/:topicId', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    const topicId = Number(req.params.topicId);
+    if (Number.isNaN(id) || id <= 0 || Number.isNaN(topicId) || topicId <= 0) {
+      return respondBadRequest(req, res, 'Invalid user or topic id');
+    }
+    const target = await getAuthorById(id);
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (target.isAdmin) {
+      return respondBadRequest(req, res, 'User is an admin; grants are for non-admin authors only');
+    }
+    const topic = await getTopicById(topicId);
+    if (topic && !await requireLayerScope(res, topic.layerId)) {
+      return;
+    }
+    await removeAuthorTopicGrant(target.id, topicId);
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to remove topic grant' });
   }
 });
 
@@ -1070,11 +1334,11 @@ app.get('/api/admin/layers', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const author = res.locals.author as { adminLayerId?: number | null } | undefined;
-    if (!author?.adminLayerId) {
+    const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
+    if (!author?.adminLayerIds?.length) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    const layers = await getLayerSubtree(author.adminLayerId);
+    const layers = await getLayerSubtree(author.adminLayerIds);
     res.json({ layers });
   } catch (error) {
     logRequestError(error, res.locals.requestId);

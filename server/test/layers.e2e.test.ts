@@ -194,7 +194,7 @@ describe('Layers API e2e', () => {
       username: 'admin-layers-scoped',
       password: 'admin-123',
       isAdmin: true,
-      adminLayerId: koelnLayer.id,
+      adminLayerIds: [koelnLayer.id],
     });
     const adminToken = await loginAuthor('admin-layers-scoped', 'admin-123');
 
@@ -252,7 +252,7 @@ describe('Layers API e2e', () => {
       username: 'admin-layers-scoped-get',
       password: 'admin-123',
       isAdmin: true,
-      adminLayerId: koelnLayer.id,
+      adminLayerIds: [koelnLayer.id],
     });
     const scopedToken = await loginAuthor('admin-layers-scoped-get', 'admin-123');
     const scopedResponse = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${scopedToken}`);
@@ -266,7 +266,7 @@ describe('Layers API e2e', () => {
       username: 'admin-layers-root-get',
       password: 'admin-123',
       isAdmin: true,
-      adminLayerId: bundesverband.id,
+      adminLayerIds: [bundesverband.id],
     });
     const rootToken = await loginAuthor('admin-layers-root-get', 'admin-123');
     const rootResponse = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${rootToken}`);
