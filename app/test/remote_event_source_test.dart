@@ -130,6 +130,162 @@ void main() {
     );
   });
 
+  test('fetchTopics returns parsed topics on HTTP 200', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/topics');
+      expect(request.url.queryParameters['layerId'], '3');
+      expect(request.method, 'GET');
+      return http.Response(
+        '{"topics":[{"id":1,"name":"Stufenaktion","layerId":3,"createdAt":"2026-01-01T00:00:00.000Z","updatedAt":"2026-01-01T00:00:00.000Z"}]}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result = await source.fetchTopics(layerId: 3);
+
+    expect((result['topics'] as List).first['name'], 'Stufenaktion');
+  });
+
+  test('fetchTopics throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('Server error', 500);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchTopics(),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.message.contains('Failed to fetch topics')),
+        ),
+      ),
+    );
+  });
+
+  test('createTopic posts to /api/admin/topics and returns created topic',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/topics');
+      expect(request.method, 'POST');
+      return http.Response(
+        '{"topic":{"id":2,"name":"Neues Thema","layerId":3,"createdAt":"2026-01-01T00:00:00.000Z","updatedAt":"2026-01-01T00:00:00.000Z"}}',
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result = await source.createTopic(
+      token: 'token',
+      name: 'Neues Thema',
+      layerId: 3,
+    );
+
+    expect(result['topic']['id'], 2);
+  });
+
+  test('createTopic throws RemoteEventSourceException on non-201 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response(
+        '{"error":"A topic with this name already exists for this layer"}',
+        409,
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.createTopic(token: 'token', name: 'Duplikat', layerId: 3),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage ==
+              'A topic with this name already exists for this layer'),
+        ),
+      ),
+    );
+  });
+
+  test('updateTopic patches /api/admin/topics/:id and returns updated topic',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/topics/5');
+      expect(request.method, 'PATCH');
+      return http.Response(
+        '{"topic":{"id":5,"name":"Umbenannt","layerId":3,"createdAt":"2026-01-01T00:00:00.000Z","updatedAt":"2026-01-01T00:00:00.000Z"}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result = await source.updateTopic(
+      token: 'token',
+      topicId: 5,
+      name: 'Umbenannt',
+    );
+
+    expect(result['topic']['name'], 'Umbenannt');
+  });
+
+  test('updateTopic throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Topic not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.updateTopic(token: 'token', topicId: 5, name: 'x'),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('deleteTopic sends DELETE to /api/admin/topics/:id', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/topics/9');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.deleteTopic(token: 'token', topicId: 9);
+  });
+
+  test(
+      'deleteTopic throws RemoteEventSourceException with server message when topic is in use',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response(
+        '{"error":"Topic is referenced by events or drafts and cannot be deleted"}',
+        409,
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.deleteTopic(token: 'token', topicId: 9),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage ==
+              'Topic is referenced by events or drafts and cannot be deleted'),
+        ),
+      ),
+    );
+  });
+
   test('fetchOwnDrafts returns parsed drafts on HTTP 200', () async {
     final client = MockClient((request) async {
       expect(request.url.path, '/api/author/drafts');
