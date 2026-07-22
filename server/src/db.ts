@@ -190,6 +190,7 @@ export type AuthorIdentity = {
   id: number;
   username: string;
   isAdmin: boolean;
+  adminLayerId: number | null;
 };
 
 export type AuthSession = {
@@ -920,7 +921,7 @@ export async function clearAuthorData(): Promise<void> {
 }
 
 function normalizeAuthor(row: AuthorRow): AuthorIdentity {
-  return { id: row.id, username: row.username, isAdmin: row.is_admin };
+  return { id: row.id, username: row.username, isAdmin: row.is_admin, adminLayerId: row.admin_layer_id };
 }
 
 export async function createAuthorForTesting(options: {
@@ -929,10 +930,19 @@ export async function createAuthorForTesting(options: {
   oneTimePassword?: string;
   mustChangePassword?: boolean;
   isAdmin?: boolean;
+  adminLayerId?: number | null;
 }): Promise<AuthorIdentity> {
-  const result = await ensureClient().query<AuthorRow>(
-    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
-     VALUES ($1, $2, $3, $4, TRUE, $5)
+  const db = ensureClient();
+  let adminLayerId = options.adminLayerId ?? null;
+  if ((options.isAdmin ?? false) && adminLayerId == null) {
+    const root = await db.query<{ id: number }>(
+      `SELECT id FROM layers WHERE type = 'bundesverband' AND parent_id IS NULL LIMIT 1`
+    );
+    adminLayerId = root.rows[0]?.id ?? null;
+  }
+  const result = await db.query<AuthorRow>(
+    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin, admin_layer_id)
+     VALUES ($1, $2, $3, $4, TRUE, $5, $6)
      RETURNING *`,
     [
       options.username,
@@ -940,6 +950,7 @@ export async function createAuthorForTesting(options: {
       options.oneTimePassword ? hashPassword(options.oneTimePassword) : null,
       options.mustChangePassword ?? false,
       options.isAdmin ?? false,
+      adminLayerId,
     ]
   );
   return normalizeAuthor(result.rows[0]);
@@ -1099,43 +1110,51 @@ export type AuthorRecord = {
   isAdmin: boolean;
   isActive: boolean;
   requiresPasswordChange: boolean;
+  adminLayerId: number | null;
 };
 
-export async function listAuthors(): Promise<AuthorRecord[]> {
-  const result = await ensureClient().query<AuthorRow>(
-    'SELECT * FROM authors ORDER BY username ASC'
-  );
-  return result.rows.map((row) => ({
+function mapAuthorRecord(row: AuthorRow): AuthorRecord {
+  return {
     id: row.id,
     username: row.username,
     isAdmin: row.is_admin,
     isActive: row.is_active,
     requiresPasswordChange: row.must_change_password,
-  }));
+    adminLayerId: row.admin_layer_id,
+  };
+}
+
+export async function listAuthors(): Promise<AuthorRecord[]> {
+  const result = await ensureClient().query<AuthorRow>(
+    'SELECT * FROM authors ORDER BY username ASC'
+  );
+  return result.rows.map(mapAuthorRecord);
+}
+
+export async function getAuthorById(authorId: number): Promise<AuthorRecord | null> {
+  const result = await ensureClient().query<AuthorRow>('SELECT * FROM authors WHERE id = $1', [authorId]);
+  return result.rows[0] ? mapAuthorRecord(result.rows[0]) : null;
 }
 
 export async function createAuthor(options: {
   username: string;
   isAdmin?: boolean;
+  adminLayerId?: number | null;
 }): Promise<{ author: AuthorRecord; oneTimePassword: string }> {
   const oneTimePassword = randomUUID().split('-')[0];
   const result = await ensureClient().query<AuthorRow>(
-    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
-     VALUES ($1, $2, $3, TRUE, TRUE, $4)
+    `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin, admin_layer_id)
+     VALUES ($1, $2, $3, TRUE, TRUE, $4, $5)
      RETURNING *`,
-    [options.username, hashPassword(randomUUID()), hashPassword(oneTimePassword), options.isAdmin ?? false]
+    [
+      options.username,
+      hashPassword(randomUUID()),
+      hashPassword(oneTimePassword),
+      options.isAdmin ?? false,
+      options.adminLayerId ?? null,
+    ]
   );
-  const row = result.rows[0];
-  return {
-    author: {
-      id: row.id,
-      username: row.username,
-      isAdmin: row.is_admin,
-      isActive: row.is_active,
-      requiresPasswordChange: row.must_change_password,
-    },
-    oneTimePassword,
-  };
+  return { author: mapAuthorRecord(result.rows[0]), oneTimePassword };
 }
 
 export async function setAuthorActive(authorId: number, isActive: boolean): Promise<boolean> {
@@ -1242,6 +1261,20 @@ export async function getLayers(): Promise<Layer[]> {
 export async function getLayerById(id: number): Promise<Layer | null> {
   const result = await ensureClient().query<LayerRow>('SELECT * FROM layers WHERE id = $1', [id]);
   return result.rows[0] ? mapLayerRow(result.rows[0]) : null;
+}
+
+export async function isLayerInAdminScope(adminLayerId: number, targetLayerId: number): Promise<boolean> {
+  const result = await ensureClient().query(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, parent_id FROM layers WHERE id = $1
+       UNION ALL
+       SELECT l.id, l.parent_id FROM layers l
+       JOIN ancestors a ON l.id = a.parent_id
+     )
+     SELECT 1 FROM ancestors WHERE id = $2 LIMIT 1`,
+    [targetLayerId, adminLayerId]
+  );
+  return result.rows.length > 0;
 }
 
 export async function getTopics(layerId?: number): Promise<Topic[]> {

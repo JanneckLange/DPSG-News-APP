@@ -15,6 +15,7 @@ import {
   deleteEventById,
   deleteLayer,
   deleteTopic,
+  getAuthorById,
   getAuthorDrafts,
   getAuthorEvents,
   getAuthorSession,
@@ -24,6 +25,7 @@ import {
   getLayers,
   getTopicById,
   getTopics,
+  isLayerInAdminScope,
   loginAuthor,
   logoutAuthor,
   listAuthors,
@@ -216,6 +218,15 @@ async function getViewerSession(req: Request) {
 function requireAdminSession(res: Response): boolean {
   const author = res.locals.author as { isAdmin?: boolean } | undefined;
   if (!author?.isAdmin) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  return true;
+}
+
+async function requireLayerScope(res: Response, targetLayerId: number | null | undefined): Promise<boolean> {
+  const author = res.locals.author as { adminLayerId?: number | null } | undefined;
+  if (!targetLayerId || !author?.adminLayerId || !await isLayerInAdminScope(author.adminLayerId, targetLayerId)) {
     res.status(403).json({ error: 'Forbidden' });
     return false;
   }
@@ -943,7 +954,17 @@ app.post('/api/admin/users', async (req: Request, res: Response) => {
     if (!username) {
       return respondBadRequest(req, res, 'Username is required');
     }
-    const result = await createAuthor({ username, isAdmin });
+    let adminLayerId: number | undefined;
+    if (isAdmin) {
+      adminLayerId = parseLayerId(req.body.layerId);
+      if (!adminLayerId || !await isKnownLayerId(adminLayerId)) {
+        return respondBadRequest(req, res, 'Invalid layerId');
+      }
+      if (!await requireLayerScope(res, adminLayerId)) {
+        return;
+      }
+    }
+    const result = await createAuthor({ username, isAdmin, adminLayerId });
     res.status(201).json(result);
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -995,6 +1016,10 @@ app.delete('/api/admin/users/:id', async (req: Request, res: Response) => {
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid user id');
     }
+    const target = await getAuthorById(id);
+    if (target?.isAdmin && !await requireLayerScope(res, target.adminLayerId)) {
+      return;
+    }
     const deleted = await deleteAuthorById(id);
     if (!deleted) {
       return res.status(409).json({ error: 'User must be deactivated before deletion' });
@@ -1017,6 +1042,10 @@ app.post('/api/admin/users/:id/reset-password', async (req: Request, res: Respon
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid user id');
+    }
+    const target = await getAuthorById(id);
+    if (target?.isAdmin && !await requireLayerScope(res, target.adminLayerId)) {
+      return;
     }
     const oneTimePassword = await resetAuthorPassword(id);
     if (!oneTimePassword) {
@@ -1049,6 +1078,9 @@ app.post('/api/admin/layers', async (req: Request, res: Response) => {
     }
     if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
       return respondBadRequest(req, res, 'Invalid parentId');
+    }
+    if (!await requireLayerScope(res, parentId)) {
+      return;
     }
     const layer = await createLayer({ name, type, parentId, url });
     res.status(201).json({ layer });
@@ -1083,19 +1115,14 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
     if (!existing) {
       return res.status(404).json({ error: 'Layer not found' });
     }
+    if (!await requireLayerScope(res, id)) {
+      return;
+    }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : existing.name;
-    const type = typeof req.body.type === 'string' ? req.body.type.trim() : existing.type;
-    const url = typeof req.body.url === 'string' ? req.body.url.trim() : existing.url;
-    const parentId = req.body.parentId !== undefined
-      ? (req.body.parentId != null ? parseLayerId(req.body.parentId) : null)
-      : existing.parentId;
-    if (!name || !type || name.length > MAX_TITLE_LENGTH) {
-      return respondBadRequest(req, res, `name and type are required, name must not exceed ${MAX_TITLE_LENGTH} characters`);
+    if (!name || name.length > MAX_TITLE_LENGTH) {
+      return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
     }
-    if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
-      return respondBadRequest(req, res, 'Invalid parentId');
-    }
-    const updated = await updateLayer(id, { name, type, parentId, url });
+    const updated = await updateLayer(id, { name, type: existing.type, parentId: existing.parentId, url: existing.url });
     if (updated.status === 'not_found') {
       return res.status(404).json({ error: 'Layer not found' });
     }
@@ -1109,9 +1136,6 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
   } catch (error) {
     if (isUniqueViolation(error)) {
       return res.status(409).json({ error: 'A layer with this name already exists at this position' });
-    }
-    if (isForeignKeyViolation(error)) {
-      return respondBadRequest(req, res, 'Invalid parentId');
     }
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to update layer' });
@@ -1132,6 +1156,12 @@ app.delete('/api/admin/layers/:id', async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid layer id');
+    }
+    if (!await isKnownLayerId(id)) {
+      return res.status(404).json({ error: 'Layer not found' });
+    }
+    if (!await requireLayerScope(res, id)) {
+      return;
     }
     const result = await deleteLayer(id);
     if (result === 'not_found') {
@@ -1172,6 +1202,9 @@ app.post('/api/admin/topics', async (req: Request, res: Response) => {
     if (!layerId || !await isKnownLayerId(layerId)) {
       return respondBadRequest(req, res, 'Invalid layerId');
     }
+    if (!await requireLayerScope(res, layerId)) {
+      return;
+    }
     const topic = await createTopic({ name, layerId });
     res.status(201).json({ topic });
   } catch (error) {
@@ -1205,6 +1238,9 @@ app.patch('/api/admin/topics/:id', async (req: Request, res: Response) => {
     if (!existing) {
       return res.status(404).json({ error: 'Topic not found' });
     }
+    if (!await requireLayerScope(res, existing.layerId)) {
+      return;
+    }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
     if (!name || name.length > MAX_TITLE_LENGTH) {
       return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
@@ -1237,6 +1273,13 @@ app.delete('/api/admin/topics/:id', async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid topic id');
+    }
+    const existing = await getTopicById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Topic not found' });
+    }
+    if (!await requireLayerScope(res, existing.layerId)) {
+      return;
     }
     const result = await deleteTopic(id);
     if (result === 'not_found') {

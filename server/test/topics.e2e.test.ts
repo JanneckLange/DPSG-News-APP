@@ -200,6 +200,55 @@ describe('Topics admin CRUD e2e', () => {
     await request(app).delete(`/api/admin/topics/${createdTopic.id}`).set('authorization', `Bearer ${adminToken}`);
   });
 
+  it('rejects topic creation, rename and deletion outside the admin\'s own layer branch', async () => {
+    await createAuthorForTesting({
+      username: 'admin-topics-scoped',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerId: koelnLayerId,
+    });
+    const adminToken = await loginAuthor('admin-topics-scoped', 'admin-123');
+
+    const createOutsideScope = await request(app)
+      .post('/api/admin/topics')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Meute Fremd', layerId: hamburgLayerId });
+    expect(createOutsideScope.status).toBe(403);
+
+    const createInScope = await request(app)
+      .post('/api/admin/topics')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Meute Eigen', layerId: koelnLayerId });
+    expect(createInScope.status).toBe(201);
+    const createdTopic = createInScope.body.topic as { id: number };
+
+    await createAuthorForTesting({ username: 'admin-topics-hamburg', password: 'admin-123', isAdmin: true });
+    const otherAdminToken = await loginAuthor('admin-topics-hamburg', 'admin-123');
+    const foreignTopicResponse = await request(app)
+      .post('/api/admin/topics')
+      .set('authorization', `Bearer ${otherAdminToken}`)
+      .send({ name: 'Meute Hamburg', layerId: hamburgLayerId });
+    const foreignTopic = foreignTopicResponse.body.topic as { id: number };
+
+    const renameOutsideScope = await request(app)
+      .patch(`/api/admin/topics/${foreignTopic.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Umbenannt' });
+    expect(renameOutsideScope.status).toBe(403);
+
+    const deleteOutsideScope = await request(app)
+      .delete(`/api/admin/topics/${foreignTopic.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteOutsideScope.status).toBe(403);
+
+    const deleteInScope = await request(app)
+      .delete(`/api/admin/topics/${createdTopic.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteInScope.status).toBe(204);
+
+    await request(app).delete(`/api/admin/topics/${foreignTopic.id}`).set('authorization', `Bearer ${otherAdminToken}`);
+  });
+
   it('returns 404 when updating or deleting an unknown topic', async () => {
     await createAuthorForTesting({ username: 'admin-topics-404', password: 'admin-123', isAdmin: true });
     const adminToken = await loginAuthor('admin-topics-404', 'admin-123');
