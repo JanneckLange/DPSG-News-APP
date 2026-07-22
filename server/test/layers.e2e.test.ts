@@ -160,7 +160,7 @@ describe('Layers API e2e', () => {
     await request(app).delete(`/api/admin/layers/${createdLayer.id}`).set('authorization', `Bearer ${adminToken}`);
   });
 
-  it('protects the Bundesverband root layer from deletion and reparenting', async () => {
+  it('protects the Bundesverband root layer from deletion and ignores reparenting attempts', async () => {
     await createAuthorForTesting({ username: 'admin-layers-root', password: 'admin-123', isAdmin: true });
     const adminToken = await loginAuthor('admin-layers-root', 'admin-123');
 
@@ -175,19 +175,62 @@ describe('Layers API e2e', () => {
       .set('authorization', `Bearer ${adminToken}`);
     expect(deleteRootBlocked.status).toBe(409);
 
-    // Root layer cannot be reparented under another layer.
-    const reparentRootBlocked = await request(app)
-      .patch(`/api/admin/layers/${bundesverband.id}`)
-      .set('authorization', `Bearer ${adminToken}`)
-      .send({ parentId: koelnLayer.id });
-    expect(reparentRootBlocked.status).toBe(409);
-
-    // A non-root layer cannot be turned into a second root layer.
-    const secondRootBlocked = await request(app)
+    // PATCH only renames; a parentId in the body is ignored, not applied.
+    const reparentIgnored = await request(app)
       .patch(`/api/admin/layers/${koelnLayer.id}`)
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ parentId: null });
-    expect(secondRootBlocked.status).toBe(409);
+      .send({ name: koelnLayer.name, parentId: null });
+    expect(reparentIgnored.status).toBe(200);
+    expect(reparentIgnored.body.layer.parentId).toBe(bundesverband.id);
+  });
+
+  it('rejects layer creation, rename and deletion outside the admin\'s own layer branch', async () => {
+    const layersResponse = await request(app).get('/api/layers');
+    const layers = layersResponse.body.layers as Array<{ id: number; name: string; type: string; parentId: number | null }>;
+    const koelnLayer = layers.find((l) => l.name === 'Köln' && l.type === 'dv')!;
+    const otherDvLayer = layers.find((l) => l.type === 'dv' && l.id !== koelnLayer.id)!;
+
+    await createAuthorForTesting({
+      username: 'admin-layers-scoped',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerId: koelnLayer.id,
+    });
+    const adminToken = await loginAuthor('admin-layers-scoped', 'admin-123');
+
+    // Creating a layer under a foreign branch is forbidden.
+    const createOutsideScope = await request(app)
+      .post('/api/admin/layers')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Bezirk Fremd', type: 'bezirk', parentId: otherDvLayer.id });
+    expect(createOutsideScope.status).toBe(403);
+
+    // Creating within the own branch is allowed.
+    const createInScope = await request(app)
+      .post('/api/admin/layers')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Bezirk Eigen', type: 'bezirk', parentId: koelnLayer.id });
+    expect(createInScope.status).toBe(201);
+    const createdLayer = createInScope.body.layer as { id: number };
+
+    // Renaming a foreign layer is forbidden.
+    const renameOutsideScope = await request(app)
+      .patch(`/api/admin/layers/${otherDvLayer.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Umbenannt' });
+    expect(renameOutsideScope.status).toBe(403);
+
+    // Deleting a foreign layer is forbidden.
+    const deleteOutsideScope = await request(app)
+      .delete(`/api/admin/layers/${otherDvLayer.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteOutsideScope.status).toBe(403);
+
+    // Deleting the own, unused layer is allowed.
+    const deleteInScope = await request(app)
+      .delete(`/api/admin/layers/${createdLayer.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteInScope.status).toBe(204);
   });
 
   it('rejects creating or updating events with an unknown layerId', async () => {
