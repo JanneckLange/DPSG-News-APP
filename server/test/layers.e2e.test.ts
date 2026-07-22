@@ -8,6 +8,7 @@ jest.mock('../src/fcm', () => ({
 import request from 'supertest';
 import app from '../src/app';
 import { clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
+import { MAX_TITLE_LENGTH } from '../src/eventValidation';
 
 async function loginAuthor(username: string, password: string): Promise<string> {
   const response = await request(app).post('/api/auth/login').send({ username, password });
@@ -125,6 +126,33 @@ describe('Layers API e2e', () => {
       .delete(`/api/admin/layers/${createdLayer.id}`)
       .set('authorization', `Bearer ${adminToken}`);
     expect(deleteAgain.status).toBe(404);
+  });
+
+  it('rejects creating or renaming a layer with an oversized name', async () => {
+    await createAuthorForTesting({ username: 'admin-layers-oversized', password: 'admin-123', isAdmin: true });
+    const adminToken = await loginAuthor('admin-layers-oversized', 'admin-123');
+    const oversizedName = 'a'.repeat(MAX_TITLE_LENGTH + 1);
+
+    const createResponse = await request(app)
+      .post('/api/admin/layers')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: oversizedName, type: 'bezirk' });
+    expect(createResponse.status).toBe(400);
+
+    const validCreateResponse = await request(app)
+      .post('/api/admin/layers')
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Bezirk Ost', type: 'bezirk' });
+    expect(validCreateResponse.status).toBe(201);
+    const createdLayer = validCreateResponse.body.layer as { id: number };
+
+    const renameResponse = await request(app)
+      .patch(`/api/admin/layers/${createdLayer.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ name: oversizedName });
+    expect(renameResponse.status).toBe(400);
+
+    await request(app).delete(`/api/admin/layers/${createdLayer.id}`).set('authorization', `Bearer ${adminToken}`);
   });
 
   it('rejects creating or updating events with an unknown layerId', async () => {

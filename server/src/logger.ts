@@ -35,6 +35,7 @@ type HourBucket = {
 const KNOWN_ENDPOINTS: Array<{ method: string; path: RegExp }> = [
   { method: 'GET', path: /^\/health\/?$/ },
   { method: 'GET', path: /^\/api\/layers\/?$/ },
+  { method: 'GET', path: /^\/api\/topics\/?$/ },
   { method: 'GET', path: /^\/api\/events\/?$/ },
   { method: 'POST', path: /^\/api\/events\/?$/ },
   { method: 'PUT', path: /^\/api\/events\/\d+\/?$/ },
@@ -59,6 +60,9 @@ const KNOWN_ENDPOINTS: Array<{ method: string; path: RegExp }> = [
   { method: 'POST', path: /^\/api\/admin\/layers\/?$/ },
   { method: 'PATCH', path: /^\/api\/admin\/layers\/\d+\/?$/ },
   { method: 'DELETE', path: /^\/api\/admin\/layers\/\d+\/?$/ },
+  { method: 'POST', path: /^\/api\/admin\/topics\/?$/ },
+  { method: 'PATCH', path: /^\/api\/admin\/topics\/\d+\/?$/ },
+  { method: 'DELETE', path: /^\/api\/admin\/topics\/\d+\/?$/ },
 ];
 
 let unknownEndpointBucket: HourBucket = {

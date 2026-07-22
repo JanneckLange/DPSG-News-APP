@@ -7,12 +7,14 @@ import {
   createAuthorEvent,
   createEventUpdate,
   createLayer,
+  createTopic,
   deleteAllEvents,
   deleteAuthorDraftById,
   deleteAuthorEventById,
   deleteAuthorById,
   deleteEventById,
   deleteLayer,
+  deleteTopic,
   getAuthorDrafts,
   getAuthorEvents,
   getAuthorSession,
@@ -20,6 +22,7 @@ import {
   getEvents,
   getLayerById,
   getLayers,
+  getTopicById,
   getTopics,
   loginAuthor,
   logoutAuthor,
@@ -31,6 +34,7 @@ import {
   updateAuthorEventById,
   updateEventById,
   updateLayer,
+  updateTopic,
   clearDrafts,
   clearEvents,
   clearAuthorData,
@@ -43,7 +47,7 @@ import { sendEventNotification, sendEventUpdateNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
 import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError, logWarn } from './logger';
 import { createRateLimitStore } from './rateLimitStore';
-import { validateEventTextFields, validateMessageField } from './eventValidation';
+import { MAX_TITLE_LENGTH, validateEventTextFields, validateMessageField } from './eventValidation';
 
 const app = express();
 app.disable('x-powered-by');
@@ -239,6 +243,14 @@ function parseLayerId(value: unknown): number | undefined {
 
 async function isKnownLayerId(layerId: number): Promise<boolean> {
   return (await getLayerById(layerId)) !== null;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: string }).code === '23505';
+}
+
+function isForeignKeyViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: string }).code === '23503';
 }
 
 app.get('/health', (_req: Request, res: Response) => {
@@ -1032,8 +1044,8 @@ app.post('/api/admin/layers', async (req: Request, res: Response) => {
     const type = typeof req.body.type === 'string' ? req.body.type.trim() : '';
     const url = typeof req.body.url === 'string' ? req.body.url.trim() : undefined;
     const parentId = req.body.parentId != null ? parseLayerId(req.body.parentId) : null;
-    if (!name || !type) {
-      return respondBadRequest(req, res, 'name and type are required');
+    if (!name || !type || name.length > MAX_TITLE_LENGTH) {
+      return respondBadRequest(req, res, `name and type are required, name must not exceed ${MAX_TITLE_LENGTH} characters`);
     }
     if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
       return respondBadRequest(req, res, 'Invalid parentId');
@@ -1041,6 +1053,12 @@ app.post('/api/admin/layers', async (req: Request, res: Response) => {
     const layer = await createLayer({ name, type, parentId, url });
     res.status(201).json({ layer });
   } catch (error) {
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({ error: 'A layer with this name already exists at this position' });
+    }
+    if (isForeignKeyViolation(error)) {
+      return respondBadRequest(req, res, 'Invalid parentId');
+    }
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to create layer' });
   }
@@ -1071,8 +1089,8 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
     const parentId = req.body.parentId !== undefined
       ? (req.body.parentId != null ? parseLayerId(req.body.parentId) : null)
       : existing.parentId;
-    if (!name || !type) {
-      return respondBadRequest(req, res, 'name and type are required');
+    if (!name || !type || name.length > MAX_TITLE_LENGTH) {
+      return respondBadRequest(req, res, `name and type are required, name must not exceed ${MAX_TITLE_LENGTH} characters`);
     }
     if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
       return respondBadRequest(req, res, 'Invalid parentId');
@@ -1083,6 +1101,12 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
     }
     res.json({ layer: updated });
   } catch (error) {
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({ error: 'A layer with this name already exists at this position' });
+    }
+    if (isForeignKeyViolation(error)) {
+      return respondBadRequest(req, res, 'Invalid parentId');
+    }
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to update layer' });
   }
@@ -1117,6 +1141,105 @@ app.delete('/api/admin/layers/:id', async (req: Request, res: Response) => {
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to delete layer' });
+  }
+});
+
+app.post('/api/admin/topics', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    const layerId = parseLayerId(req.body.layerId);
+    if (!name || name.length > MAX_TITLE_LENGTH) {
+      return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
+    }
+    if (!layerId || !await isKnownLayerId(layerId)) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    const topic = await createTopic({ name, layerId });
+    res.status(201).json({ topic });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({ error: 'A topic with this name already exists for this layer' });
+    }
+    if (isForeignKeyViolation(error)) {
+      return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to create topic' });
+  }
+});
+
+app.patch('/api/admin/topics/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid topic id');
+    }
+    const existing = await getTopicById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Topic not found' });
+    }
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    if (!name || name.length > MAX_TITLE_LENGTH) {
+      return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
+    }
+    const updated = await updateTopic(id, name);
+    if (!updated) {
+      return res.status(404).json({ error: 'Topic not found' });
+    }
+    res.json({ topic: updated });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return res.status(409).json({ error: 'A topic with this name already exists for this layer' });
+    }
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to update topic' });
+  }
+});
+
+app.delete('/api/admin/topics/:id', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid topic id');
+    }
+    const result = await deleteTopic(id);
+    if (result === 'not_found') {
+      return res.status(404).json({ error: 'Topic not found' });
+    }
+    if (result === 'in_use') {
+      return res.status(409).json({ error: 'Topic is referenced by events or drafts and cannot be deleted' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to delete topic' });
   }
 });
 
