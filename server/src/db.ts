@@ -152,6 +152,11 @@ export type Topic = {
   updatedAt: string;
 };
 
+export type TopicInput = {
+  name: string;
+  layerId: number;
+};
+
 type EventUpdateRow = {
   id: number;
   event_id: number;
@@ -1238,6 +1243,47 @@ export async function getTopics(layerId?: number): Promise<Topic[]> {
 export async function getTopicById(id: number): Promise<Topic | null> {
   const result = await ensureClient().query<TopicRow>('SELECT * FROM topics WHERE id = $1', [id]);
   return result.rows[0] ? mapTopicRow(result.rows[0]) : null;
+}
+
+export async function createTopic(input: TopicInput): Promise<Topic> {
+  const result = await ensureClient().query<TopicRow>(
+    `INSERT INTO topics (name, layer_id)
+     VALUES ($1, $2)
+     RETURNING *`,
+    [input.name, input.layerId]
+  );
+  return mapTopicRow(result.rows[0]);
+}
+
+export async function updateTopic(id: number, name: string): Promise<Topic | null> {
+  const result = await ensureClient().query<TopicRow>(
+    `UPDATE topics
+     SET name = $1,
+         updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [name, id]
+  );
+  return result.rows[0] ? mapTopicRow(result.rows[0]) : null;
+}
+
+export type DeleteTopicResult = 'deleted' | 'not_found' | 'in_use';
+
+export async function deleteTopic(id: number): Promise<DeleteTopicResult> {
+  const db = ensureClient();
+  const existing = await db.query('SELECT 1 FROM topics WHERE id = $1', [id]);
+  if (!existing.rows[0]) {
+    return 'not_found';
+  }
+
+  const referencedByEvents = await db.query('SELECT 1 FROM events WHERE topic_id = $1 LIMIT 1', [id]);
+  const referencedByDrafts = await db.query('SELECT 1 FROM drafts WHERE topic_id = $1 LIMIT 1', [id]);
+  if (referencedByEvents.rows[0] || referencedByDrafts.rows[0]) {
+    return 'in_use';
+  }
+
+  await db.query('DELETE FROM topics WHERE id = $1', [id]);
+  return 'deleted';
 }
 
 export async function createLayer(input: LayerInput): Promise<Layer> {
