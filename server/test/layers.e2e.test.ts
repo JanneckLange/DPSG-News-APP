@@ -133,16 +133,21 @@ describe('Layers API e2e', () => {
     const adminToken = await loginAuthor('admin-layers-oversized', 'admin-123');
     const oversizedName = 'a'.repeat(MAX_TITLE_LENGTH + 1);
 
+    const layersResponse = await request(app).get('/api/layers');
+    const koelnLayer = (layersResponse.body.layers as Array<{ id: number; name: string; type: string }>).find(
+      (l) => l.name === 'Köln' && l.type === 'dv'
+    )!;
+
     const createResponse = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ name: oversizedName, type: 'bezirk' });
+      .send({ name: oversizedName, type: 'bezirk', parentId: koelnLayer.id });
     expect(createResponse.status).toBe(400);
 
     const validCreateResponse = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Bezirk Ost', type: 'bezirk' });
+      .send({ name: 'Bezirk Ost', type: 'bezirk', parentId: koelnLayer.id });
     expect(validCreateResponse.status).toBe(201);
     const createdLayer = validCreateResponse.body.layer as { id: number };
 
@@ -153,6 +158,36 @@ describe('Layers API e2e', () => {
     expect(renameResponse.status).toBe(400);
 
     await request(app).delete(`/api/admin/layers/${createdLayer.id}`).set('authorization', `Bearer ${adminToken}`);
+  });
+
+  it('protects the Bundesverband root layer from deletion and reparenting', async () => {
+    await createAuthorForTesting({ username: 'admin-layers-root', password: 'admin-123', isAdmin: true });
+    const adminToken = await loginAuthor('admin-layers-root', 'admin-123');
+
+    const layersResponse = await request(app).get('/api/layers');
+    const layers = layersResponse.body.layers as Array<{ id: number; name: string; type: string; parentId: number | null }>;
+    const bundesverband = layers.find((l) => l.type === 'bundesverband')!;
+    const koelnLayer = layers.find((l) => l.name === 'Köln' && l.type === 'dv')!;
+
+    // Root layer cannot be deleted.
+    const deleteRootBlocked = await request(app)
+      .delete(`/api/admin/layers/${bundesverband.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteRootBlocked.status).toBe(409);
+
+    // Root layer cannot be reparented under another layer.
+    const reparentRootBlocked = await request(app)
+      .patch(`/api/admin/layers/${bundesverband.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ parentId: koelnLayer.id });
+    expect(reparentRootBlocked.status).toBe(409);
+
+    // A non-root layer cannot be turned into a second root layer.
+    const secondRootBlocked = await request(app)
+      .patch(`/api/admin/layers/${koelnLayer.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ parentId: null });
+    expect(secondRootBlocked.status).toBe(409);
   });
 
   it('rejects creating or updating events with an unknown layerId', async () => {

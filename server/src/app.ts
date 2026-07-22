@@ -1096,10 +1096,16 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
       return respondBadRequest(req, res, 'Invalid parentId');
     }
     const updated = await updateLayer(id, { name, type, parentId, url });
-    if (!updated) {
+    if (updated.status === 'not_found') {
       return res.status(404).json({ error: 'Layer not found' });
     }
-    res.json({ layer: updated });
+    if (updated.status === 'is_root') {
+      return res.status(409).json({ error: 'Der Wurzel-Layer (Bundesverband) kann keinem anderen Layer zugeordnet werden' });
+    }
+    if (updated.status === 'would_create_second_root') {
+      return res.status(409).json({ error: 'Layer kann nicht zu einem zweiten Wurzel-Layer werden' });
+    }
+    res.json({ layer: updated.layer });
   } catch (error) {
     if (isUniqueViolation(error)) {
       return res.status(409).json({ error: 'A layer with this name already exists at this position' });
@@ -1130,6 +1136,9 @@ app.delete('/api/admin/layers/:id', async (req: Request, res: Response) => {
     const result = await deleteLayer(id);
     if (result === 'not_found') {
       return res.status(404).json({ error: 'Layer not found' });
+    }
+    if (result === 'is_root') {
+      return res.status(409).json({ error: 'Der Wurzel-Layer (Bundesverband) kann nicht gelöscht werden' });
     }
     if (result === 'has_children') {
       return res.status(409).json({ error: 'Layer has child layers and cannot be deleted' });

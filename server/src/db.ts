@@ -1296,8 +1296,30 @@ export async function createLayer(input: LayerInput): Promise<Layer> {
   return mapLayerRow(result.rows[0]);
 }
 
-export async function updateLayer(id: number, input: LayerInput): Promise<Layer | null> {
-  const result = await ensureClient().query<LayerRow>(
+export type UpdateLayerResult =
+  | { status: 'updated'; layer: Layer }
+  | { status: 'not_found' }
+  | { status: 'is_root' }
+  | { status: 'would_create_second_root' };
+
+export async function updateLayer(id: number, input: LayerInput): Promise<UpdateLayerResult> {
+  const db = ensureClient();
+  const existing = await db.query<{ parent_id: number | null }>('SELECT parent_id FROM layers WHERE id = $1', [id]);
+  const existingRow = existing.rows[0];
+  if (!existingRow) {
+    return { status: 'not_found' };
+  }
+
+  const currentParentId = existingRow.parent_id;
+  const nextParentId = input.parentId ?? null;
+  if (currentParentId === null && nextParentId !== null) {
+    return { status: 'is_root' };
+  }
+  if (currentParentId !== null && nextParentId === null) {
+    return { status: 'would_create_second_root' };
+  }
+
+  const result = await db.query<LayerRow>(
     `UPDATE layers
      SET name = $1,
          type = $2,
@@ -1306,18 +1328,24 @@ export async function updateLayer(id: number, input: LayerInput): Promise<Layer 
          updated_at = NOW()
      WHERE id = $5
      RETURNING *`,
-    [input.name, input.type, input.parentId ?? null, input.url ?? null, id]
+    [input.name, input.type, nextParentId, input.url ?? null, id]
   );
-  return result.rows[0] ? mapLayerRow(result.rows[0]) : null;
+  if (!result.rows[0]) {
+    return { status: 'not_found' };
+  }
+  return { status: 'updated', layer: mapLayerRow(result.rows[0]) };
 }
 
-export type DeleteLayerResult = 'deleted' | 'not_found' | 'has_children' | 'in_use';
+export type DeleteLayerResult = 'deleted' | 'not_found' | 'is_root' | 'has_children' | 'in_use';
 
 export async function deleteLayer(id: number): Promise<DeleteLayerResult> {
   const db = ensureClient();
-  const existing = await db.query('SELECT 1 FROM layers WHERE id = $1', [id]);
+  const existing = await db.query<{ parent_id: number | null }>('SELECT parent_id FROM layers WHERE id = $1', [id]);
   if (!existing.rows[0]) {
     return 'not_found';
+  }
+  if (existing.rows[0].parent_id === null) {
+    return 'is_root';
   }
 
   const children = await db.query('SELECT 1 FROM layers WHERE parent_id = $1 LIMIT 1', [id]);
