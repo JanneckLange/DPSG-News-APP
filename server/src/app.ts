@@ -1183,6 +1183,9 @@ app.post('/api/admin/topics', async (req: Request, res: Response) => {
     if (!layerId || !await isKnownLayerId(layerId)) {
       return respondBadRequest(req, res, 'Invalid layerId');
     }
+    if (!await requireLayerScope(res, layerId)) {
+      return;
+    }
     const topic = await createTopic({ name, layerId });
     res.status(201).json({ topic });
   } catch (error) {
@@ -1216,6 +1219,9 @@ app.patch('/api/admin/topics/:id', async (req: Request, res: Response) => {
     if (!existing) {
       return res.status(404).json({ error: 'Topic not found' });
     }
+    if (!await requireLayerScope(res, existing.layerId)) {
+      return;
+    }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
     if (!name || name.length > MAX_TITLE_LENGTH) {
       return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
@@ -1248,6 +1254,13 @@ app.delete('/api/admin/topics/:id', async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid topic id');
+    }
+    const existing = await getTopicById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Topic not found' });
+    }
+    if (!await requireLayerScope(res, existing.layerId)) {
+      return;
     }
     const result = await deleteTopic(id);
     if (result === 'not_found') {
