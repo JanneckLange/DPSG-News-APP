@@ -14,6 +14,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  animated_tree_view: ^2.3.0
   cupertino_icons: ^1.0.5
   firebase_core: ^2.32.0
   firebase_messaging: ^14.9.4

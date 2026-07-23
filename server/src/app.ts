@@ -27,6 +27,7 @@ import {
   getAuthorTopicGrantIds,
   getEventUpdates,
   getEvents,
+  getLayerAdmins,
   getLayerById,
   getLayers,
   getLayerSubtree,
@@ -1343,6 +1344,35 @@ app.get('/api/admin/layers', async (req: Request, res: Response) => {
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load layers' });
+  }
+});
+
+app.get('/api/admin/layers/:id/admins', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requireAdminSession(res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = parseLayerId(req.params.id);
+    if (id === undefined) {
+      return respondBadRequest(req, res, 'Invalid layer id');
+    }
+    if (!await isKnownLayerId(id)) {
+      return res.status(404).json({ error: 'Layer not found' });
+    }
+    if (!await requireLayerScope(res, id)) {
+      return;
+    }
+    const admins = await getLayerAdmins(id);
+    res.json({ admins });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load layer admins' });
   }
 });
 
