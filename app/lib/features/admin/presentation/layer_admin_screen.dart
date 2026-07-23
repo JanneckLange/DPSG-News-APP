@@ -231,13 +231,25 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
   TreeNode<LayerModel?> _buildTree() {
     final root = TreeNode<LayerModel?>.root(data: null);
     for (final layer in _rootLayers) {
-      final node = _buildTreeNode(layer);
-      // Bundesverband (Wurzel-Layer) soll beim Oeffnen des Baums bereits
-      // aufgeklappt sein, damit die DVs sofort sichtbar sind.
-      node.expansionNotifier.value = true;
-      root.add(node);
+      root.add(_buildTreeNode(layer));
     }
     return root;
+  }
+
+  bool _didAutoExpandRoot = false;
+
+  void _onTreeReady(TreeViewController<LayerModel?, TreeNode<LayerModel?>> controller,
+      TreeNode<LayerModel?> tree) {
+    // Nur beim allerersten Aufbau des Baums automatisch aufklappen: der
+    // initiale Flat-List-Aufbau des Packages beruecksichtigt keine vorab
+    // gesetzte Expansion, daher muss ueber den Controller expandiert werden.
+    if (_didAutoExpandRoot) return;
+    _didAutoExpandRoot = true;
+    for (final node in tree.childrenAsList.cast<TreeNode<LayerModel?>>()) {
+      if (node.data?.parentId == null) {
+        controller.expandNode(node);
+      }
+    }
   }
 
   Widget _buildLayerRow(TreeNode<LayerModel?> node) {
@@ -299,11 +311,13 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     if (_rootLayers.isEmpty) {
       return const Center(child: Text('Keine Layer vorhanden.'));
     }
+    final tree = _buildTree();
     return RefreshIndicator(
       onRefresh: _loadLayers,
       child: TreeView.simpleTyped<LayerModel?, TreeNode<LayerModel?>>(
-        tree: _buildTree(),
+        tree: tree,
         showRootNode: false,
+        onTreeReady: (controller) => _onTreeReady(controller, tree),
         expansionIndicatorBuilder: (context, node) => ChevronIndicator.rightDown(
           tree: node,
           alignment: Alignment.centerLeft,
