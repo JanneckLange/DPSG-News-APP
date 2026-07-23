@@ -231,7 +231,11 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
   TreeNode<LayerModel?> _buildTree() {
     final root = TreeNode<LayerModel?>.root(data: null);
     for (final layer in _rootLayers) {
-      root.add(_buildTreeNode(layer));
+      final node = _buildTreeNode(layer);
+      // Bundesverband (Wurzel-Layer) soll beim Oeffnen des Baums bereits
+      // aufgeklappt sein, damit die DVs sofort sichtbar sind.
+      node.expansionNotifier.value = true;
+      root.add(node);
     }
     return root;
   }
