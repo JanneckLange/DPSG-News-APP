@@ -73,7 +73,8 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
 
   /// Laedt die Topics eines DVs beim Oeffnen des Auswahldialogs (lazy) und
   /// zeigt den Dialog nur an, wenn tatsaechlich Topics vorhanden sind.
-  Future<void> _openTopicDialog(LayerModel dv, List<String> currentTopics) async {
+  Future<void> _openTopicDialog(
+      LayerModel dv, List<String> currentTopics) async {
     setState(() => _loadingTopicsForLayer.add(dv.id));
     List<TopicModel> topics;
     try {
@@ -146,9 +147,13 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
   }
 
   void _runDebouncedSideEffects() {
-    unawaited(ref.read(notificationServiceProvider).refreshTopicSubscriptions());
-    final layerTree = ref.read(layerTreeProvider).asData?.value ?? <LayerModel>[];
-    final layerNamesById = {for (final layer in layerTree) layer.id: layer.name};
+    unawaited(
+        ref.read(notificationServiceProvider).refreshTopicSubscriptions());
+    final layerTree =
+        ref.read(layerTreeProvider).asData?.value ?? <LayerModel>[];
+    final layerNamesById = {
+      for (final layer in layerTree) layer.id: layer.name
+    };
     final selectedNames = (_selectedLayerIds.toList()..sort())
         .map((id) => layerNamesById[id])
         .whereType<String>()
@@ -196,7 +201,8 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
     return root;
   }
 
-  void _onTreeReady(TreeViewController<LayerModel?, TreeNode<LayerModel?>> controller,
+  void _onTreeReady(
+      TreeViewController<LayerModel?, TreeNode<LayerModel?>> controller,
       TreeNode<LayerModel?> tree) {
     if (_didAutoExpandRoot) return;
     _didAutoExpandRoot = true;
