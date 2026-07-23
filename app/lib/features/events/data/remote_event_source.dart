@@ -905,6 +905,25 @@ class RemoteEventSource {
     return List<Map<String, dynamic>>.from(decoded['users'] as List<dynamic>);
   }
 
+  Future<List<Map<String, dynamic>>> fetchLayerAdmins({
+    required String token,
+    required int layerId,
+  }) async {
+    final uri = baseUrl.replace(path: '/api/admin/layers/$layerId/admins');
+    final response = await _client.get(uri, headers: {
+      HttpHeaders.authorizationHeader: 'Bearer $token'
+    }).timeout(timeout);
+    if (response.statusCode != 200) {
+      throw RemoteEventSourceException(
+        'Failed to fetch layer admins: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
+        serverMessage: _parseServerError(response.body),
+      );
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return List<Map<String, dynamic>>.from(decoded['admins'] as List<dynamic>);
+  }
+
   Future<Map<String, dynamic>> createAdminUser({
     required String token,
     required String username,

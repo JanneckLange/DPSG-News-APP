@@ -1409,6 +1409,40 @@ export async function getLayerSubtree(rootLayerIds: number[]): Promise<Layer[]> 
   return result.rows.map(mapLayerRow);
 }
 
+export type LayerAdminRecord = AuthorRecord & { scope: 'direct' | 'inherited' };
+
+export async function getLayerAdmins(layerId: number): Promise<LayerAdminRecord[]> {
+  const result = await ensureClient().query<AuthorRowWithGrants & { is_direct: boolean }>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, parent_id FROM layers WHERE id = $1
+       UNION ALL
+       SELECT l.id, l.parent_id FROM layers l
+       JOIN ancestors a ON l.id = a.parent_id
+     )
+     SELECT a.*,
+       ${ADMIN_LAYER_IDS_SUBQUERY},
+       (SELECT COALESCE(array_agg(layer_id), ARRAY[]::int[]) FROM author_layer_grants WHERE author_id = a.id) AS layer_grant_ids,
+       (SELECT COALESCE(array_agg(topic_id), ARRAY[]::int[]) FROM author_topic_grants WHERE author_id = a.id) AS topic_grant_ids,
+       EXISTS (
+         SELECT 1 FROM author_admin_layers aal WHERE aal.author_id = a.id AND aal.layer_id = $1
+       ) AS is_direct
+     FROM authors a
+     WHERE a.is_admin = TRUE
+       AND a.is_active = TRUE
+       AND EXISTS (
+         SELECT 1 FROM author_admin_layers aal
+         JOIN ancestors anc ON anc.id = aal.layer_id
+         WHERE aal.author_id = a.id
+       )
+     ORDER BY a.username ASC`,
+    [layerId]
+  );
+  return result.rows.map((row) => ({
+    ...mapAuthorRecord(row),
+    scope: row.is_direct ? ('direct' as const) : ('inherited' as const),
+  }));
+}
+
 export type RemoveAdminLayerResult = 'removed' | 'not_found' | 'last_layer';
 
 export async function getAdminLayerIds(authorId: number): Promise<number[]> {
