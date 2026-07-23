@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/analytics_service.dart';
 import '../../../core/services/error_toast_service.dart';
+import '../../events/data/remote_event_source.dart';
 import '../data/author_auth_provider.dart';
 import 'author_change_password_screen.dart';
 
@@ -21,12 +22,27 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
   final _passwordController = TextEditingController();
   bool _submitting = false;
   bool _obscurePassword = true;
+  String? _fieldError;
+  bool _flashError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController.addListener(_clearFieldError);
+    _passwordController.addListener(_clearFieldError);
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _clearFieldError() {
+    if (_fieldError != null) {
+      setState(() => _fieldError = null);
+    }
   }
 
   Future<void> _submit() async {
@@ -43,7 +59,10 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
       ),
     );
 
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _fieldError = null;
+    });
     try {
       await ref.read(authorAuthProvider.notifier).login(
             _usernameController.text.trim(),
@@ -64,7 +83,8 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
       final auth = ref.read(authorAuthProvider);
       if (auth.requiresPasswordChange) {
         await Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const AuthorChangePasswordScreen()),
+          MaterialPageRoute(
+              builder: (context) => const AuthorChangePasswordScreen()),
         );
       }
       if (!mounted) {
@@ -83,7 +103,19 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
       if (!mounted) {
         return;
       }
-      showErrorToast(ref, 'Login fehlgeschlagen: ${describeRemoteError(error)}');
+      final message =
+          error is RemoteEventSourceException && error.statusCode == 401
+              ? 'Benutzername oder Passwort falsch.'
+              : describeRemoteError(error);
+      setState(() {
+        _fieldError = message;
+        _flashError = true;
+      });
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() => _flashError = false);
+        }
+      });
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -109,7 +141,9 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
                   decoration: const InputDecoration(labelText: 'Username'),
                   autofillHints: const [AutofillHints.username],
                   textInputAction: TextInputAction.next,
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Bitte Username eingeben.' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Bitte Username eingeben.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -117,9 +151,14 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
                   decoration: InputDecoration(
                     labelText: 'Passwort',
                     suffixIcon: IconButton(
-                      tooltip: _obscurePassword ? 'Passwort anzeigen' : 'Passwort verbergen',
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      tooltip: _obscurePassword
+                          ? 'Passwort anzeigen'
+                          : 'Passwort verbergen',
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                      icon: Icon(_obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility),
                     ),
                   ),
                   autofillHints: const [AutofillHints.password],
@@ -127,18 +166,40 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
                   obscureText: _obscurePassword,
                   enableSuggestions: false,
                   autocorrect: false,
-                  validator: (value) => value == null || value.isEmpty ? 'Bitte Passwort eingeben.' : null,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Bitte Passwort eingeben.'
+                      : null,
                 ),
+                if (_fieldError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 12),
+                    child: Text(
+                      _fieldError!,
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
+                    ),
+                  ),
                 const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _submitting ? null : _submit,
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Login'),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  child: FilledButton(
+                    style: _flashError
+                        ? FilledButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.error,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onError,
+                          )
+                        : null,
+                    onPressed: _submitting ? null : _submit,
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Login'),
+                  ),
                 ),
               ],
             ),
