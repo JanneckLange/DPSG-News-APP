@@ -4,14 +4,12 @@ class LayerModel {
     required this.name,
     required this.type,
     required this.parentId,
-    this.url,
   });
 
   final int id;
   final String name;
   final String type;
   final int? parentId;
-  final String? url;
 
   factory LayerModel.fromJson(Map<String, dynamic> json) {
     return LayerModel(
@@ -19,7 +17,6 @@ class LayerModel {
       name: json['name'] as String,
       type: json['type'] as String,
       parentId: (json['parentId'] as num?)?.toInt(),
-      url: json['url'] as String?,
     );
   }
 
@@ -29,7 +26,6 @@ class LayerModel {
       'name': name,
       'type': type,
       'parentId': parentId,
-      'url': url,
     };
   }
 }

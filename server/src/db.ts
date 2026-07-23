@@ -114,7 +114,6 @@ type LayerRow = {
   name: string;
   type: string;
   parent_id: number | null;
-  url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -124,7 +123,6 @@ export type Layer = {
   name: string;
   type: string;
   parentId: number | null;
-  url: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -133,7 +131,6 @@ export type LayerInput = {
   name: string;
   type: string;
   parentId?: number | null;
-  url?: string | null;
 };
 
 type TopicRow = {
@@ -454,6 +451,7 @@ export async function connect(): Promise<void> {
   await client.query(`CREATE INDEX IF NOT EXISTS topics_layer_id_idx ON topics(layer_id);`);
   await ensureSeedLayers();
   await client.query(`ALTER TABLE layers DROP COLUMN IF EXISTS groups;`);
+  await client.query(`ALTER TABLE layers DROP COLUMN IF EXISTS url;`);
   await client.query(`
     CREATE TABLE IF NOT EXISTS events (
       id SERIAL PRIMARY KEY,
@@ -553,11 +551,11 @@ async function ensureSeedLayers(): Promise<void> {
 
   for (const dv of SEED_DVS) {
     const dvResult = await db.query<{ id: number }>(
-      `INSERT INTO layers (name, type, parent_id, url)
-       VALUES ($1, 'dv', $2, $3)
-       ON CONFLICT (type, name, parent_id) DO UPDATE SET url = EXCLUDED.url
+      `INSERT INTO layers (name, type, parent_id)
+       VALUES ($1, 'dv', $2)
+       ON CONFLICT (type, name, parent_id) DO UPDATE SET name = EXCLUDED.name
        RETURNING id`,
-      [dv.name, bundesverbandId, dv.url ?? null]
+      [dv.name, bundesverbandId]
     );
     const dvId = dvResult.rows[0].id;
     for (const group of dv.groups ?? []) {
@@ -770,7 +768,6 @@ export function mapLayerRow(row: LayerRow): Layer {
     name: row.name,
     type: row.type,
     parentId: row.parent_id,
-    url: row.url,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -1577,10 +1574,10 @@ export async function deleteTopic(id: number): Promise<DeleteTopicResult> {
 
 export async function createLayer(input: LayerInput): Promise<Layer> {
   const result = await ensureClient().query<LayerRow>(
-    `INSERT INTO layers (name, type, parent_id, url)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO layers (name, type, parent_id)
+     VALUES ($1, $2, $3)
      RETURNING *`,
-    [input.name, input.type, input.parentId ?? null, input.url ?? null]
+    [input.name, input.type, input.parentId ?? null]
   );
   return mapLayerRow(result.rows[0]);
 }
@@ -1613,11 +1610,10 @@ export async function updateLayer(id: number, input: LayerInput): Promise<Update
      SET name = $1,
          type = $2,
          parent_id = $3,
-         url = $4,
          updated_at = NOW()
-     WHERE id = $5
+     WHERE id = $4
      RETURNING *`,
-    [input.name, input.type, nextParentId, input.url ?? null, id]
+    [input.name, input.type, nextParentId, id]
   );
   if (!result.rows[0]) {
     return { status: 'not_found' };
