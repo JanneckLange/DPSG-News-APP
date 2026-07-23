@@ -1389,7 +1389,6 @@ app.post('/api/admin/layers', async (req: Request, res: Response) => {
     }
     const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
     const type = typeof req.body.type === 'string' ? req.body.type.trim() : '';
-    const url = typeof req.body.url === 'string' ? req.body.url.trim() : undefined;
     const parentId = req.body.parentId != null ? parseLayerId(req.body.parentId) : null;
     if (!name || !type || name.length > MAX_TITLE_LENGTH) {
       return respondBadRequest(req, res, `name and type are required, name must not exceed ${MAX_TITLE_LENGTH} characters`);
@@ -1400,7 +1399,7 @@ app.post('/api/admin/layers', async (req: Request, res: Response) => {
     if (!await requireLayerScope(res, parentId)) {
       return;
     }
-    const layer = await createLayer({ name, type, parentId, url });
+    const layer = await createLayer({ name, type, parentId });
     res.status(201).json({ layer });
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -1440,7 +1439,7 @@ app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
     if (!name || name.length > MAX_TITLE_LENGTH) {
       return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
     }
-    const updated = await updateLayer(id, { name, type: existing.type, parentId: existing.parentId, url: existing.url });
+    const updated = await updateLayer(id, { name, type: existing.type, parentId: existing.parentId });
     if (updated.status === 'not_found') {
       return res.status(404).json({ error: 'Layer not found' });
     }

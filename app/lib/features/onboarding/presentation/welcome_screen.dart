@@ -50,7 +50,8 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               ),
             ),
             const Divider(height: 1),
-            Expanded(child: DvSelectionEditor(key: _editorKey)),
+            Expanded(
+                child: DvSelectionEditor(key: _editorKey, autosave: false)),
             const Divider(height: 1),
             Padding(
               padding: const EdgeInsets.all(16),
