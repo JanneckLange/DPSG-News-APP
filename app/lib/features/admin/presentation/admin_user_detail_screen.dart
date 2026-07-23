@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../author/data/author_auth_provider.dart';
-import '../../events/presentation/event_editor_sheet.dart';
+import '../../events/presentation/event_detail_screen.dart';
 import '../../events/presentation/event_list_tile.dart';
 import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/domain/layer_model.dart';
@@ -492,33 +492,12 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     }
   }
 
-  Future<void> _editContribution(Map<String, dynamic> event) async {
-    final changed = await Navigator.of(context).push<bool>(
+  Future<void> _openContribution(Map<String, dynamic> event) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => EventEditorPage(existingEvent: event),
+        builder: (context) => EventDetailScreen(event: event),
       ),
     );
-    if (changed == true) {
-      await _loadContributions();
-    }
-  }
-
-  Future<void> _deleteContribution(Map<String, dynamic> event) async {
-    final confirmed = await _confirm(
-      'Event löschen',
-      'Möchtest du dieses Event löschen?',
-      'Löschen',
-    );
-    if (!confirmed) {
-      return;
-    }
-    await ref.read(authorAuthProvider.notifier).callAuthenticated(
-          (token) =>
-              ref.read(sync_service.remoteEventSourceProvider).deleteEvent(
-                    token: token,
-                    eventId: (event['id'] as num).toInt(),
-                  ),
-        );
     await _loadContributions();
   }
 
@@ -634,8 +613,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                   layerName: ref.watch(layerNamesByIdProvider)[
                           (event['layerId'] as num?)?.toInt()] ??
                       'Kein DV',
-                  onEdit: () => _editContribution(event),
-                  onDelete: () => _deleteContribution(event),
+                  onTap: () => _openContribution(event),
                 ),
               ),
             const SizedBox(height: 24),
