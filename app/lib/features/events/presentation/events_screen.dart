@@ -8,6 +8,7 @@ import '../../../core/services/notification_service.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/data/settings_repository.dart';
+import '../../settings/presentation/dv_selection_screen.dart';
 import '../../../core/services/hive_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../../shared/utils/date_format_utils.dart';
@@ -311,7 +312,21 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Events')),
+      appBar: AppBar(
+        title: const Text('Events'),
+        actions: [
+          IconButton(
+            tooltip: 'DV-Auswahl',
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (context) => const DvSelectionScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: eventsAsync.when(
         data: buildContent,
         loading: () => const SkeletonCardList(),
