@@ -154,7 +154,6 @@ class _LayerTopicGrantTreeDialogState
       return CheckboxListTile(
         contentPadding: EdgeInsets.zero,
         title: Text(layer.name),
-        subtitle: Text(layer.type),
         value: _selectedLayerIds.contains(layer.id),
         onChanged: (checked) {
           setState(() {

@@ -120,7 +120,6 @@ class _LayerMultiSelectDialogState extends State<LayerMultiSelectDialog> {
     return CheckboxListTile(
       contentPadding: EdgeInsets.zero,
       title: Text(layer.name),
-      subtitle: Text(layer.type),
       value: disabledByAncestor ? true : _selected.contains(layer.id),
       onChanged: disabledByAncestor
           ? null

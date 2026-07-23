@@ -217,16 +217,6 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
     final layer = node.data;
     if (layer == null) return const SizedBox.shrink();
 
-    if (layer.type != 'dv') {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text(
-          layer.name,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-      );
-    }
-
     final isSelected = _selectedLayerIds.contains(layer.id);
     final selectedTopics = _selectedTopicsByLayer[layer.id] ?? <String>[];
     final knownEmptyTopics = _topicsCache[layer.id]?.isEmpty ?? false;

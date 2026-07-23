@@ -104,7 +104,6 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
                 ref.read(sync_service.remoteEventSourceProvider).createLayer(
                       token: token,
                       name: result.name,
-                      type: result.type,
                       parentId: parentId,
                     ),
           );
@@ -395,10 +394,9 @@ class _NameDialogState extends State<_NameDialog> {
 }
 
 class _LayerFormResult {
-  const _LayerFormResult({required this.name, required this.type});
+  const _LayerFormResult({required this.name});
 
   final String name;
-  final String type;
 }
 
 class _LayerFormDialog extends StatefulWidget {
@@ -413,12 +411,10 @@ class _LayerFormDialog extends StatefulWidget {
 class _LayerFormDialogState extends State<_LayerFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _typeController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _typeController.dispose();
     super.dispose();
   }
 
@@ -440,16 +436,6 @@ class _LayerFormDialogState extends State<_LayerFormDialog> {
                   ? 'Bitte einen Namen eingeben.'
                   : null,
             ),
-            TextFormField(
-              controller: _typeController,
-              decoration: const InputDecoration(
-                labelText: 'Typ',
-                hintText: 'z.B. bezirk, stamm',
-              ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Bitte einen Typ eingeben.'
-                  : null,
-            ),
           ],
         ),
       ),
@@ -463,7 +449,6 @@ class _LayerFormDialogState extends State<_LayerFormDialog> {
             if (_formKey.currentState?.validate() ?? false) {
               Navigator.of(context).pop(_LayerFormResult(
                 name: _nameController.text.trim(),
-                type: _typeController.text.trim(),
               ));
             }
           },

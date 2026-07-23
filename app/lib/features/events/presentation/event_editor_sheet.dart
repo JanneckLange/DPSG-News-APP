@@ -453,9 +453,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     const SizedBox(height: 12),
                     layerTreeAsync.when(
                       data: (layers) {
-                        final dvs = layers
-                            .where((layer) => layer.type == 'dv')
-                            .toList();
+                        final dvs = layers;
                         final optionIds = dvs.map((dv) => dv.id).toList();
                         if (_selectedLayerId != null &&
                             !optionIds.contains(_selectedLayerId)) {
