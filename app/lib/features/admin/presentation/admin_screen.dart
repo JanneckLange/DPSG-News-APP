@@ -152,11 +152,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                   runSpacing: 8,
                                   children: [
                                     Chip(
-                                      label: Text(isAdmin ? 'Admin' : 'Autor'),
-                                      backgroundColor: isAdmin
-                                          ? scheme.primaryContainer
-                                          : scheme.secondaryContainer,
+                                      label: const Text('Autor'),
+                                      backgroundColor: scheme.secondaryContainer,
                                     ),
+                                    if (isAdmin)
+                                      Chip(
+                                        label: const Text('Admin'),
+                                        backgroundColor: scheme.primaryContainer,
+                                      ),
                                     if (!isActive)
                                       Chip(
                                         label: const Text('Deaktiviert'),
