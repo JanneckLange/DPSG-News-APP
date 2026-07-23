@@ -11,7 +11,7 @@ import '../../../core/services/sync_service.dart' as sync_service;
 import '../domain/topic_model.dart';
 import 'admin_otp_dialog.dart';
 import 'widgets/layer_multi_select_dialog.dart';
-import 'widgets/topic_multi_select_dialog.dart';
+import 'widgets/layer_topic_grant_tree_dialog.dart';
 
 class AdminUserDetailScreen extends ConsumerStatefulWidget {
   const AdminUserDetailScreen({super.key, required this.user});
@@ -31,7 +31,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   int _contributionsRequestId = 0;
 
   List<LayerModel> _availableLayers = <LayerModel>[];
-  Map<int, TopicModel> _topicsById = <int, TopicModel>{};
+  List<TopicModel> _availableTopics = <TopicModel>[];
 
   @override
   void initState() {
@@ -59,7 +59,12 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     return 'Layer #$id';
   }
 
-  String _topicName(int id) => _topicsById[id]?.name ?? 'Topic #$id';
+  String _topicName(int id) {
+    for (final topic in _availableTopics) {
+      if (topic.id == id) return topic.name;
+    }
+    return 'Topic #$id';
+  }
 
   Future<void> _loadLayerContext() async {
     final token =
@@ -77,29 +82,18 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     } catch (_) {
       // Layer-Namen bleiben dann als "Layer #id" sichtbar.
     }
-    await _refreshTopicNames();
-  }
-
-  Future<void> _refreshTopicNames() async {
-    final relevantLayerIds =
-        (_user['isAdmin'] == true) ? const <int>[] : _layerGrantIds;
-    if (relevantLayerIds.isEmpty) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
-    final topics = <int, TopicModel>{};
-    for (final layerId in relevantLayerIds) {
-      try {
-        final response = await remote.fetchTopics(layerId: layerId);
-        for (final topic in List<Map<String, dynamic>>.from(
-                response['topics'] as List<dynamic>)
-            .map(TopicModel.fromJson)) {
-          topics[topic.id] = topic;
-        }
-      } catch (_) {
-        // Betroffene Topic-Namen bleiben dann als "Topic #id" sichtbar.
-      }
+    try {
+      final response = await remote.fetchTopics();
+      final topics =
+          List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
+              .map(TopicModel.fromJson)
+              .toList();
+      if (!mounted) return;
+      setState(() => _availableTopics = topics);
+    } catch (_) {
+      // Topic-Namen bleiben dann als "Topic #id" sichtbar, Baum-Dialog zeigt
+      // in diesem Fall keine Topics an.
     }
-    if (!mounted) return;
-    setState(() => _topicsById = topics);
   }
 
   Future<void> _reloadUser() async {
@@ -128,6 +122,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       layers: _availableLayers,
       initialSelectedIds: current,
       title: 'Layer für Admin auswählen',
+      disableDescendantsOfSelected: true,
     );
     if (selected == null) return;
     final token =
@@ -143,8 +138,9 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
         await remote.removeAdminLayer(
             token: token, userId: userId, layerId: id);
       }
-      if (!mounted) return;
-      setState(() => _user['adminLayerIds'] = selected.toList());
+      // Admin-Status haengt jetzt am Server automatisch am Layer-Besitz
+      // (Promotion/Demotion) - lokalen Stand daher neu laden statt annehmen.
+      await _reloadUser();
     } catch (error) {
       if (!mounted) return;
       showErrorToast(
@@ -164,9 +160,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     try {
       await remote.removeAdminLayer(
           token: token, userId: userId, layerId: layerId);
-      if (!mounted) return;
-      setState(() => _user['adminLayerIds'] =
-          _adminLayerIds.where((id) => id != layerId).toList());
+      await _reloadUser();
     } catch (error) {
       if (!mounted) return;
       showErrorToast(
@@ -176,37 +170,48 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     }
   }
 
-  Future<void> _addLayerGrants() async {
-    final current = _layerGrantIds.toSet();
-    final selected = await showLayerMultiSelectDialog(
+  Future<void> _editAuthorGrants() async {
+    final currentLayers = _layerGrantIds.toSet();
+    final currentTopics = _topicGrantIds.toSet();
+    final selection = await showLayerTopicGrantTreeDialog(
       context,
       layers: _availableLayers,
-      initialSelectedIds: current,
-      title: 'Layer-Rechte auswählen',
+      topics: _availableTopics,
+      initialSelectedLayerIds: currentLayers,
+      initialSelectedTopicIds: currentTopics,
+      title: 'Autoren-Rechte auswählen',
     );
-    if (selected == null) return;
+    if (selection == null) return;
     final token =
         await ref.read(authorAuthProvider.notifier).getValidAccessToken();
     if (token == null) return;
     final remote = ref.read(sync_service.remoteEventSourceProvider);
     final userId = (_user['id'] as num).toInt();
     try {
-      for (final id in selected.difference(current)) {
+      for (final id in selection.layerIds.difference(currentLayers)) {
         await remote.addAuthorLayerGrant(
             token: token, userId: userId, layerId: id);
       }
-      for (final id in current.difference(selected)) {
+      for (final id in currentLayers.difference(selection.layerIds)) {
         await remote.removeAuthorLayerGrant(
             token: token, userId: userId, layerId: id);
       }
-      if (!mounted) return;
-      setState(() => _user['layerGrantIds'] = selected.toList());
-      await _refreshTopicNames();
+      for (final id in selection.topicIds.difference(currentTopics)) {
+        await remote.addAuthorTopicGrant(
+            token: token, userId: userId, topicId: id);
+      }
+      for (final id in currentTopics.difference(selection.topicIds)) {
+        await remote.removeAuthorTopicGrant(
+            token: token, userId: userId, topicId: id);
+      }
+      // Werden dabei alle Rechte des Nutzers entfernt, deaktiviert der Server
+      // das Konto automatisch - lokalen Stand daher neu laden.
+      await _reloadUser();
     } catch (error) {
       if (!mounted) return;
       showErrorToast(
         ref,
-        'Layer-Rechte konnten nicht aktualisiert werden: ${describeRemoteError(error)}',
+        'Autoren-Rechte konnten nicht aktualisiert werden: ${describeRemoteError(error)}',
       );
       await _reloadUser();
     }
@@ -221,52 +226,13 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     try {
       await remote.removeAuthorLayerGrant(
           token: token, userId: userId, layerId: layerId);
-      if (!mounted) return;
-      setState(() => _user['layerGrantIds'] =
-          _layerGrantIds.where((id) => id != layerId).toList());
-      await _refreshTopicNames();
+      await _reloadUser();
     } catch (error) {
       if (!mounted) return;
       showErrorToast(
         ref,
         'Layer-Recht konnte nicht entfernt werden: ${describeRemoteError(error)}',
       );
-    }
-  }
-
-  Future<void> _addTopicGrants() async {
-    final current = _topicGrantIds.toSet();
-    final available = _topicsById.values.toList();
-    final selected = await showTopicMultiSelectDialog(
-      context,
-      title: 'Topic-Rechte auswählen',
-      availableTopics: available,
-      initialSelectedTopicIds: current,
-    );
-    if (selected == null) return;
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
-    final userId = (_user['id'] as num).toInt();
-    try {
-      for (final id in selected.difference(current)) {
-        await remote.addAuthorTopicGrant(
-            token: token, userId: userId, topicId: id);
-      }
-      for (final id in current.difference(selected)) {
-        await remote.removeAuthorTopicGrant(
-            token: token, userId: userId, topicId: id);
-      }
-      if (!mounted) return;
-      setState(() => _user['topicGrantIds'] = selected.toList());
-    } catch (error) {
-      if (!mounted) return;
-      showErrorToast(
-        ref,
-        'Topic-Rechte konnten nicht aktualisiert werden: ${describeRemoteError(error)}',
-      );
-      await _reloadUser();
     }
   }
 
@@ -279,9 +245,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     try {
       await remote.removeAuthorTopicGrant(
           token: token, userId: userId, topicId: topicId);
-      if (!mounted) return;
-      setState(() => _user['topicGrantIds'] =
-          _topicGrantIds.where((id) => id != topicId).toList());
+      await _reloadUser();
     } catch (error) {
       if (!mounted) return;
       showErrorToast(
@@ -327,42 +291,62 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     );
   }
 
+  Widget _buildAuthorGrantsSection() {
+    final layerIds = _layerGrantIds;
+    final topicIds = _topicGrantIds;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Autoren-Rechte', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (layerIds.isEmpty && topicIds.isEmpty)
+              const Text('Keine zugeordnet.', style: TextStyle(fontSize: 12)),
+            for (final id in layerIds)
+              Chip(
+                label: Text(_layerName(id)),
+                onDeleted: () => _removeLayerGrant(id),
+              ),
+            for (final id in topicIds)
+              Chip(
+                avatar: const Icon(Icons.topic_outlined, size: 16),
+                label: Text(_topicName(id)),
+                onDeleted: () => _removeTopicGrant(id),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _editAuthorGrants,
+          icon: const Icon(Icons.add),
+          label: const Text('Rechte bearbeiten'),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGrantsCard() {
-    final isAdmin = _user['isAdmin'] == true;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: isAdmin
-            ? _buildGrantSection(
-                title: 'Zugewiesene Layer',
-                ids: _adminLayerIds,
-                nameFor: _layerName,
-                onRemove: _removeAdminLayer,
-                onAdd: _addAdminLayers,
-                addLabel: 'Layer hinzufügen',
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildGrantSection(
-                    title: 'Layer-Rechte',
-                    ids: _layerGrantIds,
-                    nameFor: _layerName,
-                    onRemove: _removeLayerGrant,
-                    onAdd: _addLayerGrants,
-                    addLabel: 'Layer hinzufügen',
-                  ),
-                  const SizedBox(height: 20),
-                  _buildGrantSection(
-                    title: 'Topic-Rechte',
-                    ids: _topicGrantIds,
-                    nameFor: _topicName,
-                    onRemove: _removeTopicGrant,
-                    onAdd: _addTopicGrants,
-                    addLabel: 'Topic hinzufügen',
-                  ),
-                ],
-              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildGrantSection(
+              title: 'Admin-Rechte',
+              ids: _adminLayerIds,
+              nameFor: _layerName,
+              onRemove: _removeAdminLayer,
+              onAdd: _addAdminLayers,
+              addLabel: 'Layer hinzufügen',
+            ),
+            const SizedBox(height: 20),
+            _buildAuthorGrantsSection(),
+          ],
+        ),
       ),
     );
   }
@@ -574,12 +558,17 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(
-                          label: Text(isAdmin ? 'Admin' : 'Autor'),
-                          backgroundColor: isAdmin
-                              ? scheme.primaryContainer
-                              : scheme.secondaryContainer,
-                        ),
+                        if (isAdmin)
+                          Chip(
+                            label: const Text('Admin'),
+                            backgroundColor: scheme.primaryContainer,
+                          ),
+                        if (_layerGrantIds.isNotEmpty ||
+                            _topicGrantIds.isNotEmpty)
+                          Chip(
+                            label: const Text('Autor'),
+                            backgroundColor: scheme.secondaryContainer,
+                          ),
                         if (!isActive)
                           Chip(
                             label: const Text('Deaktiviert'),

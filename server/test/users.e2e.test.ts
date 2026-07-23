@@ -293,7 +293,7 @@ describe('Author layer/topic grant endpoints (#15, #18)', () => {
     expect(add.status).toBe(403);
   });
 
-  it('rejects layer grants against an admin target (use admin-layers endpoint instead)', async () => {
+  it('allows layer grants against an admin target (#81: Admin kann zusaetzlich Autoren-Rechte haben)', async () => {
     await createAuthorForTesting({ username: 'admin-author-grantor-3', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const adminToken = await loginAuthor('admin-author-grantor-3', 'admin-123');
     const adminTarget = await createAuthorForTesting({ username: 'admin-target-4', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
@@ -302,7 +302,22 @@ describe('Author layer/topic grant endpoints (#15, #18)', () => {
       .post(`/api/admin/users/${adminTarget.id}/layer-grants`)
       .set('authorization', `Bearer ${adminToken}`)
       .send({ layerId: koelnLayerId });
-    expect(add.status).toBe(400);
+    expect(add.status).toBe(201);
+    expect(add.body.layerGrantIds).toEqual([koelnLayerId]);
+  });
+
+  it('allows topic grants against an admin target (#81: Admin kann zusaetzlich Autoren-Rechte haben)', async () => {
+    await createAuthorForTesting({ username: 'admin-author-grantor-4', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    const adminToken = await loginAuthor('admin-author-grantor-4', 'admin-123');
+    const adminTarget = await createAuthorForTesting({ username: 'admin-target-5', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    const topicId = await getTopicIdByLayerAndName(hamburgLayerId, 'Wölflinge');
+
+    const add = await request(app)
+      .post(`/api/admin/users/${adminTarget.id}/topic-grants`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ topicId });
+    expect(add.status).toBe(201);
+    expect(add.body.topicGrantIds).toEqual([topicId]);
   });
 
   it('adds and removes a topic grant for a non-admin author within scope', async () => {
@@ -335,5 +350,83 @@ describe('Author layer/topic grant endpoints (#15, #18)', () => {
       .set('authorization', `Bearer ${adminToken}`)
       .send({ topicId });
     expect(add.status).toBe(403);
+  });
+});
+
+async function getUserById(adminToken: string, userId: number): Promise<{ isAdmin: boolean; isActive: boolean; adminLayerIds: number[]; layerGrantIds: number[]; topicGrantIds: number[] }> {
+  const response = await request(app)
+    .get('/api/admin/users')
+    .set('authorization', `Bearer ${adminToken}`);
+  expect(response.status).toBe(200);
+  const user = (response.body.users as Array<{ id: number }>).find((u) => u.id === userId);
+  if (!user) {
+    throw new Error(`User ${userId} not found in admin users list`);
+  }
+  return user as unknown as { isAdmin: boolean; isActive: boolean; adminLayerIds: number[]; layerGrantIds: number[]; topicGrantIds: number[] };
+}
+
+describe('Admin/Autor role fluidity (#81)', () => {
+  it('promotes a non-admin author to admin by granting their first admin layer', async () => {
+    await createAuthorForTesting({ username: 'admin-promoter', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const adminToken = await loginAuthor('admin-promoter', 'admin-123');
+    const author = await createAuthorForTesting({ username: 'author-to-promote', password: 'author-123', isAdmin: false });
+
+    const before = await getUserById(adminToken, author.id);
+    expect(before.isAdmin).toBe(false);
+
+    const add = await request(app)
+      .post(`/api/admin/users/${author.id}/admin-layers`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ layerId: koelnLayerId });
+    expect(add.status).toBe(201);
+
+    const after = await getUserById(adminToken, author.id);
+    expect(after.isAdmin).toBe(true);
+    expect(after.adminLayerIds).toEqual([koelnLayerId]);
+  });
+
+  it('keeps an admin with author grants able to lose the author side without affecting admin status', async () => {
+    await createAuthorForTesting({ username: 'admin-self-grantor', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const adminToken = await loginAuthor('admin-self-grantor', 'admin-123');
+    const adminTarget = await createAuthorForTesting({ username: 'admin-target-6', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+
+    const add = await request(app)
+      .post(`/api/admin/users/${adminTarget.id}/layer-grants`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ layerId: koelnLayerId });
+    expect(add.status).toBe(201);
+
+    const remove = await request(app)
+      .delete(`/api/admin/users/${adminTarget.id}/layer-grants/${koelnLayerId}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(remove.status).toBe(204);
+
+    const after = await getUserById(adminToken, adminTarget.id);
+    expect(after.isAdmin).toBe(true);
+    expect(after.isActive).toBe(true);
+    expect(after.adminLayerIds).toEqual([koelnLayerId]);
+  });
+
+  it('auto-disables a non-admin author once their last author right is removed', async () => {
+    await createAuthorForTesting({ username: 'admin-disabler', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const adminToken = await loginAuthor('admin-disabler', 'admin-123');
+    const author = await createAuthorForTesting({ username: 'author-to-disable', password: 'author-123', isAdmin: false });
+
+    const add = await request(app)
+      .post(`/api/admin/users/${author.id}/layer-grants`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ layerId: koelnLayerId });
+    expect(add.status).toBe(201);
+
+    const before = await getUserById(adminToken, author.id);
+    expect(before.isActive).toBe(true);
+
+    const remove = await request(app)
+      .delete(`/api/admin/users/${author.id}/layer-grants/${koelnLayerId}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(remove.status).toBe(204);
+
+    const after = await getUserById(adminToken, author.id);
+    expect(after.isActive).toBe(false);
   });
 });

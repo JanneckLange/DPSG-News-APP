@@ -250,9 +250,14 @@ async function requireLayerScope(res: Response, targetLayerId: number | null | u
 // beeinflussen, der auch Rechte ausserhalb seiner eigenen Reichweite haelt.
 async function requireLayerScopeForAll(res: Response, targetLayerIds: number[]): Promise<boolean> {
   const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
-  if (!targetLayerIds.length || !author?.adminLayerIds?.length) {
+  if (!author?.adminLayerIds?.length) {
     res.status(403).json({ error: 'Forbidden' });
     return false;
+  }
+  if (!targetLayerIds.length) {
+    // Ziel hat noch keine Admin-Layer (z.B. Promotion eines Autors zum Admin) -
+    // nichts ausserhalb des eigenen Scopes vorhanden, also unbedenklich.
+    return true;
   }
   for (const targetLayerId of targetLayerIds) {
     if (!await isLayerInAdminScope(author.adminLayerIds, targetLayerId)) {
@@ -1113,9 +1118,6 @@ app.post('/api/admin/users/:id/admin-layers', async (req: Request, res: Response
     if (!target) {
       return res.status(404).json({ error: 'User not found' });
     }
-    if (!target.isAdmin) {
-      return respondBadRequest(req, res, 'User is not an admin');
-    }
     const layerId = parseLayerId(req.body.layerId);
     if (!layerId || !await isKnownLayerId(layerId)) {
       return respondBadRequest(req, res, 'Invalid layerId');
@@ -1196,9 +1198,6 @@ app.post('/api/admin/users/:id/layer-grants', async (req: Request, res: Response
     if (!target) {
       return res.status(404).json({ error: 'User not found' });
     }
-    if (target.isAdmin) {
-      return respondBadRequest(req, res, 'User is an admin; use admin-layers endpoint');
-    }
     const layerId = parseLayerId(req.body.layerId);
     if (!layerId || !await isKnownLayerId(layerId)) {
       return respondBadRequest(req, res, 'Invalid layerId');
@@ -1234,9 +1233,6 @@ app.delete('/api/admin/users/:id/layer-grants/:layerId', async (req: Request, re
     if (!target) {
       return res.status(404).json({ error: 'User not found' });
     }
-    if (target.isAdmin) {
-      return respondBadRequest(req, res, 'User is an admin; use admin-layers endpoint');
-    }
     if (!await requireLayerScope(res, layerId)) {
       return;
     }
@@ -1266,9 +1262,6 @@ app.post('/api/admin/users/:id/topic-grants', async (req: Request, res: Response
     const target = await getAuthorById(id);
     if (!target) {
       return res.status(404).json({ error: 'User not found' });
-    }
-    if (target.isAdmin) {
-      return respondBadRequest(req, res, 'User is an admin; grants are for non-admin authors only');
     }
     const topicId = parseLayerId(req.body.topicId);
     if (!topicId) {
@@ -1308,9 +1301,6 @@ app.delete('/api/admin/users/:id/topic-grants/:topicId', async (req: Request, re
     const target = await getAuthorById(id);
     if (!target) {
       return res.status(404).json({ error: 'User not found' });
-    }
-    if (target.isAdmin) {
-      return respondBadRequest(req, res, 'User is an admin; grants are for non-admin authors only');
     }
     const topic = await getTopicById(topicId);
     if (topic && !await requireLayerScope(res, topic.layerId)) {

@@ -1450,11 +1450,40 @@ export async function getAdminLayerIds(authorId: number): Promise<number[]> {
   return result.rows.map((row) => row.layer_id);
 }
 
+// Haelt is_admin synchron mit dem tatsaechlichen Besitz von Admin-Layern, damit ein
+// Autor durch Zuweisen/Entfernen von Admin-Layern automatisch zum Admin wird bzw.
+// diesen Status wieder verliert, statt is_admin separat pflegen zu muessen.
+async function syncAdminFlag(authorId: number): Promise<void> {
+  await ensureClient().query(
+    `UPDATE authors SET is_admin = EXISTS(
+       SELECT 1 FROM author_admin_layers WHERE author_id = $1
+     ), updated_at = NOW() WHERE id = $1`,
+    [authorId]
+  );
+}
+
+// Deaktiviert den Autor automatisch, sobald keinerlei Rechte (Admin-Layer, Layer- oder
+// Topic-Grants) mehr vorhanden sind, statt ihn aktiv aber voellig rechtelos zu belassen.
+async function maybeAutoDisableAuthor(authorId: number): Promise<void> {
+  const result = await ensureClient().query<{ has_any: boolean }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM author_admin_layers WHERE author_id = $1
+       UNION SELECT 1 FROM author_layer_grants WHERE author_id = $1
+       UNION SELECT 1 FROM author_topic_grants WHERE author_id = $1
+     ) AS has_any`,
+    [authorId]
+  );
+  if (!result.rows[0]?.has_any) {
+    await setAuthorActive(authorId, false);
+  }
+}
+
 export async function addAdminLayer(authorId: number, layerId: number): Promise<void> {
   await ensureClient().query(
     'INSERT INTO author_admin_layers (author_id, layer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
     [authorId, layerId]
   );
+  await syncAdminFlag(authorId);
 }
 
 export async function removeAdminLayer(authorId: number, layerId: number): Promise<RemoveAdminLayerResult> {
@@ -1471,6 +1500,8 @@ export async function removeAdminLayer(authorId: number, layerId: number): Promi
     return 'last_layer';
   }
   await db.query('DELETE FROM author_admin_layers WHERE author_id = $1 AND layer_id = $2', [authorId, layerId]);
+  await syncAdminFlag(authorId);
+  await maybeAutoDisableAuthor(authorId);
   return 'removed';
 }
 
@@ -1494,6 +1525,7 @@ export async function removeAuthorLayerGrant(authorId: number, layerId: number):
     'DELETE FROM author_layer_grants WHERE author_id = $1 AND layer_id = $2',
     [authorId, layerId]
   );
+  await maybeAutoDisableAuthor(authorId);
 }
 
 export async function getAuthorTopicGrantIds(authorId: number): Promise<number[]> {
@@ -1516,6 +1548,7 @@ export async function removeAuthorTopicGrant(authorId: number, topicId: number):
     'DELETE FROM author_topic_grants WHERE author_id = $1 AND topic_id = $2',
     [authorId, topicId]
   );
+  await maybeAutoDisableAuthor(authorId);
 }
 
 export async function getTopics(layerId?: number): Promise<Topic[]> {
