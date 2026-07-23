@@ -126,18 +126,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     final message = _updateMessageController.text.trim();
     if (eventId == null || message.isEmpty) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
     setState(() => _postingUpdate = true);
     try {
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
-      await remote.createEventUpdate(
-        token: token,
-        eventId: eventId,
-        message: message,
-      );
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .createEventUpdate(
+                  token: token,
+                  eventId: eventId,
+                  message: message,
+                ),
+          );
       _updateMessageController.clear();
       await _loadUpdates();
     } catch (error) {

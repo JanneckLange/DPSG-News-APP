@@ -51,6 +51,7 @@ void main() {
               repository: repository,
               remote: RemoteEventSourceStub(),
               secureStorage: secureStorage,
+              ref: ref,
               initialState: AuthorAuthState(
                 isLoggedIn: true,
                 isLocked: false,

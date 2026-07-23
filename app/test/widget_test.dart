@@ -161,11 +161,13 @@ class TestAuthorAuthNotifier extends AuthorAuthNotifier {
     required settings_repo.SettingsRepository repository,
     required RemoteEventSource remote,
     required SecureStorageService secureStorage,
+    required Ref ref,
     required AuthorAuthState initialState,
   }) : super(
           repository: repository,
           remote: remote,
           secureStorage: secureStorage,
+          ref: ref,
           restoreSessionOnInit: false,
         ) {
     state = initialState;
@@ -248,6 +250,7 @@ void main() {
               repository: repository,
               remote: remote,
               secureStorage: secureStorage,
+              ref: ref,
               initialState: state,
             ),
           ),
@@ -364,6 +367,7 @@ void main() {
               repository: repository,
               remote: remote,
               secureStorage: secureStorage,
+              ref: ref,
               initialState: AuthorAuthState(
                 isLoggedIn: true,
                 isLocked: false,

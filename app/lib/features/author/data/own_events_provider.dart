@@ -5,23 +5,29 @@ import 'author_auth_provider.dart';
 
 /// Liefert die eigenen (veroeffentlichten) Events des eingeloggten Autors.
 /// Leere Liste, solange nicht eingeloggt/gesperrt/Passwortwechsel noetig.
-final ownEventsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+final ownEventsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final auth = ref.watch(authorAuthProvider);
   if (!auth.isLoggedIn || auth.isLocked || auth.requiresPasswordChange) {
     return <Map<String, dynamic>>[];
   }
-  final token = await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-  if (token == null) return <Map<String, dynamic>>[];
-  return ref.read(sync_service.remoteEventSourceProvider).fetchOwnEvents(token: token);
+  return ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) => ref
+            .read(sync_service.remoteEventSourceProvider)
+            .fetchOwnEvents(token: token),
+      );
 });
 
 /// Liefert die eigenen Entwuerfe des eingeloggten Autors.
-final ownDraftsProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+final ownDraftsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final auth = ref.watch(authorAuthProvider);
   if (!auth.isLoggedIn || auth.isLocked || auth.requiresPasswordChange) {
     return <Map<String, dynamic>>[];
   }
-  final token = await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-  if (token == null) return <Map<String, dynamic>>[];
-  return ref.read(sync_service.remoteEventSourceProvider).fetchOwnDrafts(token: token);
+  return ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) => ref
+            .read(sync_service.remoteEventSourceProvider)
+            .fetchOwnDrafts(token: token),
+      );
 });

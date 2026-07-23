@@ -40,26 +40,23 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
       _layersError = null;
     });
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (!mounted || requestId != _layersRequestId) return;
-    if (token == null) {
-      setState(() {
-        _loadingLayers = false;
-        _layersError = 'Kein Zugriff';
-      });
-      return;
-    }
-
     try {
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final response = await remote.fetchAdminLayers(token: token);
       final layers =
-          List<Map<String, dynamic>>.from(response['layers'] as List<dynamic>)
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) async {
+          final remote = ref.read(sync_service.remoteEventSourceProvider);
+          final response = await remote.fetchAdminLayers(token: token);
+          return List<Map<String, dynamic>>.from(
+                  response['layers'] as List<dynamic>)
               .map(LayerModel.fromJson)
               .toList();
+        },
+      );
       if (!mounted || requestId != _layersRequestId) return;
       setState(() => _layers = layers);
+    } on StateError {
+      if (!mounted || requestId != _layersRequestId) return;
+      setState(() => _layersError = 'Kein Zugriff');
     } catch (error) {
       if (!mounted || requestId != _layersRequestId) return;
       setState(() => _layersError = error.toString());
@@ -101,18 +98,16 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     final result = await _showLayerFormDialog(title: 'Unterlayer anlegen');
     if (result == null) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.createLayer(
-        token: token,
-        name: result.name,
-        type: result.type,
-        parentId: parentId,
-      );
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) =>
+                ref.read(sync_service.remoteEventSourceProvider).createLayer(
+                      token: token,
+                      name: result.name,
+                      type: result.type,
+                      parentId: parentId,
+                    ),
+          );
       await _loadLayers();
     } catch (error) {
       if (!mounted) return;
@@ -131,13 +126,12 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     );
     if (name == null) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.updateLayer(token: token, layerId: layer.id, name: name);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .updateLayer(token: token, layerId: layer.id, name: name),
+          );
       await _loadLayers();
     } catch (error) {
       if (!mounted) return;
@@ -156,13 +150,12 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     );
     if (!confirmed) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.deleteLayer(token: token, layerId: layer.id);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .deleteLayer(token: token, layerId: layer.id),
+          );
       await _loadLayers();
     } catch (error) {
       if (!mounted) return;
@@ -238,7 +231,8 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
 
   bool _didAutoExpandRoot = false;
 
-  void _onTreeReady(TreeViewController<LayerModel?, TreeNode<LayerModel?>> controller,
+  void _onTreeReady(
+      TreeViewController<LayerModel?, TreeNode<LayerModel?>> controller,
       TreeNode<LayerModel?> tree) {
     // Nur beim allerersten Aufbau des Baums automatisch aufklappen: der
     // initiale Flat-List-Aufbau des Packages beruecksichtigt keine vorab
@@ -265,7 +259,8 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
             onTap: () => _openLayerDetail(layer),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(layer.name, style: Theme.of(context).textTheme.bodyLarge),
+              child: Text(layer.name,
+                  style: Theme.of(context).textTheme.bodyLarge),
             ),
           ),
         ),
@@ -318,7 +313,8 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
         tree: tree,
         showRootNode: false,
         onTreeReady: (controller) => _onTreeReady(controller, tree),
-        expansionIndicatorBuilder: (context, node) => ChevronIndicator.rightDown(
+        expansionIndicatorBuilder: (context, node) =>
+            ChevronIndicator.rightDown(
           tree: node,
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.all(8),
