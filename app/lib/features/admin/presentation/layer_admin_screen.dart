@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:animated_tree_view/animated_tree_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import '../../author/data/author_auth_provider.dart';
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../settings/domain/layer_model.dart';
+import '../domain/topic_model.dart';
 import 'layer_detail_screen.dart';
 
 /// Breite, die links fuer den animated_tree_view-Auf-/Zuklapp-Indikator
@@ -26,11 +29,28 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
   bool _loadingLayers = true;
   String? _layersError;
   int _layersRequestId = 0;
+  List<TopicModel> _topics = <TopicModel>[];
 
   @override
   void initState() {
     super.initState();
     _loadLayers();
+    unawaited(_loadTopics());
+  }
+
+  Future<void> _loadTopics() async {
+    try {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
+      final response = await remote.fetchTopics();
+      final topics =
+          List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
+              .map(TopicModel.fromJson)
+              .toList();
+      if (!mounted) return;
+      setState(() => _topics = topics);
+    } catch (_) {
+      // Sublabel zeigt dann nur die Sub-Layer-Anzahl, keine Topic-Anzahl.
+    }
   }
 
   Future<void> _loadLayers() async {
@@ -249,6 +269,9 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     final layer = node.data;
     if (layer == null) return const SizedBox.shrink();
     final isRoot = layer.parentId == null;
+    final subLayerCount = _childrenByParentId[layer.id]?.length ?? 0;
+    final topicCount =
+        _topics.where((topic) => topic.layerId == layer.id).length;
 
     return Row(
       children: [
@@ -257,9 +280,20 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
           child: InkWell(
             onTap: () => _openLayerDetail(layer),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(layer.name,
-                  style: Theme.of(context).textTheme.bodyLarge),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(layer.name,
+                      style: Theme.of(context).textTheme.bodyLarge),
+                  Text(
+                    '$subLayerCount Sub-Layer, $topicCount Topics',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
