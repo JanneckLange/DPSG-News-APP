@@ -141,6 +141,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                           itemBuilder: (context, index) {
                             final user = _users[index];
                             final isActive = user['isActive'] as bool? ?? false;
+                            final isAdmin = user['isAdmin'] as bool? ?? false;
+                            final scheme = Theme.of(context).colorScheme;
                             return Card(
                               child: ListTile(
                                 onTap: () => _openDetails(user),
@@ -150,11 +152,16 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                   runSpacing: 8,
                                   children: [
                                     Chip(
-                                        label: Text(isActive
-                                            ? 'Aktiv'
-                                            : 'Deaktiviert')),
-                                    if (user['isAdmin'] == true)
-                                      const Chip(label: Text('Admin')),
+                                      label: Text(isAdmin ? 'Admin' : 'Autor'),
+                                      backgroundColor: isAdmin
+                                          ? scheme.primaryContainer
+                                          : scheme.secondaryContainer,
+                                    ),
+                                    if (!isActive)
+                                      Chip(
+                                        label: const Text('Deaktiviert'),
+                                        backgroundColor: scheme.errorContainer,
+                                      ),
                                     if (user['requiresPasswordChange'] == true)
                                       const Chip(label: Text('Reset offen')),
                                   ],
