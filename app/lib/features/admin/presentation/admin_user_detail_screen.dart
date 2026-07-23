@@ -549,6 +549,8 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   Widget build(BuildContext context) {
     final userId = (_user['id'] as num).toInt();
     final isActive = _user['isActive'] as bool? ?? false;
+    final isAdmin = _user['isAdmin'] as bool? ?? false;
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text(_user['username'] as String? ?? 'Nutzer')),
       body: RefreshIndicator(
@@ -572,9 +574,17 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(label: Text(isActive ? 'Aktiv' : 'Deaktiviert')),
-                        if (_user['isAdmin'] == true)
-                          const Chip(label: Text('Admin')),
+                        Chip(
+                          label: Text(isAdmin ? 'Admin' : 'Autor'),
+                          backgroundColor: isAdmin
+                              ? scheme.primaryContainer
+                              : scheme.secondaryContainer,
+                        ),
+                        if (!isActive)
+                          Chip(
+                            label: const Text('Deaktiviert'),
+                            backgroundColor: scheme.errorContainer,
+                          ),
                         if (_user['requiresPasswordChange'] == true)
                           const Chip(label: Text('Reset offen')),
                       ],
