@@ -162,16 +162,28 @@ class _LayerTopicTreeState extends State<LayerTopicTree> {
     if (entry.layer != null) {
       final layer = entry.layer!;
       final disabledByAncestor = _hasSelectedAncestor(layer);
-      return CheckboxListTile(
-        contentPadding:
-            const EdgeInsets.only(left: _expansionIndicatorWidth, right: 16),
-        title: Text(layer.name),
-        value: disabledByAncestor
-            ? true
-            : widget.selectedLayerIds.contains(layer.id),
-        onChanged: disabledByAncestor
-            ? null
-            : (checked) => widget.onLayerToggled(layer.id),
+      // Row+SizedBox statt contentPadding: der Auf-/Zuklapp-Indikator wird
+      // vom Package per Stack ueber die volle Zeile gelegt und faengt Taps
+      // in den ersten _expansionIndicatorWidth px ab. contentPadding
+      // verschiebt nur den sichtbaren Inhalt, nicht die Tap-Flaeche des
+      // CheckboxListTile -- die bliebe sonst ueber die volle Breite aktiv
+      // und wuerde mit dem Indikator um Taps konkurrieren.
+      return Row(
+        children: [
+          const SizedBox(width: _expansionIndicatorWidth),
+          Expanded(
+            child: CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(layer.name),
+              value: disabledByAncestor
+                  ? true
+                  : widget.selectedLayerIds.contains(layer.id),
+              onChanged: disabledByAncestor
+                  ? null
+                  : (checked) => widget.onLayerToggled(layer.id),
+            ),
+          ),
+        ],
       );
     }
 
