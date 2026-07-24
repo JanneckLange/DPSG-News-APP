@@ -22,6 +22,8 @@ class AuthorAuthState {
     this.requiresPasswordChange = false,
     this.expiresAt,
     this.refreshExpiresAt,
+    this.layerGrantIds = const <int>[],
+    this.topicGrantIds = const <int>[],
   });
 
   final bool isLoggedIn;
@@ -34,6 +36,8 @@ class AuthorAuthState {
   final bool requiresPasswordChange;
   final DateTime? expiresAt;
   final DateTime? refreshExpiresAt;
+  final List<int> layerGrantIds;
+  final List<int> topicGrantIds;
 
   AuthorAuthState copyWith({
     bool? isLoggedIn,
@@ -46,6 +50,8 @@ class AuthorAuthState {
     bool? requiresPasswordChange,
     DateTime? expiresAt,
     DateTime? refreshExpiresAt,
+    List<int>? layerGrantIds,
+    List<int>? topicGrantIds,
   }) {
     return AuthorAuthState(
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
@@ -59,6 +65,8 @@ class AuthorAuthState {
           requiresPasswordChange ?? this.requiresPasswordChange,
       expiresAt: expiresAt ?? this.expiresAt,
       refreshExpiresAt: refreshExpiresAt ?? this.refreshExpiresAt,
+      layerGrantIds: layerGrantIds ?? this.layerGrantIds,
+      topicGrantIds: topicGrantIds ?? this.topicGrantIds,
     );
   }
 
@@ -117,6 +125,8 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       requiresPasswordChange: _repository.getAuthorRequiresPasswordChange(),
       expiresAt: DateTime.tryParse(storedTokens.accessExpiresAt),
       refreshExpiresAt: DateTime.tryParse(storedTokens.refreshExpiresAt),
+      layerGrantIds: _repository.getAuthorLayerGrantIds(),
+      topicGrantIds: _repository.getAuthorTopicGrantIds(),
     );
   }
 
@@ -132,6 +142,8 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       username: session.username,
       isAdmin: session.isAdmin,
       requiresPasswordChange: session.requiresPasswordChange,
+      layerGrantIds: session.layerGrantIds,
+      topicGrantIds: session.topicGrantIds,
     );
     await _repository.clearLegacyAuthorAuthToken();
     state = AuthorAuthState(
@@ -145,6 +157,8 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       requiresPasswordChange: session.requiresPasswordChange,
       expiresAt: DateTime.tryParse(session.accessExpiresAt),
       refreshExpiresAt: DateTime.tryParse(session.refreshExpiresAt),
+      layerGrantIds: session.layerGrantIds,
+      topicGrantIds: session.topicGrantIds,
     );
   }
 
@@ -176,9 +190,15 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     await _repository
         .setAuthorRequiresPasswordChange(session.requiresPasswordChange);
     await _repository.setAuthorIsAdmin(session.isAdmin);
+    await _repository.setAuthorGrants(
+      layerGrantIds: session.layerGrantIds,
+      topicGrantIds: session.topicGrantIds,
+    );
     state = state.copyWith(
       requiresPasswordChange: session.requiresPasswordChange,
       isAdmin: session.isAdmin,
+      layerGrantIds: session.layerGrantIds,
+      topicGrantIds: session.topicGrantIds,
     );
   }
 

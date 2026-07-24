@@ -144,7 +144,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     return null;
   }
 
-  Widget _buildTopicDropdown() {
+  Widget _buildTopicDropdown(List<int> topicGrantIds) {
     if (_loadingTopics) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 8),
@@ -160,15 +160,44 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     if (_topics.isEmpty) {
       return const SizedBox.shrink();
     }
+    final authorizedTopics =
+        _topics.where((topic) => topicGrantIds.contains(topic.id)).toList();
+
+    // Genau ein berechtigtes Topic (oder keins) -> keine echte Auswahl,
+    // Feld schreibgeschuetzt auf den einzig moeglichen Wert vorbelegen.
+    if (authorizedTopics.length <= 1) {
+      final onlyTopicId =
+          authorizedTopics.isEmpty ? null : authorizedTopics.single.id;
+      if (_selectedTopicId != onlyTopicId) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _selectedTopicId = onlyTopicId);
+        });
+      }
+      return DropdownButtonFormField<int?>(
+        initialValue: onlyTopicId,
+        decoration: const InputDecoration(labelText: 'Topic (optional)'),
+        items: [
+          DropdownMenuItem<int?>(
+            value: onlyTopicId,
+            child: Text(authorizedTopics.isEmpty
+                ? 'Standard (DV-Channel)'
+                : authorizedTopics.single.name),
+          ),
+        ],
+        onChanged: null,
+      );
+    }
+
     return DropdownButtonFormField<int?>(
-      initialValue: _topics.any((topic) => topic.id == _selectedTopicId)
-          ? _selectedTopicId
-          : null,
+      initialValue:
+          authorizedTopics.any((topic) => topic.id == _selectedTopicId)
+              ? _selectedTopicId
+              : null,
       decoration: const InputDecoration(labelText: 'Topic (optional)'),
       items: [
         const DropdownMenuItem<int?>(
             value: null, child: Text('Standard (DV-Channel)')),
-        ..._topics.map((topic) =>
+        ...authorizedTopics.map((topic) =>
             DropdownMenuItem<int?>(value: topic.id, child: Text(topic.name))),
       ],
       onChanged: (value) => setState(() => _selectedTopicId = value),
@@ -333,6 +362,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   @override
   Widget build(BuildContext context) {
     final layerTreeAsync = ref.watch(layerTreeProvider);
+    final layerGrantIds = ref.watch(authorAuthProvider).layerGrantIds;
+    final topicGrantIds = ref.watch(authorAuthProvider).topicGrantIds;
     final layerNamesById = {
       for (final layer in layerTreeAsync.asData?.value ?? <LayerModel>[])
         layer.id: layer.name,
@@ -452,10 +483,11 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     const SizedBox(height: 12),
                     layerTreeAsync.when(
                       data: (layers) {
-                        final dvs = layers
-                            .where((layer) => layer.type == 'dv')
+                        final authorizedLayers = layers
+                            .where((layer) => layerGrantIds.contains(layer.id))
                             .toList();
-                        final optionIds = dvs.map((dv) => dv.id).toList();
+                        final optionIds =
+                            authorizedLayers.map((layer) => layer.id).toList();
                         if (_selectedLayerId != null &&
                             !optionIds.contains(_selectedLayerId)) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -467,15 +499,47 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             }
                           });
                         }
+
+                        if (authorizedLayers.isEmpty) {
+                          return const Text(
+                            'Keine berechtigten Layer vorhanden. Bitte an einen Admin wenden.',
+                          );
+                        }
+
+                        // Genau ein berechtigter Layer -> keine echte Auswahl,
+                        // Feld schreibgeschuetzt auf den einzig moeglichen Wert vorbelegen.
+                        if (authorizedLayers.length == 1) {
+                          final onlyLayer = authorizedLayers.single;
+                          if (_selectedLayerId != onlyLayer.id) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                setState(() => _selectedLayerId = onlyLayer.id);
+                                unawaited(_loadTopicsForLayer(onlyLayer.id));
+                              }
+                            });
+                          }
+                          return DropdownButtonFormField<int>(
+                            initialValue: onlyLayer.id,
+                            decoration:
+                                const InputDecoration(labelText: 'Layer'),
+                            items: [
+                              DropdownMenuItem(
+                                value: onlyLayer.id,
+                                child: Text(onlyLayer.name),
+                              ),
+                            ],
+                            onChanged: null,
+                          );
+                        }
+
                         return DropdownButtonFormField<int>(
                           initialValue: optionIds.contains(_selectedLayerId)
                               ? _selectedLayerId
                               : null,
-                          decoration: const InputDecoration(
-                              labelText: 'Diözesanverband'),
-                          items: dvs
-                              .map((dv) => DropdownMenuItem(
-                                  value: dv.id, child: Text(dv.name)))
+                          decoration: const InputDecoration(labelText: 'Layer'),
+                          items: authorizedLayers
+                              .map((layer) => DropdownMenuItem(
+                                  value: layer.id, child: Text(layer.name)))
                               .toList(),
                           onChanged: (value) {
                             setState(() {
@@ -488,16 +552,17 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             }
                           },
                           validator: (value) =>
-                              value == null ? 'Bitte DV wählen.' : null,
+                              value == null ? 'Bitte Layer wählen.' : null,
                         );
                       },
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
-                      error: (_, __) =>
-                          const Text('DV-Liste konnte nicht geladen werden.'),
+                      error: (_, __) => const Text(
+                          'Layer-Liste konnte nicht geladen werden.'),
                     ),
                     const SizedBox(height: 12),
-                    if (_selectedLayerId != null) _buildTopicDropdown(),
+                    if (_selectedLayerId != null)
+                      _buildTopicDropdown(topicGrantIds),
                   ],
                 ),
               ),
@@ -636,7 +701,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               children: [
                                 Chip(
                                     label: Text(selectedLayerDisplayName ??
-                                        'DV nicht ausgewählt')),
+                                        'Layer nicht ausgewählt')),
                                 if (_selectedTopicName != null)
                                   Chip(label: Text(_selectedTopicName!)),
                                 Chip(

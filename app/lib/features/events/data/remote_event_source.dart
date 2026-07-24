@@ -562,6 +562,8 @@ class RemoteEventSource {
       isAdmin: author['isAdmin'] as bool? ?? false,
       requiresPasswordChange:
           decoded['requiresPasswordChange'] as bool? ?? false,
+      layerGrantIds: _parseIntList(author['layerGrantIds']),
+      topicGrantIds: _parseIntList(author['topicGrantIds']),
     );
   }
 
@@ -596,6 +598,8 @@ class RemoteEventSource {
       isAdmin: author['isAdmin'] as bool? ?? false,
       requiresPasswordChange:
           decoded['requiresPasswordChange'] as bool? ?? false,
+      layerGrantIds: _parseIntList(author['layerGrantIds']),
+      topicGrantIds: _parseIntList(author['topicGrantIds']),
     );
   }
 
@@ -628,13 +632,15 @@ class RemoteEventSource {
       );
     }
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final author = decoded['author'] is Map<String, dynamic>
+        ? decoded['author'] as Map<String, dynamic>
+        : const <String, dynamic>{};
     return AuthorSessionState(
-      isAdmin: decoded['author'] is Map<String, dynamic>
-          ? (decoded['author'] as Map<String, dynamic>)['isAdmin'] as bool? ??
-              false
-          : false,
+      isAdmin: author['isAdmin'] as bool? ?? false,
       requiresPasswordChange:
           decoded['requiresPasswordChange'] as bool? ?? false,
+      layerGrantIds: _parseIntList(author['layerGrantIds']),
+      topicGrantIds: _parseIntList(author['topicGrantIds']),
     );
   }
 
@@ -1240,6 +1246,8 @@ class AuthorLoginSession {
     required this.username,
     required this.isAdmin,
     required this.requiresPasswordChange,
+    this.layerGrantIds = const <int>[],
+    this.topicGrantIds = const <int>[],
   });
 
   final String accessToken;
@@ -1250,12 +1258,25 @@ class AuthorLoginSession {
   final String username;
   final bool isAdmin;
   final bool requiresPasswordChange;
+  final List<int> layerGrantIds;
+  final List<int> topicGrantIds;
 }
 
 class AuthorSessionState {
-  AuthorSessionState(
-      {required this.requiresPasswordChange, required this.isAdmin});
+  AuthorSessionState({
+    required this.requiresPasswordChange,
+    required this.isAdmin,
+    this.layerGrantIds = const <int>[],
+    this.topicGrantIds = const <int>[],
+  });
 
   final bool requiresPasswordChange;
   final bool isAdmin;
+  final List<int> layerGrantIds;
+  final List<int> topicGrantIds;
+}
+
+List<int> _parseIntList(dynamic value) {
+  if (value is! List) return <int>[];
+  return value.whereType<num>().map((v) => v.toInt()).toList();
 }
