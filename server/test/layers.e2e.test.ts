@@ -7,7 +7,7 @@ jest.mock('../src/fcm', () => ({
 
 import request from 'supertest';
 import app from '../src/app';
-import { clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
+import { addAuthorLayerGrant, clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
 import { MAX_TITLE_LENGTH } from '../src/eventValidation';
 
 async function loginAuthor(username: string, password: string): Promise<string> {
@@ -66,7 +66,7 @@ describe('Layers API e2e', () => {
   });
 
   it('lets an admin create, update and delete a layer, enforcing delete guards', async () => {
-    await createAuthorForTesting({ username: 'admin-layers', password: 'admin-123', isAdmin: true });
+    const admin = await createAuthorForTesting({ username: 'admin-layers', password: 'admin-123', isAdmin: true });
     const adminToken = await loginAuthor('admin-layers', 'admin-123');
 
     const layersResponse = await request(app).get('/api/layers');
@@ -95,6 +95,8 @@ describe('Layers API e2e', () => {
       .send({ name: 'Bezirk Süd-West' });
     expect(updateResponse.status).toBe(200);
     expect(updateResponse.body.layer.name).toBe('Bezirk Süd-West');
+
+    await addAuthorLayerGrant(admin.id, createdLayer.id);
 
     // An event referencing the new layer blocks its deletion.
     const eventResponse = await request(app)

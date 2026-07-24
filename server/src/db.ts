@@ -190,6 +190,8 @@ export type AuthorIdentity = {
   username: string;
   isAdmin: boolean;
   adminLayerIds: number[];
+  layerGrantIds: number[];
+  topicGrantIds: number[];
 };
 
 export type AuthSession = {
@@ -338,7 +340,7 @@ function createRefreshTokenValue(): string {
   return `${randomUUID()}${randomUUID()}`;
 }
 
-async function createAuthorLoginSession(author: AuthorRowWithAdminLayers, requiresPasswordChange: boolean): Promise<AuthLoginSession> {
+async function createAuthorLoginSession(author: AuthorRowWithGrants, requiresPasswordChange: boolean): Promise<AuthLoginSession> {
   const db = ensureClient();
   const token = randomUUID();
   const accessExpiresAt = buildTokenExpiry(accessSessionTtlMinutes());
@@ -975,8 +977,15 @@ export async function clearAuthorData(): Promise<void> {
   await ensureClient().query('DELETE FROM authors');
 }
 
-function normalizeAuthor(row: AuthorRowWithAdminLayers): AuthorIdentity {
-  return { id: row.id, username: row.username, isAdmin: row.is_admin, adminLayerIds: row.admin_layer_ids };
+function normalizeAuthor(row: AuthorRowWithGrants): AuthorIdentity {
+  return {
+    id: row.id,
+    username: row.username,
+    isAdmin: row.is_admin,
+    adminLayerIds: row.admin_layer_ids,
+    layerGrantIds: row.layer_grant_ids,
+    topicGrantIds: row.topic_grant_ids,
+  };
 }
 
 const ADMIN_LAYER_IDS_SUBQUERY = `(
@@ -985,6 +994,18 @@ const ADMIN_LAYER_IDS_SUBQUERY = `(
   WHERE author_id = a.id
 ) AS admin_layer_ids`;
 
+const LAYER_GRANT_IDS_SUBQUERY = `(
+  SELECT COALESCE(array_agg(layer_id), ARRAY[]::int[])
+  FROM author_layer_grants
+  WHERE author_id = a.id
+) AS layer_grant_ids`;
+
+const TOPIC_GRANT_IDS_SUBQUERY = `(
+  SELECT COALESCE(array_agg(topic_id), ARRAY[]::int[])
+  FROM author_topic_grants
+  WHERE author_id = a.id
+) AS topic_grant_ids`;
+
 export async function createAuthorForTesting(options: {
   username: string;
   password: string;
@@ -992,6 +1013,8 @@ export async function createAuthorForTesting(options: {
   mustChangePassword?: boolean;
   isAdmin?: boolean;
   adminLayerIds?: number[];
+  layerGrantIds?: number[];
+  topicGrantIds?: number[];
 }): Promise<AuthorIdentity> {
   const db = ensureClient();
   let adminLayerIds = options.adminLayerIds ?? [];
@@ -1002,6 +1025,8 @@ export async function createAuthorForTesting(options: {
     const rootId = root.rows[0]?.id;
     adminLayerIds = rootId ? [rootId] : [];
   }
+  const layerGrantIds = options.layerGrantIds ?? [];
+  const topicGrantIds = options.topicGrantIds ?? [];
   await db.query('BEGIN');
   try {
     const result = await db.query<AuthorRow>(
@@ -1023,8 +1048,20 @@ export async function createAuthorForTesting(options: {
         [author.id, layerId]
       );
     }
+    for (const layerId of layerGrantIds) {
+      await db.query(
+        `INSERT INTO author_layer_grants (author_id, layer_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [author.id, layerId]
+      );
+    }
+    for (const topicId of topicGrantIds) {
+      await db.query(
+        `INSERT INTO author_topic_grants (author_id, topic_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [author.id, topicId]
+      );
+    }
     await db.query('COMMIT');
-    return normalizeAuthor({ ...author, admin_layer_ids: adminLayerIds });
+    return normalizeAuthor({ ...author, admin_layer_ids: adminLayerIds, layer_grant_ids: layerGrantIds, topic_grant_ids: topicGrantIds });
   } catch (error) {
     await db.query('ROLLBACK');
     throw error;
@@ -1033,8 +1070,9 @@ export async function createAuthorForTesting(options: {
 
 export async function loginAuthor(username: string, password: string): Promise<AuthLoginSession | null> {
   await cleanupExpiredSessions();
-  const result = await ensureClient().query<AuthorRowWithAdminLayers>(
-    `SELECT a.*, ${ADMIN_LAYER_IDS_SUBQUERY} FROM authors a WHERE a.username = $1 AND a.is_active = TRUE LIMIT 1`,
+  const result = await ensureClient().query<AuthorRowWithGrants>(
+    `SELECT a.*, ${ADMIN_LAYER_IDS_SUBQUERY}, ${LAYER_GRANT_IDS_SUBQUERY}, ${TOPIC_GRANT_IDS_SUBQUERY}
+     FROM authors a WHERE a.username = $1 AND a.is_active = TRUE LIMIT 1`,
     [username]
   );
   const author = result.rows[0];
@@ -1067,8 +1105,8 @@ export async function loginAuthor(username: string, password: string): Promise<A
 
 export async function getAuthorSession(token: string): Promise<AuthSession | null> {
   await cleanupExpiredSessions();
-  const result = await ensureClient().query<(AuthorRowWithAdminLayers & { expires_at: string })>(
-    `SELECT a.*, s.expires_at, ${ADMIN_LAYER_IDS_SUBQUERY}
+  const result = await ensureClient().query<(AuthorRowWithGrants & { expires_at: string })>(
+    `SELECT a.*, s.expires_at, ${ADMIN_LAYER_IDS_SUBQUERY}, ${LAYER_GRANT_IDS_SUBQUERY}, ${TOPIC_GRANT_IDS_SUBQUERY}
      FROM author_sessions s
      JOIN authors a ON a.id = s.author_id
      LEFT JOIN author_refresh_sessions r ON r.token_hash = s.refresh_token_hash
@@ -1099,7 +1137,7 @@ export async function refreshAuthorSession(refreshToken: string): Promise<AuthLo
   await cleanupExpiredSessions();
   const db = ensureClient();
   const refreshTokenHash = hashToken(refreshToken);
-  const candidateResult = await db.query<(AuthorRowWithAdminLayers & {
+  const candidateResult = await db.query<(AuthorRowWithGrants & {
     token_hash: string;
     family_id: string;
     expires_at: string;
@@ -1112,7 +1150,9 @@ export async function refreshAuthorSession(refreshToken: string): Promise<AuthLo
             r.revoked_at,
             r.replaced_by_token_hash,
             a.*,
-            ${ADMIN_LAYER_IDS_SUBQUERY}
+            ${ADMIN_LAYER_IDS_SUBQUERY},
+            ${LAYER_GRANT_IDS_SUBQUERY},
+            ${TOPIC_GRANT_IDS_SUBQUERY}
      FROM author_refresh_sessions r
      JOIN authors a ON a.id = r.author_id
      WHERE r.token_hash = $1
@@ -1199,8 +1239,8 @@ type AuthorRowWithGrants = AuthorRowWithAdminLayers & {
 const AUTHOR_GRANTS_SELECT = `
   SELECT a.*,
     ${ADMIN_LAYER_IDS_SUBQUERY},
-    (SELECT COALESCE(array_agg(layer_id), ARRAY[]::int[]) FROM author_layer_grants WHERE author_id = a.id) AS layer_grant_ids,
-    (SELECT COALESCE(array_agg(topic_id), ARRAY[]::int[]) FROM author_topic_grants WHERE author_id = a.id) AS topic_grant_ids
+    ${LAYER_GRANT_IDS_SUBQUERY},
+    ${TOPIC_GRANT_IDS_SUBQUERY}
   FROM authors a
 `;
 

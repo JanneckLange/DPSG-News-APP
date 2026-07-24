@@ -7,7 +7,7 @@ jest.mock('../src/fcm', () => ({
 
 import request from 'supertest';
 import app from '../src/app';
-import { clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
+import { addAuthorTopicGrant, clearAuthorData, clearEvents, close, connect, createAuthorForTesting } from '../src/db';
 import { MAX_TITLE_LENGTH } from '../src/eventValidation';
 
 async function getLayerIdByName(name: string): Promise<number> {
@@ -90,7 +90,12 @@ describe('Topics admin CRUD e2e', () => {
   });
 
   it('lets an admin create, rename and delete a topic, enforcing the delete guard', async () => {
-    await createAuthorForTesting({ username: 'admin-topics', password: 'admin-123', isAdmin: true });
+    const admin = await createAuthorForTesting({
+      username: 'admin-topics',
+      password: 'admin-123',
+      isAdmin: true,
+      layerGrantIds: [koelnLayerId],
+    });
     const adminToken = await loginAuthor('admin-topics', 'admin-123');
 
     const createResponse = await request(app)
@@ -101,6 +106,7 @@ describe('Topics admin CRUD e2e', () => {
     const createdTopic = createResponse.body.topic as { id: number; name: string; layerId: number };
     expect(createdTopic.name).toBe('Meute');
     expect(createdTopic.layerId).toBe(koelnLayerId);
+    await addAuthorTopicGrant(admin.id, createdTopic.id);
 
     const renameResponse = await request(app)
       .patch(`/api/admin/topics/${createdTopic.id}`)

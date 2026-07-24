@@ -52,6 +52,7 @@ import {
   clearEvents,
   clearAuthorData,
   createAuthorForTesting,
+  AuthorIdentity,
   DraftInput,
   EventInput,
   Layer,
@@ -268,6 +269,21 @@ async function requireLayerScopeForAll(res: Response, targetLayerIds: number[]):
   return true;
 }
 
+// Autoren duerfen Events nur auf explizit zugewiesenen Layern/Topics erstellen
+// (Rechtematrix aus #1: "create post: own layer/topic", unabhaengig vom Admin-Status).
+function requireEventGrant(res: Response, layerId: number, topicId: number | undefined): boolean {
+  const author = res.locals.author as AuthorIdentity | undefined;
+  if (!author?.layerGrantIds?.includes(layerId)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  if (typeof topicId === 'number' && !author.topicGrantIds?.includes(topicId)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  return true;
+}
+
 function requirePasswordChangeCompleted(res: Response): boolean {
   const session = res.locals.authorSession as { requiresPasswordChange: boolean } | undefined;
   if (session?.requiresPasswordChange) {
@@ -423,7 +439,7 @@ app.get('/api/auth/me', async (req: Request, res: Response) => {
       return;
     }
     const session = res.locals.authorSession as {
-      author: { id: number; username: string };
+      author: AuthorIdentity;
       requiresPasswordChange: boolean;
       expiresAt: string;
     };
@@ -501,6 +517,9 @@ app.post('/api/events', async (req: Request, res: Response) => {
     if (!layer) {
       return respondBadRequest(req, res, 'Invalid layerId');
     }
+    if (!requireEventGrant(res, layerId, topicId)) {
+      return;
+    }
     const topicIds = (await getTopics(layer.id)).map((t) => t.id);
     const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, topicIds);
     if (!fieldsCheck.valid) {
@@ -558,6 +577,9 @@ app.post('/api/author/events', async (req: Request, res: Response) => {
     const layer = await getLayerById(layerId);
     if (!layer) {
       return respondBadRequest(req, res, 'Invalid layerId');
+    }
+    if (!requireEventGrant(res, layerId, topicId)) {
+      return;
     }
     const topicIds = (await getTopics(layer.id)).map((t) => t.id);
     const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, topicIds);
