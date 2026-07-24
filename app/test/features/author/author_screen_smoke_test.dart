@@ -11,9 +11,11 @@ import 'package:dpsg_news_app/features/author/data/own_events_provider.dart';
 import 'package:dpsg_news_app/features/author/presentation/author_screen.dart';
 import 'package:dpsg_news_app/features/events/data/remote_event_source.dart';
 import 'package:dpsg_news_app/features/events/presentation/event_list_tile.dart';
-import 'package:dpsg_news_app/features/settings/data/settings_repository.dart' as settings_repo;
+import 'package:dpsg_news_app/features/settings/data/settings_repository.dart'
+    as settings_repo;
 
-import '../../widget_test.dart' show FakeSecureStorageService, TestAuthorAuthNotifier;
+import '../../widget_test.dart'
+    show FakeSecureStorageService, TestAuthorAuthNotifier;
 
 void main() {
   setUpAll(() async {
@@ -38,14 +40,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shows dashboard stats and own events without edit/delete buttons', (tester) async {
-    final repository = settings_repo.SettingsRepository(HiveService.getSettingsBox());
+  testWidgets(
+      'shows dashboard stats and own events without edit/delete buttons',
+      (tester) async {
+    final repository =
+        settings_repo.SettingsRepository(HiveService.getSettingsBox());
     final secureStorage = FakeSecureStorageService();
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          settings_repo.settingsRepositoryProvider.overrideWithValue(repository),
+          settings_repo.settingsRepositoryProvider
+              .overrideWithValue(repository),
           authorAuthProvider.overrideWith(
             (ref) => TestAuthorAuthNotifier(
               repository: repository,
