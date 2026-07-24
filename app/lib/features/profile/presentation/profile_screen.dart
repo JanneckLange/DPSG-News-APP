@@ -21,7 +21,8 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             Card(
               margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -31,8 +32,13 @@ class ProfileScreen extends ConsumerWidget {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                          child: Icon(Icons.person, size: 28, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          child: Icon(Icons.person,
+                              size: 28,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onPrimaryContainer),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -40,70 +46,89 @@ class ProfileScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                authorAuth.isLoggedIn ? (authorAuth.username ?? 'Autor') : 'Anonym',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                                authorAuth.isLoggedIn
+                                    ? (authorAuth.username ?? 'Autor')
+                                    : 'Anonym',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                authorAuth.isLoggedIn ? 'Accounts und Rechte' : 'Noch kein Login eingerichtet',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+                                authorAuth.isLoggedIn
+                                    ? 'Accounts und Rechte'
+                                    : 'Noch kein Login eingerichtet',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: Colors.grey[700]),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                      const SizedBox(height: 12),
-                      Wrap(
+                    const SizedBox(height: 12),
+                    Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        Chip(label: Text(authorAuth.isLoggedIn ? 'Angemeldet' : 'Nicht angemeldet')),
-                        if (authorAuth.isAdmin) const Chip(label: Text('Admin')),
-                        if (authorAuth.requiresPasswordChange) const Chip(label: Text('Passwortwechsel erforderlich')),
+                        Chip(
+                            label: Text(authorAuth.isLoggedIn
+                                ? 'Angemeldet'
+                                : 'Nicht angemeldet')),
+                        if (authorAuth.isAdmin)
+                          const Chip(label: Text('Admin')),
+                        if (authorAuth.requiresPasswordChange)
+                          const Chip(
+                              label: Text('Passwortwechsel erforderlich')),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Card(
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Column(
-               children: [
-                 ListTile(
-                   leading: const Icon(Icons.lock_outline),
-                   title: const Text('Passwort ändern'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: authorAuth.isLoggedIn
-                        ? () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const AuthorChangePasswordScreen(),
-                              ),
-                            );
-                          }
-                        : null,
-                 ),
-                 if (authorAuth.isAdmin) ...[
-                   const Divider(height: 1),
-                   ListTile(
-                     leading: const Icon(Icons.admin_panel_settings),
-                     title: const Text('Admin-Bereich'),
-                     subtitle: const Text('Nutzerverwaltung und Freigaben'),
-                     trailing: const Icon(Icons.chevron_right),
-                     onTap: () {
-                       Navigator.of(context).push(
-                         MaterialPageRoute(builder: (context) => const AdminScreen()),
-                       );
-                     },
-                   ),
-                 ],
-               ],
+            if (authorAuth.isLoggedIn) ...[
+              const SizedBox(height: 16),
+              Card(
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.lock_outline),
+                      title: const Text('Passwort ändern'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const AuthorChangePasswordScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (authorAuth.isAdmin) ...[
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.admin_panel_settings),
+                        title: const Text('Admin-Bereich'),
+                        subtitle: const Text('Nutzerverwaltung und Freigaben'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (context) => const AdminScreen()),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 24),
             FilledButton.icon(
               style: authorAuth.isLoggedIn
@@ -118,7 +143,8 @@ class ProfileScreen extends ConsumerWidget {
                         context: context,
                         builder: (context) => AlertDialog(
                           title: const Text('Logout bestätigen'),
-                          content: const Text('Möchtest du dich wirklich abmelden?'),
+                          content:
+                              const Text('Möchtest du dich wirklich abmelden?'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(false),
@@ -137,7 +163,8 @@ class ProfileScreen extends ConsumerWidget {
                     }
                   : () async {
                       await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const AuthorLoginScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const AuthorLoginScreen()),
                       );
                     },
               icon: Icon(authorAuth.isLoggedIn ? Icons.logout : Icons.login),

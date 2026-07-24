@@ -46,12 +46,12 @@ class AuthorScreen extends ConsumerWidget {
 
   Future<void> _deleteDraft(
       BuildContext context, WidgetRef ref, int draftId) async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.deleteDraft(token: token, draftId: draftId);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .deleteDraft(token: token, draftId: draftId),
+          );
       ref.invalidate(ownDraftsProvider);
     } catch (error) {
       if (context.mounted) showErrorToast(ref, describeRemoteError(error));

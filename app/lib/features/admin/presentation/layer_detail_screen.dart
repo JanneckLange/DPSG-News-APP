@@ -80,22 +80,18 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
       _loadingAdmins = true;
       _adminsError = null;
     });
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (!mounted || requestId != _adminsRequestId) return;
-    if (token == null) {
-      setState(() {
-        _loadingAdmins = false;
-        _adminsError = 'Kein Zugriff';
-      });
-      return;
-    }
     try {
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
       final admins =
-          await remote.fetchLayerAdmins(token: token, layerId: widget.layer.id);
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+                (token) => ref
+                    .read(sync_service.remoteEventSourceProvider)
+                    .fetchLayerAdmins(token: token, layerId: widget.layer.id),
+              );
       if (!mounted || requestId != _adminsRequestId) return;
       setState(() => _admins = admins);
+    } on StateError {
+      if (!mounted || requestId != _adminsRequestId) return;
+      setState(() => _adminsError = 'Kein Zugriff');
     } catch (error) {
       if (!mounted || requestId != _adminsRequestId) return;
       setState(() => _adminsError = error.toString());
@@ -112,19 +108,13 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
       _loadingAuthors = true;
       _authorsError = null;
     });
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (!mounted || requestId != _authorsRequestId) return;
-    if (token == null) {
-      setState(() {
-        _loadingAuthors = false;
-        _authorsError = 'Kein Zugriff';
-      });
-      return;
-    }
     try {
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final users = await remote.fetchAdminUsers(token: token);
+      final users =
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+                (token) => ref
+                    .read(sync_service.remoteEventSourceProvider)
+                    .fetchAdminUsers(token: token),
+              );
       final authors = users.where((user) {
         final layerGrantIds = List<int>.from(
           (user['layerGrantIds'] as List<dynamic>? ?? const <dynamic>[])
@@ -134,6 +124,9 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
       }).toList();
       if (!mounted || requestId != _authorsRequestId) return;
       setState(() => _authors = authors);
+    } on StateError {
+      if (!mounted || requestId != _authorsRequestId) return;
+      setState(() => _authorsError = 'Kein Zugriff');
     } catch (error) {
       if (!mounted || requestId != _authorsRequestId) return;
       setState(() => _authorsError = error.toString());
@@ -151,13 +144,13 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
     );
     if (name == null) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.createTopic(token: token, name: name, layerId: widget.layer.id);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .createTopic(
+                    token: token, name: name, layerId: widget.layer.id),
+          );
       await _loadTopics();
     } catch (error) {
       if (!mounted) return;
@@ -176,13 +169,12 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
     );
     if (name == null) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.updateTopic(token: token, topicId: topic.id, name: name);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .updateTopic(token: token, topicId: topic.id, name: name),
+          );
       await _loadTopics();
     } catch (error) {
       if (!mounted) return;
@@ -201,13 +193,12 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
     );
     if (!confirmed) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.deleteTopic(token: token, topicId: topic.id);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .deleteTopic(token: token, topicId: topic.id),
+          );
       await _loadTopics();
     } catch (error) {
       if (!mounted) return;
@@ -240,17 +231,18 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
       return;
     }
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      final response = await remote.createAdminUser(
-        token: token,
-        username: username,
-        isAdmin: true,
-        layerIds: selectedLayerIds.toList(),
-      );
+      final response =
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+                (token) => ref
+                    .read(sync_service.remoteEventSourceProvider)
+                    .createAdminUser(
+                      token: token,
+                      username: username,
+                      isAdmin: true,
+                      layerIds: selectedLayerIds.toList(),
+                    ),
+              );
       if (!mounted) return;
       await showAdminOtpDialog(
         context,
@@ -308,26 +300,30 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
       }
     }
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      final response = await remote.createAdminUser(
-        token: token,
-        username: username,
-        isAdmin: false,
+      final response =
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) async {
+          final remote = ref.read(sync_service.remoteEventSourceProvider);
+          final created = await remote.createAdminUser(
+            token: token,
+            username: username,
+            isAdmin: false,
+          );
+          final newUserId =
+              ((created['author'] as Map<String, dynamic>)['id'] as num)
+                  .toInt();
+          for (final id in selectedLayerIds) {
+            await remote.addAuthorLayerGrant(
+                token: token, userId: newUserId, layerId: id);
+          }
+          for (final id in selectedTopicIds) {
+            await remote.addAuthorTopicGrant(
+                token: token, userId: newUserId, topicId: id);
+          }
+          return created;
+        },
       );
-      final newUserId =
-          ((response['author'] as Map<String, dynamic>)['id'] as num).toInt();
-      for (final id in selectedLayerIds) {
-        await remote.addAuthorLayerGrant(
-            token: token, userId: newUserId, layerId: id);
-      }
-      for (final id in selectedTopicIds) {
-        await remote.addAuthorTopicGrant(
-            token: token, userId: newUserId, topicId: id);
-      }
       if (!mounted) return;
       await showAdminOtpDialog(
         context,
@@ -346,7 +342,8 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
     }
   }
 
-  Future<void> _openUser(Map<String, dynamic> user, VoidCallback onChanged) async {
+  Future<void> _openUser(
+      Map<String, dynamic> user, VoidCallback onChanged) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => AdminUserDetailScreen(user: user),
@@ -396,7 +393,8 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
     );
   }
 
-  Widget _sectionHeader(String title, {required VoidCallback onAdd, required String addLabel}) {
+  Widget _sectionHeader(String title,
+      {required VoidCallback onAdd, required String addLabel}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(

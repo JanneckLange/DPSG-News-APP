@@ -347,25 +347,26 @@ class SettingsRepository {
     ]);
   }
 
-  List<String> getSelectedTopicsForLayer(int layerId) {
+  List<int> getSelectedTopicIdsForLayer(int layerId) {
     final topicsMap = getSelectedTopicsByLayer();
-    return topicsMap[layerId] ?? <String>[];
+    return topicsMap[layerId] ?? <int>[];
   }
 
-  Map<int, List<String>> getSelectedTopicsByLayer() {
+  Map<int, List<int>> getSelectedTopicsByLayer() {
     final raw = _box.get(selectedLayerTopicsKey) as Map<dynamic, dynamic>?;
-    if (raw == null) return <int, List<String>>{};
-    return raw.map<int, List<String>>((key, value) {
-      final values =
-          value is List ? value.whereType<String>().toList() : <String>[];
+    if (raw == null) return <int, List<int>>{};
+    return raw.map<int, List<int>>((key, value) {
+      final values = value is List
+          ? value.whereType<num>().map((v) => v.toInt()).toList()
+          : <int>[];
       return MapEntry(int.parse(key.toString()), values);
     });
   }
 
   Future<void> setSelectedTopicsForLayer(
-      int layerId, List<String> topics) async {
+      int layerId, List<int> topicIds) async {
     final map = getSelectedTopicsByLayer();
-    map[layerId] = topics;
+    map[layerId] = topicIds;
     await _box.put(
       selectedLayerTopicsKey,
       map.map((key, value) => MapEntry(key.toString(), value)),

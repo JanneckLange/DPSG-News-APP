@@ -18,6 +18,7 @@ jest.mock('pg', () => ({
 }));
 
 import { connect, close, getEvents, createEvent, deleteEventById, deleteAllEvents } from '../src/db';
+import { BUNDESVERBAND_NAME } from '../src/seedLayers';
 
 describe('Database helper', () => {
   beforeEach(async () => {
@@ -53,13 +54,18 @@ describe('Database helper', () => {
     await connect();
 
     expect(mockQuery.mock.calls.some((call) => String(call[0]).includes('CREATE TABLE IF NOT EXISTS layers'))).toBe(true);
-    const bundesverbandInsert = mockQuery.mock.calls.find(
-      (call) => String(call[0]).includes("INSERT INTO layers") && String(call[0]).includes("'bundesverband'")
+    const layerInserts = mockQuery.mock.calls.filter(
+      (call) => String(call[0]).includes('INSERT INTO layers') && String(call[0]).includes('RETURNING id')
+    );
+
+    const bundesverbandInsert = layerInserts.find(
+      (call) => Array.isArray(call[1]) && call[1].length === 1
     );
     expect(bundesverbandInsert).toBeDefined();
+    expect(bundesverbandInsert?.[1]).toEqual([BUNDESVERBAND_NAME]);
 
-    const dvInserts = mockQuery.mock.calls.filter(
-      (call) => String(call[0]).includes("INSERT INTO layers") && String(call[0]).includes("'dv'")
+    const dvInserts = layerInserts.filter(
+      (call) => Array.isArray(call[1]) && call[1].length === 2
     );
     expect(dvInserts).toHaveLength(25);
   });

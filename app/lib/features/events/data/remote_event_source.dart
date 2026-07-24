@@ -374,9 +374,7 @@ class RemoteEventSource {
   Future<Map<String, dynamic>> createLayer({
     required String token,
     required String name,
-    required String type,
     int? parentId,
-    String? url,
   }) async {
     final uri = baseUrl.replace(path: '/api/admin/layers');
     final response = await _client
@@ -388,9 +386,7 @@ class RemoteEventSource {
           },
           body: jsonEncode({
             'name': name,
-            'type': type,
             if (parentId != null) 'parentId': parentId,
-            if (url != null) 'url': url,
           }),
         )
         .timeout(timeout);

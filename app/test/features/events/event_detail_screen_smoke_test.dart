@@ -119,6 +119,7 @@ void main() {
                 repository: repository,
                 remote: remote,
                 secureStorage: secureStorage,
+                ref: ref,
                 initialState:
                     const AuthorAuthState(isLoggedIn: false, isLocked: false),
               ),
@@ -167,6 +168,7 @@ void main() {
                 repository: repository,
                 remote: remote,
                 secureStorage: secureStorage,
+                ref: ref,
                 initialState: AuthorAuthState(
                   isLoggedIn: true,
                   isLocked: false,
@@ -221,6 +223,7 @@ void main() {
             repository: repository,
             remote: remote,
             secureStorage: secureStorage,
+            ref: ref,
             initialState:
                 const AuthorAuthState(isLoggedIn: false, isLocked: false),
           ),

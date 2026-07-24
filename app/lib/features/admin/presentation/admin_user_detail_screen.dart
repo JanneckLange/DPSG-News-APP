@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../author/data/author_auth_provider.dart';
-import '../../events/presentation/event_editor_sheet.dart';
+import '../../events/presentation/event_detail_screen.dart';
 import '../../events/presentation/event_list_tile.dart';
 import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/domain/layer_model.dart';
@@ -67,12 +67,13 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _loadLayerContext() async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      final response = await remote.fetchAdminLayers(token: token);
+      final response =
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+                (token) => ref
+                    .read(sync_service.remoteEventSourceProvider)
+                    .fetchAdminLayers(token: token),
+              );
       final layers =
           List<Map<String, dynamic>>.from(response['layers'] as List<dynamic>)
               .map(LayerModel.fromJson)
@@ -83,6 +84,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       // Layer-Namen bleiben dann als "Layer #id" sichtbar.
     }
     try {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
       final response = await remote.fetchTopics();
       final topics =
           List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
@@ -97,12 +99,13 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _reloadUser() async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      final users = await remote.fetchAdminUsers(token: token);
+      final users =
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+                (token) => ref
+                    .read(sync_service.remoteEventSourceProvider)
+                    .fetchAdminUsers(token: token),
+              );
       final userId = (_user['id'] as num).toInt();
       final refreshed = users.firstWhere(
         (u) => (u['id'] as num).toInt() == userId,
@@ -125,19 +128,21 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       disableDescendantsOfSelected: true,
     );
     if (selected == null) return;
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     final userId = (_user['id'] as num).toInt();
     try {
-      for (final id in selected.difference(current)) {
-        await remote.addAdminLayer(token: token, userId: userId, layerId: id);
-      }
-      for (final id in current.difference(selected)) {
-        await remote.removeAdminLayer(
-            token: token, userId: userId, layerId: id);
-      }
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) async {
+          final remote = ref.read(sync_service.remoteEventSourceProvider);
+          for (final id in selected.difference(current)) {
+            await remote.addAdminLayer(
+                token: token, userId: userId, layerId: id);
+          }
+          for (final id in current.difference(selected)) {
+            await remote.removeAdminLayer(
+                token: token, userId: userId, layerId: id);
+          }
+        },
+      );
       // Admin-Status haengt jetzt am Server automatisch am Layer-Besitz
       // (Promotion/Demotion) - lokalen Stand daher neu laden statt annehmen.
       await _reloadUser();
@@ -152,14 +157,14 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _removeAdminLayer(int layerId) async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     final userId = (_user['id'] as num).toInt();
     try {
-      await remote.removeAdminLayer(
-          token: token, userId: userId, layerId: layerId);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .removeAdminLayer(
+                    token: token, userId: userId, layerId: layerId),
+          );
       await _reloadUser();
     } catch (error) {
       if (!mounted) return;
@@ -182,28 +187,29 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       title: 'Autoren-Rechte auswählen',
     );
     if (selection == null) return;
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     final userId = (_user['id'] as num).toInt();
     try {
-      for (final id in selection.layerIds.difference(currentLayers)) {
-        await remote.addAuthorLayerGrant(
-            token: token, userId: userId, layerId: id);
-      }
-      for (final id in currentLayers.difference(selection.layerIds)) {
-        await remote.removeAuthorLayerGrant(
-            token: token, userId: userId, layerId: id);
-      }
-      for (final id in selection.topicIds.difference(currentTopics)) {
-        await remote.addAuthorTopicGrant(
-            token: token, userId: userId, topicId: id);
-      }
-      for (final id in currentTopics.difference(selection.topicIds)) {
-        await remote.removeAuthorTopicGrant(
-            token: token, userId: userId, topicId: id);
-      }
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) async {
+          final remote = ref.read(sync_service.remoteEventSourceProvider);
+          for (final id in selection.layerIds.difference(currentLayers)) {
+            await remote.addAuthorLayerGrant(
+                token: token, userId: userId, layerId: id);
+          }
+          for (final id in currentLayers.difference(selection.layerIds)) {
+            await remote.removeAuthorLayerGrant(
+                token: token, userId: userId, layerId: id);
+          }
+          for (final id in selection.topicIds.difference(currentTopics)) {
+            await remote.addAuthorTopicGrant(
+                token: token, userId: userId, topicId: id);
+          }
+          for (final id in currentTopics.difference(selection.topicIds)) {
+            await remote.removeAuthorTopicGrant(
+                token: token, userId: userId, topicId: id);
+          }
+        },
+      );
       // Werden dabei alle Rechte des Nutzers entfernt, deaktiviert der Server
       // das Konto automatisch - lokalen Stand daher neu laden.
       await _reloadUser();
@@ -218,14 +224,14 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _removeLayerGrant(int layerId) async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     final userId = (_user['id'] as num).toInt();
     try {
-      await remote.removeAuthorLayerGrant(
-          token: token, userId: userId, layerId: layerId);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .removeAuthorLayerGrant(
+                    token: token, userId: userId, layerId: layerId),
+          );
       await _reloadUser();
     } catch (error) {
       if (!mounted) return;
@@ -237,14 +243,14 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _removeTopicGrant(int topicId) async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     final userId = (_user['id'] as num).toInt();
     try {
-      await remote.removeAuthorTopicGrant(
-          token: token, userId: userId, topicId: topicId);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .removeAuthorTopicGrant(
+                    token: token, userId: userId, topicId: topicId),
+          );
       await _reloadUser();
     } catch (error) {
       if (!mounted) return;
@@ -353,25 +359,18 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
 
   Future<void> _loadContributions() async {
     final requestId = ++_contributionsRequestId;
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (!mounted || requestId != _contributionsRequestId) return;
-    if (token == null) {
-      setState(() {
-        _loadingContributions = false;
-        _error = 'Kein Zugriff';
-      });
-      return;
-    }
-
     setState(() {
       _loadingContributions = true;
       _error = null;
     });
 
     try {
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final events = await remote.fetchEvents(token: token);
+      final events =
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+                (token) => ref
+                    .read(sync_service.remoteEventSourceProvider)
+                    .fetchEvents(token: token),
+              );
       final userId = (_user['id'] as num).toInt();
       if (!mounted || requestId != _contributionsRequestId) return;
       setState(() {
@@ -380,6 +379,9 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
           return authorId is num && authorId.toInt() == userId;
         }).toList();
       });
+    } on StateError {
+      if (!mounted || requestId != _contributionsRequestId) return;
+      setState(() => _error = 'Kein Zugriff');
     } catch (error) {
       if (!mounted || requestId != _contributionsRequestId) return;
       setState(() => _error = error.toString());
@@ -413,18 +415,16 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _toggleActive() async {
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) {
-      return;
-    }
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     final nextActive = !(_user['isActive'] as bool? ?? false);
-    await remote.setAdminUserActive(
-      token: token,
-      userId: (_user['id'] as num).toInt(),
-      isActive: nextActive,
-    );
+    await ref.read(authorAuthProvider.notifier).callAuthenticated(
+          (token) => ref
+              .read(sync_service.remoteEventSourceProvider)
+              .setAdminUserActive(
+                token: token,
+                userId: (_user['id'] as num).toInt(),
+                isActive: nextActive,
+              ),
+        );
     if (!mounted) return;
     setState(() {
       _user['isActive'] = nextActive;
@@ -440,16 +440,14 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     if (!confirmed) {
       return;
     }
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) {
-      return;
-    }
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
-    final otp = await remote.resetAdminUserPassword(
-      token: token,
-      userId: (_user['id'] as num).toInt(),
-    );
+    final otp = await ref.read(authorAuthProvider.notifier).callAuthenticated(
+          (token) => ref
+              .read(sync_service.remoteEventSourceProvider)
+              .resetAdminUserPassword(
+                token: token,
+                userId: (_user['id'] as num).toInt(),
+              ),
+        );
     if (!mounted) return;
     await showAdminOtpDialog(
       context,
@@ -474,17 +472,15 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       return;
     }
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) {
-      return;
-    }
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.deleteAdminUser(
-        token: token,
-        userId: (_user['id'] as num).toInt(),
-      );
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .deleteAdminUser(
+                  token: token,
+                  userId: (_user['id'] as num).toInt(),
+                ),
+          );
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (error) {
@@ -496,35 +492,11 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     }
   }
 
-  Future<void> _editContribution(Map<String, dynamic> event) async {
-    final changed = await Navigator.of(context).push<bool>(
+  Future<void> _openContribution(Map<String, dynamic> event) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => EventEditorPage(existingEvent: event),
+        builder: (context) => EventDetailScreen(event: event),
       ),
-    );
-    if (changed == true) {
-      await _loadContributions();
-    }
-  }
-
-  Future<void> _deleteContribution(Map<String, dynamic> event) async {
-    final confirmed = await _confirm(
-      'Event löschen',
-      'Möchtest du dieses Event löschen?',
-      'Löschen',
-    );
-    if (!confirmed) {
-      return;
-    }
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) {
-      return;
-    }
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
-    await remote.deleteEvent(
-      token: token,
-      eventId: (event['id'] as num).toInt(),
     );
     await _loadContributions();
   }
@@ -641,8 +613,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                   layerName: ref.watch(layerNamesByIdProvider)[
                           (event['layerId'] as num?)?.toInt()] ??
                       'Kein DV',
-                  onEdit: () => _editContribution(event),
-                  onDelete: () => _deleteContribution(event),
+                  onTap: () => _openContribution(event),
                 ),
               ),
             const SizedBox(height: 24),

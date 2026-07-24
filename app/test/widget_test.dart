@@ -161,11 +161,13 @@ class TestAuthorAuthNotifier extends AuthorAuthNotifier {
     required settings_repo.SettingsRepository repository,
     required RemoteEventSource remote,
     required SecureStorageService secureStorage,
+    required Ref ref,
     required AuthorAuthState initialState,
   }) : super(
           repository: repository,
           remote: remote,
           secureStorage: secureStorage,
+          ref: ref,
           restoreSessionOnInit: false,
         ) {
     state = initialState;
@@ -248,6 +250,7 @@ void main() {
               repository: repository,
               remote: remote,
               secureStorage: secureStorage,
+              ref: ref,
               initialState: state,
             ),
           ),
@@ -287,10 +290,11 @@ void main() {
     await tester.ensureVisible(find.text('Profil'));
     await tester.tap(find.text('Profil'));
     await tester.pump();
-    await expectEventuallyFound(tester, find.text('Passwort ändern'));
+    await expectEventuallyFound(tester, find.text('Autoren-Login'));
 
     expect(find.text('Admin-Bereich'), findsNothing);
-    expect(find.text('Passwort ändern'), findsOneWidget);
+    // Nicht eingeloggt: Passwort-aendern-Kachel ist komplett ausgeblendet.
+    expect(find.text('Passwort ändern'), findsNothing);
     expect(find.text('Autoren-Login'), findsOneWidget);
   });
 
@@ -364,6 +368,7 @@ void main() {
               repository: repository,
               remote: remote,
               secureStorage: secureStorage,
+              ref: ref,
               initialState: AuthorAuthState(
                 isLoggedIn: true,
                 isLocked: false,
