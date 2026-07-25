@@ -91,16 +91,14 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   int? get _eventIdAsInt =>
       widget.event['id'] is num ? (widget.event['id'] as num).toInt() : null;
 
-  bool get _canManageEvent {
-    final authorAuth = ref.watch(authorAuthProvider);
-    final eventAuthorId = widget.event['authorId'] is num
-        ? (widget.event['authorId'] as num).toInt()
-        : null;
-    return authorAuth.isLoggedIn &&
-        !authorAuth.isLocked &&
-        !authorAuth.requiresPasswordChange &&
-        (authorAuth.isAdmin || eventAuthorId == authorAuth.authorId);
-  }
+  // Serverseitig berechnete Rechte (Rechtematrix #1/#16: Ownership ODER Admin
+  // mit passendem Layer-Scope) statt lokaler isAdmin-Logik - der Client kennt
+  // den Admin-Layer-Scope nicht und darf ihn nicht selbst nachbilden.
+  bool get _canEditEvent => widget.event['canEdit'] == true;
+
+  bool get _canDeleteEvent => widget.event['canDelete'] == true;
+
+  bool get _canCreateUpdate => widget.event['canCreateUpdate'] == true;
 
   Future<void> _loadUpdates() async {
     final eventId = _eventIdAsInt;
@@ -111,7 +109,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     setState(() => _loadingUpdates = true);
     try {
       final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final updates = await remote.fetchEventUpdates(eventId: eventId);
+      final token = ref.read(authorAuthProvider).token;
+      final updates =
+          await remote.fetchEventUpdates(eventId: eventId, token: token);
       if (!mounted) return;
       setState(() => _updates = updates);
     } catch (error) {
@@ -143,6 +143,96 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       if (mounted) showErrorToast(ref, describeRemoteError(error));
     } finally {
       if (mounted) setState(() => _postingUpdate = false);
+    }
+  }
+
+  Future<void> _editUpdate(Map<String, dynamic> update) async {
+    final eventId = _eventIdAsInt;
+    final updateId = update['id'] is num ? (update['id'] as num).toInt() : null;
+    if (eventId == null || updateId == null) return;
+
+    final controller =
+        TextEditingController(text: update['message'] as String? ?? '');
+    final newMessage = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Update bearbeiten'),
+        content: TextFormField(
+          controller: controller,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 6,
+          decoration: const InputDecoration(labelText: 'Nachricht (Markdown)'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Speichern'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (newMessage == null || newMessage.isEmpty) return;
+
+    try {
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .updateEventUpdate(
+                  token: token,
+                  eventId: eventId,
+                  updateId: updateId,
+                  message: newMessage,
+                ),
+          );
+      await _loadUpdates();
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+    }
+  }
+
+  Future<void> _deleteUpdate(Map<String, dynamic> update) async {
+    final eventId = _eventIdAsInt;
+    final updateId = update['id'] is num ? (update['id'] as num).toInt() : null;
+    if (eventId == null || updateId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Update löschen'),
+        content: const Text('Möchtest du dieses Update löschen?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .deleteEventUpdate(
+                  token: token,
+                  eventId: eventId,
+                  updateId: updateId,
+                ),
+          );
+      await _loadUpdates();
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
     }
   }
 
@@ -305,7 +395,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     final cta2Label = widget.event['cta2Label']?.toString();
     final cta2Url = widget.event['cta2Url']?.toString();
 
-    final canManageEvent = _canManageEvent;
+    final canEditEvent = _canEditEvent;
+    final canDeleteEvent = _canDeleteEvent;
 
     return Scaffold(
       appBar: AppBar(
@@ -322,7 +413,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             onPressed: _saving ? null : _toggleSaved,
             tooltip: _isSaved ? 'Gemerkt' : 'Merken',
           ),
-          if (canManageEvent)
+          if (canEditEvent || canDeleteEvent)
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
@@ -331,9 +422,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   _deleteEvent();
                 }
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
-                PopupMenuItem(value: 'delete', child: Text('Löschen')),
+              itemBuilder: (context) => [
+                if (canEditEvent)
+                  const PopupMenuItem(
+                      value: 'edit', child: Text('Bearbeiten')),
+                if (canDeleteEvent)
+                  const PopupMenuItem(
+                      value: 'delete', child: Text('Löschen')),
               ],
             ),
         ],
@@ -409,6 +504,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                     final authorUsername = update['authorUsername'] as String?;
                     final createdAt =
                         formatEventDateTime(update['createdAt'] as String?);
+                    final canEditUpdate = update['canEdit'] == true;
+                    final canDeleteUpdate = update['canDelete'] == true;
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: Padding(
@@ -419,16 +516,44 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                             SafeMarkdownBody(
                                 data: update['message'] as String? ?? ''),
                             const SizedBox(height: 8),
-                            Text(
-                              '${authorUsername ?? 'Unbekannt'} · $createdAt',
-                              style: Theme.of(context).textTheme.bodySmall,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${authorUsername ?? 'Unbekannt'} · $createdAt',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ),
+                                if (canEditUpdate || canDeleteUpdate)
+                                  PopupMenuButton<String>(
+                                    iconSize: 18,
+                                    onSelected: (value) {
+                                      if (value == 'edit') {
+                                        _editUpdate(update);
+                                      } else if (value == 'delete') {
+                                        _deleteUpdate(update);
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      if (canEditUpdate)
+                                        const PopupMenuItem(
+                                            value: 'edit',
+                                            child: Text('Bearbeiten')),
+                                      if (canDeleteUpdate)
+                                        const PopupMenuItem(
+                                            value: 'delete',
+                                            child: Text('Löschen')),
+                                    ],
+                                  ),
+                              ],
                             ),
                           ],
                         ),
                       ),
                     );
                   }),
-                if (canManageEvent) ...[
+                if (_canCreateUpdate) ...[
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _updateMessageController,

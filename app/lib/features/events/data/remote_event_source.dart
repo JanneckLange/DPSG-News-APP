@@ -1160,9 +1160,16 @@ class RemoteEventSource {
   }
 
   Future<List<Map<String, dynamic>>> fetchEventUpdates(
-      {required int eventId}) async {
+      {required int eventId, String? token}) async {
     final uri = baseUrl.replace(path: '/api/events/$eventId/updates');
-    final response = await _client.get(uri).timeout(timeout);
+    final response = await _client
+        .get(
+          uri,
+          headers: token == null
+              ? null
+              : {HttpHeaders.authorizationHeader: 'Bearer $token'},
+        )
+        .timeout(timeout);
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch event updates: ${response.statusCode} ${response.body}',
@@ -1199,6 +1206,53 @@ class RemoteEventSource {
     }
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     return decoded['update'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateEventUpdate({
+    required String token,
+    required int eventId,
+    required int updateId,
+    required String message,
+  }) async {
+    final uri = baseUrl.replace(path: '/api/events/$eventId/updates/$updateId');
+    final response = await _client
+        .put(
+          uri,
+          headers: {
+            HttpHeaders.authorizationHeader: 'Bearer $token',
+            HttpHeaders.contentTypeHeader: 'application/json',
+          },
+          body: jsonEncode({'message': message}),
+        )
+        .timeout(timeout);
+    if (response.statusCode != 200) {
+      throw RemoteEventSourceException(
+        'Failed to update event update: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
+        serverMessage: _parseServerError(response.body),
+      );
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return decoded['update'] as Map<String, dynamic>;
+  }
+
+  Future<void> deleteEventUpdate({
+    required String token,
+    required int eventId,
+    required int updateId,
+  }) async {
+    final uri = baseUrl.replace(path: '/api/events/$eventId/updates/$updateId');
+    final response = await _client.delete(
+      uri,
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+    ).timeout(timeout);
+    if (response.statusCode != 204) {
+      throw RemoteEventSourceException(
+        'Failed to delete event update: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
+        serverMessage: _parseServerError(response.body),
+      );
+    }
   }
 }
 
