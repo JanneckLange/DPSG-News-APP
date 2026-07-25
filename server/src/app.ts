@@ -3,7 +3,6 @@ import {
   addAdminLayer,
   addAuthorLayerGrant,
   addAuthorTopicGrant,
-  changeAuthorPassword,
   createAuthor,
   createAuthorDraft,
   createAuthorEvent,
@@ -28,14 +27,10 @@ import {
   getEvents,
   getLayerAdmins,
   getLayerById,
-  getLayers,
   getLayerSubtree,
   getTopicById,
   getTopics,
-  loginAuthor,
-  logoutAuthor,
   listAuthors,
-  refreshAuthorSession,
   removeAdminLayer,
   removeAuthorLayerGrant,
   removeAuthorTopicGrant,
@@ -48,21 +43,18 @@ import {
   deleteEventUpdateById,
   updateLayer,
   updateTopic,
-  clearDrafts,
-  clearEvents,
-  clearAuthorData,
-  createAuthorForTesting,
-  AuthorIdentity,
   DraftInput,
   EventInput,
   Layer,
 } from './db';
 import { sendEventNotification, sendEventUpdateNotification } from './fcm';
-import { getBuildInfo } from './buildInfo';
 import { logInfo, logRequestError } from './logger';
 import { MAX_TITLE_LENGTH, validateEventTextFields, validateMessageField } from './eventValidation';
 import { requestContextMiddleware } from './middleware/requestContext';
-import { authRateLimiter, globalRateLimiter } from './middleware/rateLimit';
+import { globalRateLimiter } from './middleware/rateLimit';
+import { publicRouter } from './routes/public';
+import { authRouter } from './routes/auth';
+import { testOnlyRouter } from './routes/testOnly';
 import {
   getViewerSession,
   requireAdminSession,
@@ -120,179 +112,8 @@ if (process.env.TEST_RUN === 'true') {
 app.use(requestContextMiddleware);
 app.use(globalRateLimiter);
 
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    build: getBuildInfo(),
-  });
-});
-
-app.get('/api/layers', async (_req: Request, res: Response) => {
-  try {
-    const layers = await getLayers();
-    const lastChange = layers.reduce((max, layer) => (layer.updatedAt > max ? layer.updatedAt : max), '');
-    res.json({ layers, lastChange });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to load layers' });
-  }
-});
-
-app.get('/api/topics', async (req: Request, res: Response) => {
-  try {
-    const layerId = typeof req.query.layerId === 'string' ? Number(req.query.layerId) : undefined;
-    const topics = await getTopics(Number.isInteger(layerId) && layerId! > 0 ? layerId : undefined);
-    res.json({ topics });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to load topics' });
-  }
-});
-
-app.get('/api/events', async (req: Request, res: Response) => {
-  try {
-    const layerId = typeof req.query.layerId === 'string' ? Number(req.query.layerId) : undefined;
-    const events = await getEvents(Number.isInteger(layerId) && layerId! > 0 ? layerId : undefined);
-    const viewer = await getViewerSession(req);
-    const authorMap = viewer?.author.isAdmin ? new Map((await listAuthors()).map((author) => [author.id, author.username])) : null;
-    const currentAuthorId = viewer?.author.id ?? null;
-    const viewerUsable = Boolean(viewer && viewer.requiresPasswordChange === false);
-
-    const enrichedEvents = await Promise.all(events.map(async (event) => {
-      const canManage = viewerUsable
-        ? await canManageWithinLayerScope(viewer!.author, event.authorId, event.layerId)
-        : false;
-      return {
-        ...event,
-        canEdit: canManage,
-        canDelete: canManage,
-        canCreateUpdate: Boolean(viewerUsable && event.authorId === currentAuthorId),
-        createdBy: authorMap && event.authorId != null ? authorMap.get(event.authorId) ?? null : undefined,
-      };
-    }));
-
-    res.json({ events: enrichedEvents });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to load events' });
-  }
-});
-
-app.post('/api/auth/login', authRateLimiter, async (req: Request, res: Response) => {
-  try {
-    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
-    const password = typeof req.body.password === 'string' ? req.body.password : '';
-    if (!username || !password) {
-      return respondBadRequest(req, res, 'Username and password are required');
-    }
-
-    const session = await loginAuthor(username, password);
-    if (!session) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    res.json({
-      token: session.token,
-      accessToken: session.token,
-      refreshToken: session.refreshToken,
-      author: session.author,
-      requiresPasswordChange: session.requiresPasswordChange,
-      expiresAt: session.expiresAt,
-      refreshExpiresAt: session.refreshExpiresAt,
-    });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to login' });
-  }
-});
-
-app.post('/api/auth/refresh', authRateLimiter, async (req: Request, res: Response) => {
-  try {
-    const refreshToken = typeof req.body.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
-    if (!refreshToken) {
-      return respondBadRequest(req, res, 'Refresh token is required');
-    }
-
-    const session = await refreshAuthorSession(refreshToken);
-    if (!session) {
-      return res.status(401).json({ error: 'Invalid refresh token' });
-    }
-    res.json({
-      token: session.token,
-      accessToken: session.token,
-      refreshToken: session.refreshToken,
-      author: session.author,
-      requiresPasswordChange: session.requiresPasswordChange,
-      expiresAt: session.expiresAt,
-      refreshExpiresAt: session.refreshExpiresAt,
-    });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to refresh session' });
-  }
-});
-
-app.post('/api/auth/logout', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    await logoutAuthor(res.locals.authToken as string);
-    res.status(204).end();
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to logout' });
-  }
-});
-
-app.get('/api/auth/me', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    const session = res.locals.authorSession as {
-      author: AuthorIdentity;
-      requiresPasswordChange: boolean;
-      expiresAt: string;
-    };
-    res.json({
-      author: session.author,
-      requiresPasswordChange: session.requiresPasswordChange,
-      expiresAt: session.expiresAt,
-    });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to load author session' });
-  }
-});
-
-app.post('/api/auth/change-password', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-
-    const newPassword = typeof req.body.newPassword === 'string' ? req.body.newPassword : '';
-    const oldPassword = typeof req.body.oldPassword === 'string' ? req.body.oldPassword : undefined;
-    if (newPassword.trim().length < 8) {
-      return respondBadRequest(req, res, 'New password must be at least 8 characters long');
-    }
-
-    const author = res.locals.author as { id: number; username: string };
-    const changed = await changeAuthorPassword(author.id, newPassword, oldPassword);
-    if (changed === 'invalid_old_password') {
-      return respondBadRequest(req, res, 'Invalid old password');
-    }
-    if (changed === 'author_not_found') {
-      return res.status(404).json({ error: 'Author not found' });
-    }
-
-    res.status(204).end();
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to change password' });
-  }
-});
+app.use(publicRouter);
+app.use(authRouter);
 
 app.get('/api/author/events', async (req: Request, res: Response) => {
   try {
@@ -1520,32 +1341,7 @@ app.delete('/api/admin/topics/:id', async (req: Request, res: Response) => {
 });
 
 // Test-only reset endpoint to clear DB and optionally seed a test author.
-app.post('/__test/reset', async (req: Request, res: Response) => {
-  try {
-    if (process.env.ENABLE_TEST_ENDPOINTS !== 'true') {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    await clearEvents();
-    await clearDrafts();
-    await clearAuthorData();
-    const seed = req.body?.seedAuthor;
-    if (seed && seed.username && seed.password) {
-      await createAuthorForTesting({ username: seed.username, password: seed.password, oneTimePassword: seed.oneTimePassword ?? seed.password, isAdmin: seed.isAdmin ?? false });
-    }
-    res.json({ ok: true });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to reset test data' });
-  }
-});
-
-// Simple health endpoint for test orchestration
-app.get('/__test/health', (_req: Request, res: Response) => {
-  if (process.env.TEST_RUN !== 'true') {
-    return res.status(404).json({ error: 'Not found' });
-  }
-  res.json({ ok: true, mode: 'test' });
-});
+app.use(testOnlyRouter);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Not found' });
