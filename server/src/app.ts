@@ -4,30 +4,21 @@ import {
   addAuthorLayerGrant,
   addAuthorTopicGrant,
   createAuthor,
-  createAuthorDraft,
   createAuthorEvent,
   createEventUpdate,
-  createLayer,
-  createTopic,
   deleteAllEvents,
-  deleteAuthorDraftById,
   deleteAuthorEventById,
   deleteAuthorById,
   deleteEventById,
-  deleteLayer,
-  deleteTopic,
   getAdminLayerIds,
   getAuthorById,
-  getAuthorDrafts,
   getAuthorEvents,
   getAuthorLayerGrantIds,
   getAuthorTopicGrantIds,
   getEventUpdateById,
   getEventUpdates,
   getEvents,
-  getLayerAdmins,
   getLayerById,
-  getLayerSubtree,
   getTopicById,
   getTopics,
   listAuthors,
@@ -36,24 +27,22 @@ import {
   removeAuthorTopicGrant,
   resetAuthorPassword,
   setAuthorActive,
-  updateAuthorDraftById,
   updateAuthorEventById,
   updateEventById,
   updateEventUpdateById,
   deleteEventUpdateById,
-  updateLayer,
-  updateTopic,
-  DraftInput,
   EventInput,
-  Layer,
 } from './db';
 import { sendEventNotification, sendEventUpdateNotification } from './fcm';
 import { logInfo, logRequestError } from './logger';
-import { MAX_TITLE_LENGTH, validateEventTextFields, validateMessageField } from './eventValidation';
+import { validateEventTextFields, validateMessageField } from './eventValidation';
 import { requestContextMiddleware } from './middleware/requestContext';
 import { globalRateLimiter } from './middleware/rateLimit';
 import { publicRouter } from './routes/public';
 import { authRouter } from './routes/auth';
+import { draftsRouter } from './routes/drafts';
+import { adminLayersRouter } from './routes/adminLayers';
+import { adminTopicsRouter } from './routes/adminTopics';
 import { testOnlyRouter } from './routes/testOnly';
 import {
   getViewerSession,
@@ -70,12 +59,7 @@ import {
   requireManageableWithinLayerScope,
   requireOwnEvent,
 } from './middleware/scope';
-import {
-  isForeignKeyViolation,
-  isUniqueViolation,
-  parseLayerId,
-  respondBadRequest,
-} from './middleware/validation';
+import { parseLayerId, respondBadRequest } from './middleware/validation';
 
 const app = express();
 app.disable('x-powered-by');
@@ -229,126 +213,7 @@ app.post('/api/author/events', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/author/drafts', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const author = res.locals.author as { id: number };
-    const drafts = await getAuthorDrafts(author.id);
-    res.json({ drafts });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to load drafts' });
-  }
-});
-
-app.post('/api/author/drafts', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
-    const rawLayerId = (req.body as DraftInput).layerId;
-    const layerId = rawLayerId != null ? parseLayerId(rawLayerId) : undefined;
-    if (!title) {
-      return respondBadRequest(req, res, 'Missing required draft fields');
-    }
-    let layer: Layer | null = null;
-    if (rawLayerId != null) {
-      layer = layerId ? await getLayerById(layerId) : null;
-      if (!layer) {
-        return respondBadRequest(req, res, 'Invalid layerId');
-      }
-    }
-    const topicIds = layer ? (await getTopics(layer.id)).map((t) => t.id) : undefined;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, topicIds);
-    if (!fieldsCheck.valid) {
-      return respondBadRequest(req, res, fieldsCheck.error);
-    }
-
-    const author = res.locals.author as { id: number };
-    const draft = await createAuthorDraft({ title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
-    res.status(201).json({ draft });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to create draft' });
-  }
-});
-
-app.put('/api/author/drafts/:id', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const id = Number(req.params.id);
-    if (Number.isNaN(id) || id <= 0) {
-      return respondBadRequest(req, res, 'Invalid draft id');
-    }
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as DraftInput;
-    const rawLayerId = (req.body as DraftInput).layerId;
-    const layerId = rawLayerId != null ? parseLayerId(rawLayerId) : undefined;
-    if (!title) {
-      return respondBadRequest(req, res, 'Missing required draft fields');
-    }
-    let layer: Layer | null = null;
-    if (rawLayerId != null) {
-      layer = layerId ? await getLayerById(layerId) : null;
-      if (!layer) {
-        return respondBadRequest(req, res, 'Invalid layerId');
-      }
-    }
-    const topicIds = layer ? (await getTopics(layer.id)).map((t) => t.id) : undefined;
-    const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, topicIds);
-    if (!fieldsCheck.valid) {
-      return respondBadRequest(req, res, fieldsCheck.error);
-    }
-
-    const author = res.locals.author as { id: number };
-    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url });
-    if (!draft) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
-    res.json({ draft });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to update draft' });
-  }
-});
-
-app.delete('/api/author/drafts/:id', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const id = Number(req.params.id);
-    if (Number.isNaN(id) || id <= 0) {
-      return respondBadRequest(req, res, 'Invalid draft id');
-    }
-
-    const author = res.locals.author as { id: number };
-    const deleted = await deleteAuthorDraftById(id, author.id);
-    if (!deleted) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
-    res.status(204).end();
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to delete draft' });
-  }
-});
+app.use(draftsRouter);
 
 app.put('/api/events/:id', async (req: Request, res: Response) => {
   try {
@@ -1053,292 +918,8 @@ app.delete('/api/admin/users/:id/topic-grants/:topicId', async (req: Request, re
   }
 });
 
-app.get('/api/admin/layers', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
-    if (!author?.adminLayerIds?.length) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-    const layers = await getLayerSubtree(author.adminLayerIds);
-    res.json({ layers });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to load layers' });
-  }
-});
-
-app.get('/api/admin/layers/:id/admins', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const id = parseLayerId(req.params.id);
-    if (id === undefined) {
-      return respondBadRequest(req, res, 'Invalid layer id');
-    }
-    if (!await isKnownLayerId(id)) {
-      return res.status(404).json({ error: 'Layer not found' });
-    }
-    if (!await requireLayerScope(res, id)) {
-      return;
-    }
-    const admins = await getLayerAdmins(id);
-    res.json({ admins });
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to load layer admins' });
-  }
-});
-
-app.post('/api/admin/layers', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-    const parentId = req.body.parentId != null ? parseLayerId(req.body.parentId) : null;
-    if (!name || name.length > MAX_TITLE_LENGTH) {
-      return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
-    }
-    if (req.body.parentId != null && (parentId == null || !await isKnownLayerId(parentId))) {
-      return respondBadRequest(req, res, 'Invalid parentId');
-    }
-    if (!await requireLayerScope(res, parentId)) {
-      return;
-    }
-    const layer = await createLayer({ name, parentId });
-    res.status(201).json({ layer });
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      return res.status(409).json({ error: 'A layer with this name already exists at this position' });
-    }
-    if (isForeignKeyViolation(error)) {
-      return respondBadRequest(req, res, 'Invalid parentId');
-    }
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to create layer' });
-  }
-});
-
-app.patch('/api/admin/layers/:id', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const id = Number(req.params.id);
-    if (Number.isNaN(id) || id <= 0) {
-      return respondBadRequest(req, res, 'Invalid layer id');
-    }
-    const existing = await getLayerById(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Layer not found' });
-    }
-    if (!await requireLayerScope(res, id)) {
-      return;
-    }
-    const name = typeof req.body.name === 'string' ? req.body.name.trim() : existing.name;
-    if (!name || name.length > MAX_TITLE_LENGTH) {
-      return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
-    }
-    const updated = await updateLayer(id, { name, parentId: existing.parentId });
-    if (updated.status === 'not_found') {
-      return res.status(404).json({ error: 'Layer not found' });
-    }
-    if (updated.status === 'is_root') {
-      return res.status(409).json({ error: 'Der Wurzel-Layer (Bundesverband) kann keinem anderen Layer zugeordnet werden' });
-    }
-    if (updated.status === 'would_create_second_root') {
-      return res.status(409).json({ error: 'Layer kann nicht zu einem zweiten Wurzel-Layer werden' });
-    }
-    res.json({ layer: updated.layer });
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      return res.status(409).json({ error: 'A layer with this name already exists at this position' });
-    }
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to update layer' });
-  }
-});
-
-app.delete('/api/admin/layers/:id', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const id = Number(req.params.id);
-    if (Number.isNaN(id) || id <= 0) {
-      return respondBadRequest(req, res, 'Invalid layer id');
-    }
-    if (!await isKnownLayerId(id)) {
-      return res.status(404).json({ error: 'Layer not found' });
-    }
-    if (!await requireLayerScope(res, id)) {
-      return;
-    }
-    const result = await deleteLayer(id);
-    if (result === 'not_found') {
-      return res.status(404).json({ error: 'Layer not found' });
-    }
-    if (result === 'is_root') {
-      return res.status(409).json({ error: 'Der Wurzel-Layer (Bundesverband) kann nicht gelöscht werden' });
-    }
-    if (result === 'has_children') {
-      return res.status(409).json({ error: 'Layer has child layers and cannot be deleted' });
-    }
-    if (result === 'in_use') {
-      return res.status(409).json({ error: 'Layer is referenced by events or drafts and cannot be deleted' });
-    }
-    res.status(204).end();
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to delete layer' });
-  }
-});
-
-app.post('/api/admin/topics', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-    const layerId = parseLayerId(req.body.layerId);
-    if (!name || name.length > MAX_TITLE_LENGTH) {
-      return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
-    }
-    if (!layerId || !await isKnownLayerId(layerId)) {
-      return respondBadRequest(req, res, 'Invalid layerId');
-    }
-    if (!await requireLayerScope(res, layerId)) {
-      return;
-    }
-    const topic = await createTopic({ name, layerId });
-    res.status(201).json({ topic });
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      return res.status(409).json({ error: 'A topic with this name already exists for this layer' });
-    }
-    if (isForeignKeyViolation(error)) {
-      return respondBadRequest(req, res, 'Invalid layerId');
-    }
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to create topic' });
-  }
-});
-
-app.patch('/api/admin/topics/:id', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const id = Number(req.params.id);
-    if (Number.isNaN(id) || id <= 0) {
-      return respondBadRequest(req, res, 'Invalid topic id');
-    }
-    const existing = await getTopicById(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
-    if (!await requireLayerScope(res, existing.layerId)) {
-      return;
-    }
-    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
-    if (!name || name.length > MAX_TITLE_LENGTH) {
-      return respondBadRequest(req, res, `name is required and must not exceed ${MAX_TITLE_LENGTH} characters`);
-    }
-    const updated = await updateTopic(id, name);
-    if (!updated) {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
-    res.json({ topic: updated });
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      return res.status(409).json({ error: 'A topic with this name already exists for this layer' });
-    }
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to update topic' });
-  }
-});
-
-app.delete('/api/admin/topics/:id', async (req: Request, res: Response) => {
-  try {
-    if (!await requireAuthorAuth(req, res)) {
-      return;
-    }
-    if (!requireAdminSession(res)) {
-      return;
-    }
-    if (!requirePasswordChangeCompleted(res)) {
-      return;
-    }
-    const id = Number(req.params.id);
-    if (Number.isNaN(id) || id <= 0) {
-      return respondBadRequest(req, res, 'Invalid topic id');
-    }
-    const existing = await getTopicById(id);
-    if (!existing) {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
-    if (!await requireLayerScope(res, existing.layerId)) {
-      return;
-    }
-    const result = await deleteTopic(id);
-    if (result === 'not_found') {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
-    if (result === 'in_use') {
-      return res.status(409).json({ error: 'Topic is referenced by events or drafts and cannot be deleted' });
-    }
-    res.status(204).end();
-  } catch (error) {
-    logRequestError(error, res.locals.requestId);
-    res.status(500).json({ error: 'Unable to delete topic' });
-  }
-});
+app.use(adminLayersRouter);
+app.use(adminTopicsRouter);
 
 // Test-only reset endpoint to clear DB and optionally seed a test author.
 app.use(testOnlyRouter);
