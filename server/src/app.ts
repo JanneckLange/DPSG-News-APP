@@ -1,5 +1,4 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { randomUUID } from 'crypto';
 import {
   addAdminLayer,
   addAuthorLayerGrant,
@@ -23,7 +22,6 @@ import {
   getAuthorDrafts,
   getAuthorEvents,
   getAuthorLayerGrantIds,
-  getAuthorSession,
   getAuthorTopicGrantIds,
   getEventUpdateById,
   getEventUpdates,
@@ -34,7 +32,6 @@ import {
   getLayerSubtree,
   getTopicById,
   getTopics,
-  isLayerInAdminScope,
   loginAuthor,
   logoutAuthor,
   listAuthors,
@@ -62,9 +59,31 @@ import {
 } from './db';
 import { sendEventNotification, sendEventUpdateNotification } from './fcm';
 import { getBuildInfo } from './buildInfo';
-import { incrementUnknownEndpointCounter, isKnownEndpoint, logInfo, logRequest, logRequestError, logWarn } from './logger';
-import { createRateLimitStore } from './rateLimitStore';
+import { logInfo, logRequestError } from './logger';
 import { MAX_TITLE_LENGTH, validateEventTextFields, validateMessageField } from './eventValidation';
+import { requestContextMiddleware } from './middleware/requestContext';
+import { authRateLimiter, globalRateLimiter } from './middleware/rateLimit';
+import {
+  getViewerSession,
+  requireAdminSession,
+  requireAuthorAuth,
+  requirePasswordChangeCompleted,
+} from './middleware/auth';
+import {
+  canManageWithinLayerScope,
+  isKnownLayerId,
+  requireEventGrant,
+  requireLayerScope,
+  requireLayerScopeForAll,
+  requireManageableWithinLayerScope,
+  requireOwnEvent,
+} from './middleware/scope';
+import {
+  isForeignKeyViolation,
+  isUniqueViolation,
+  parseLayerId,
+  respondBadRequest,
+} from './middleware/validation';
 
 const app = express();
 app.disable('x-powered-by');
@@ -98,225 +117,8 @@ if (process.env.TEST_RUN === 'true') {
   }
 }
 
-function positiveIntegerFromEnv(name: string, fallback: number): number {
-  const raw = process.env[name]?.trim();
-  if (!raw) {
-    return fallback;
-  }
-  const parsed = Number(raw);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`${name} must be a positive integer`);
-  }
-  return parsed;
-}
-
-type RateLimiterOptions = {
-  scope: string;
-  windowMs: number;
-  maxRequests: number;
-  errorMessage: string;
-  keyFactory: (req: Request) => string;
-};
-
-const rateLimitStore = createRateLimitStore();
-
-function createRateLimiter(options: RateLimiterOptions) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const nowMs = Date.now();
-      const key = `${options.scope}:${options.keyFactory(req)}`;
-      const current = await rateLimitStore.increment(key, options.windowMs, nowMs);
-      if (current.count > options.maxRequests) {
-        const retryAfterSeconds = Math.max(1, Math.ceil((current.resetAtMs - nowMs) / 1000));
-        res.setHeader('Retry-After', String(retryAfterSeconds));
-        res.status(429).json({ error: options.errorMessage });
-        return;
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-}
-
-const globalRateLimitWindowMs = positiveIntegerFromEnv('GLOBAL_RATE_LIMIT_WINDOW_MS', 60_000);
-const globalRateLimitMax = positiveIntegerFromEnv('GLOBAL_RATE_LIMIT_MAX_REQUESTS', 300);
-const authRateLimitWindowMs = positiveIntegerFromEnv('AUTH_RATE_LIMIT_WINDOW_MS', 60_000);
-const authRateLimitMax = positiveIntegerFromEnv('AUTH_RATE_LIMIT_MAX_REQUESTS', 10);
-
-const globalRateLimiter = createRateLimiter({
-  scope: 'global',
-  windowMs: globalRateLimitWindowMs,
-  maxRequests: globalRateLimitMax,
-  errorMessage: 'Too many requests',
-  keyFactory: (req) => req.ip || 'unknown',
-});
-
-const authRateLimiter = createRateLimiter({
-  scope: 'auth',
-  windowMs: authRateLimitWindowMs,
-  maxRequests: authRateLimitMax,
-  errorMessage: 'Too many login attempts',
-  keyFactory: (req) => {
-    const username = typeof req.body?.username === 'string' ? req.body.username.trim().toLowerCase() : '';
-    return `${req.ip || 'unknown'}:${username}`;
-  },
-});
-
-app.use((req: Request, res: Response, next) => {
-  const startedAt = Date.now();
-  const headerRequestId = req.header('x-request-id');
-  const requestId = headerRequestId && headerRequestId.trim() ? headerRequestId.trim() : randomUUID();
-  res.locals.requestId = requestId;
-  res.setHeader('x-request-id', requestId);
-
-  res.on('finish', () => {
-    if (isKnownEndpoint(req.method, req.path)) {
-      logRequest({
-        requestId,
-        method: req.method,
-        path: req.originalUrl,
-        statusCode: res.statusCode,
-        durationMs: Date.now() - startedAt,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
-      });
-      return;
-    }
-
-    incrementUnknownEndpointCounter();
-  });
-
-  next();
-});
+app.use(requestContextMiddleware);
 app.use(globalRateLimiter);
-
-function getBearerToken(req: Request): string | null {
-  const authorization = req.header('authorization');
-  if (!authorization) {
-    return null;
-  }
-  const [scheme, value] = authorization.split(' ');
-  if (scheme?.toLowerCase() !== 'bearer' || !value?.trim()) {
-    return null;
-  }
-  return value.trim();
-}
-
-async function requireAuthorAuth(req: Request, res: Response): Promise<boolean> {
-  const token = getBearerToken(req);
-  if (!token) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
-  }
-
-  const session = await getAuthorSession(token);
-  if (!session) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
-  }
-
-  res.locals.author = session.author;
-  res.locals.authorSession = session;
-  res.locals.authToken = token;
-  return true;
-}
-
-async function getViewerSession(req: Request) {
-  const token = getBearerToken(req);
-  if (!token) {
-    return null;
-  }
-  return getAuthorSession(token);
-}
-
-function requireAdminSession(res: Response): boolean {
-  const author = res.locals.author as { isAdmin?: boolean } | undefined;
-  if (!author?.isAdmin) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  return true;
-}
-
-async function requireLayerScope(res: Response, targetLayerId: number | null | undefined): Promise<boolean> {
-  const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
-  if (!targetLayerId || !author?.adminLayerIds?.length || !await isLayerInAdminScope(author.adminLayerIds, targetLayerId)) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  return true;
-}
-
-// Fuer Aktionen gegen einen ANDEREN Admin (delete/reset-password/Layer-Verwaltung):
-// jeder Layer des Ziel-Admins muss im Scope des handelnden Admins liegen, nicht nur
-// irgendeiner davon - sonst koennte ein niedriger-scoped Admin einen Account
-// beeinflussen, der auch Rechte ausserhalb seiner eigenen Reichweite haelt.
-async function requireLayerScopeForAll(res: Response, targetLayerIds: number[]): Promise<boolean> {
-  const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
-  if (!author?.adminLayerIds?.length) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  if (!targetLayerIds.length) {
-    // Ziel hat noch keine Admin-Layer (z.B. Promotion eines Autors zum Admin) -
-    // nichts ausserhalb des eigenen Scopes vorhanden, also unbedenklich.
-    return true;
-  }
-  for (const targetLayerId of targetLayerIds) {
-    if (!await isLayerInAdminScope(author.adminLayerIds, targetLayerId)) {
-      res.status(403).json({ error: 'Forbidden' });
-      return false;
-    }
-  }
-  return true;
-}
-
-// Autoren duerfen Events nur auf explizit zugewiesenen Layern/Topics erstellen
-// (Rechtematrix aus #1: "create post: own layer/topic", unabhaengig vom Admin-Status).
-function requireEventGrant(res: Response, layerId: number, topicId: number | undefined): boolean {
-  const author = res.locals.author as AuthorIdentity | undefined;
-  if (!author?.layerGrantIds?.includes(layerId)) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  if (typeof topicId === 'number' && !author.topicGrantIds?.includes(topicId)) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  return true;
-}
-
-function requirePasswordChangeCompleted(res: Response): boolean {
-  const session = res.locals.authorSession as { requiresPasswordChange: boolean } | undefined;
-  if (session?.requiresPasswordChange) {
-    res.status(403).json({ error: 'Password change required' });
-    return false;
-  }
-  return true;
-}
-
-function respondBadRequest(req: Request, res: Response, message: string): Response {
-  logWarn(message, { requestId: res.locals.requestId, method: req.method, path: req.originalUrl });
-  return res.status(400).json({ error: message });
-}
-
-function parseLayerId(value: unknown): number | undefined {
-  const num = typeof value === 'number' ? value : Number(value);
-  return Number.isInteger(num) && num > 0 ? num : undefined;
-}
-
-async function isKnownLayerId(layerId: number): Promise<boolean> {
-  return (await getLayerById(layerId)) !== null;
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { code?: string }).code === '23505';
-}
-
-function isForeignKeyViolation(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { code?: string }).code === '23503';
-}
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({
@@ -726,57 +528,6 @@ app.delete('/api/author/drafts/:id', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Unable to delete draft' });
   }
 });
-
-// Ownership ODER (Admin UND targetLayerId liegt im eigenen Scope, "und darunter").
-// Rechtematrix aus #1/#16: "edit/delete post" bzw. "edit/delete update".
-async function canManageWithinLayerScope(
-  author: AuthorIdentity | undefined,
-  targetAuthorId: number | null,
-  targetLayerId: number | null
-): Promise<boolean> {
-  if (!author) {
-    return false;
-  }
-  if (targetAuthorId != null && targetAuthorId === author.id) {
-    return true;
-  }
-  if (!author.isAdmin || targetLayerId == null) {
-    return false;
-  }
-  return isLayerInAdminScope(author.adminLayerIds, targetLayerId);
-}
-
-async function requireManageableWithinLayerScope(
-  res: Response,
-  targetAuthorId: number | null,
-  targetLayerId: number | null
-): Promise<boolean> {
-  const author = res.locals.author as AuthorIdentity | undefined;
-  if (!author) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
-  }
-  if (!await canManageWithinLayerScope(author, targetAuthorId, targetLayerId)) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  return true;
-}
-
-// Reine Ownership ohne Admin-Bypass - fuer "create update" (Rechtematrix: Admin
-// darf grundsaetzlich keine Updates erstellen, auch nicht innerhalb seines Scopes).
-function requireOwnEvent(res: Response, eventAuthorId: number | null): boolean {
-  const author = res.locals.author as { id: number } | undefined;
-  if (!author) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return false;
-  }
-  if (eventAuthorId !== author.id) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  return true;
-}
 
 app.put('/api/events/:id', async (req: Request, res: Response) => {
   try {
