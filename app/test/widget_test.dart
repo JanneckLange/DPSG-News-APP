@@ -82,6 +82,8 @@ class FakeSettingsRepository extends settings_repo.SettingsRepository {
   String? _username;
   bool _isAdmin = false;
   bool _requiresPasswordChange = false;
+  List<int> _layerGrantIds = const <int>[];
+  List<int> _topicGrantIds = const <int>[];
 
   @override
   int? getAuthorId() => _authorId;
@@ -96,16 +98,35 @@ class FakeSettingsRepository extends settings_repo.SettingsRepository {
   bool getAuthorRequiresPasswordChange() => _requiresPasswordChange;
 
   @override
+  List<int> getAuthorLayerGrantIds() => _layerGrantIds;
+
+  @override
+  List<int> getAuthorTopicGrantIds() => _topicGrantIds;
+
+  @override
   Future<void> saveAuthorSession({
     required int authorId,
     required String username,
     required bool isAdmin,
     required bool requiresPasswordChange,
+    List<int> layerGrantIds = const <int>[],
+    List<int> topicGrantIds = const <int>[],
   }) async {
     _authorId = authorId;
     _username = username;
     _isAdmin = isAdmin;
     _requiresPasswordChange = requiresPasswordChange;
+    _layerGrantIds = layerGrantIds;
+    _topicGrantIds = topicGrantIds;
+  }
+
+  @override
+  Future<void> setAuthorGrants({
+    required List<int> layerGrantIds,
+    required List<int> topicGrantIds,
+  }) async {
+    _layerGrantIds = layerGrantIds;
+    _topicGrantIds = topicGrantIds;
   }
 
   @override
@@ -114,6 +135,8 @@ class FakeSettingsRepository extends settings_repo.SettingsRepository {
     _username = null;
     _isAdmin = false;
     _requiresPasswordChange = false;
+    _layerGrantIds = const <int>[];
+    _topicGrantIds = const <int>[];
   }
 
   @override

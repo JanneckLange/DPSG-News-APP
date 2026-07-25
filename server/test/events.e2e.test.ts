@@ -71,7 +71,7 @@ describe('Events API e2e', () => {
   });
 
   it('rejects a title-only event as invalid (events always require full data)', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-a', 'secret-123');
 
     const res = await request(app)
@@ -83,7 +83,7 @@ describe('Events API e2e', () => {
   });
 
   it('allows creating and updating events without an endDate (falls back to startDate)', async () => {
-    await createAuthorForTesting({ username: 'author-enddate', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-enddate', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-enddate', 'secret-123');
 
     const createResponse = await request(app)
@@ -128,7 +128,7 @@ describe('Events API e2e', () => {
   });
 
   it('creates and returns own events for authenticated author', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-a', 'secret-123');
 
     const eventBody = {
@@ -162,7 +162,7 @@ describe('Events API e2e', () => {
   });
 
   it('persists and returns CTA button fields through create and update', async () => {
-    await createAuthorForTesting({ username: 'author-cta', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-cta', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-cta', 'secret-123');
 
     const createResponse = await request(app)
@@ -221,7 +221,7 @@ describe('Events API e2e', () => {
   });
 
   it('rejects events with an oversized title', async () => {
-    await createAuthorForTesting({ username: 'author-oversized', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-oversized', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-oversized', 'secret-123');
 
     const response = await request(app)
@@ -238,7 +238,7 @@ describe('Events API e2e', () => {
   });
 
   it('rejects a CTA URL with a javascript: scheme', async () => {
-    await createAuthorForTesting({ username: 'author-xss', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-xss', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-xss', 'secret-123');
 
     const response = await request(app)
@@ -274,7 +274,12 @@ describe('Events API e2e', () => {
   });
 
   it('rejects a topicId that does not belong to the selected layer', async () => {
-    await createAuthorForTesting({ username: 'author-bad-topic', password: 'secret-123' });
+    await createAuthorForTesting({
+      username: 'author-bad-topic',
+      password: 'secret-123',
+      layerGrantIds: [koelnLayerId],
+      topicGrantIds: [hamburgRoverTopicId],
+    });
     const token = await loginAuthor('author-bad-topic', 'secret-123');
 
     const response = await request(app)
@@ -292,7 +297,12 @@ describe('Events API e2e', () => {
   });
 
   it('accepts a topicId that belongs to the selected layer', async () => {
-    await createAuthorForTesting({ username: 'author-good-topic', password: 'secret-123' });
+    await createAuthorForTesting({
+      username: 'author-good-topic',
+      password: 'secret-123',
+      layerGrantIds: [hamburgLayerId],
+      topicGrantIds: [hamburgRoverTopicId],
+    });
     const token = await loginAuthor('author-good-topic', 'secret-123');
 
     const response = await request(app)
@@ -311,8 +321,8 @@ describe('Events API e2e', () => {
   });
 
   it('shows all events in public endpoint but only own events in author endpoint', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
-    await createAuthorForTesting({ username: 'author-b', password: 'secret-456' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'author-b', password: 'secret-456', layerGrantIds: [hamburgLayerId] });
     const tokenA = await loginAuthor('author-a', 'secret-123');
     const tokenB = await loginAuthor('author-b', 'secret-456');
 
@@ -352,7 +362,7 @@ describe('Events API e2e', () => {
   });
 
   it('updates and deletes own event only', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     await createAuthorForTesting({ username: 'author-b', password: 'secret-456' });
     const tokenA = await loginAuthor('author-a', 'secret-123');
     const tokenB = await loginAuthor('author-b', 'secret-456');
@@ -414,6 +424,7 @@ describe('Events API e2e', () => {
       password: 'secret-123',
       oneTimePassword: 'otp-123456',
       mustChangePassword: false,
+      layerGrantIds: [koelnLayerId],
     });
 
     const token = await loginAuthor('author-otp', 'otp-123456');
@@ -486,7 +497,7 @@ describe('Events API e2e', () => {
   });
 
   it('changes password with old password for regular login', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-a', 'secret-123');
 
     const invalidOldPassword = await request(app)
@@ -515,7 +526,7 @@ describe('Events API e2e', () => {
   });
 
   it('rotates refresh tokens and invalidates reused refresh tokens', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const loginResponse = await request(app).post('/api/auth/login').send({
       username: 'author-a',
       password: 'secret-123',
@@ -535,7 +546,7 @@ describe('Events API e2e', () => {
   });
 
   it('revokes active sessions and refresh tokens on password change', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const loginResponse = await request(app).post('/api/auth/login').send({
       username: 'author-a',
       password: 'secret-123',
@@ -564,7 +575,7 @@ describe('Events API e2e', () => {
 
   it('continues when notification sending fails', async () => {
     (sendEventNotification as jest.Mock).mockRejectedValueOnce(new Error('FCM down'));
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-a', 'secret-123');
 
     const response = await request(app)
@@ -584,7 +595,7 @@ describe('Events API e2e', () => {
   });
 
   it('exposes creator metadata and edit rights to admins', async () => {
-    await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
+    await createAuthorForTesting({ username: 'author-a', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     await createAuthorForTesting({ username: 'admin', password: 'admin-123', isAdmin: true });
     const authorToken = await loginAuthor('author-a', 'secret-123');
     const adminToken = await loginAuthor('admin', 'admin-123');

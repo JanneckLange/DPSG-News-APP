@@ -65,7 +65,7 @@ afterAll(async () => {
 
 describe('Event updates API e2e', () => {
   it('requires authentication to post an update, but not to read updates', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
     const eventId = await createEvent(token, 'Event ohne Auth-Test');
 
@@ -78,7 +78,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('lets the event creator post an update and shows author + timestamp', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
     const eventId = await createEvent(token, 'Event mit Update');
 
@@ -107,7 +107,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('exposes lastUpdateAt on the event once an update has been posted', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
     const eventId = await createEvent(token, 'Event ohne Update');
 
@@ -153,7 +153,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('forbids a foreign author (neither creator nor admin) from posting an update', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     await createAuthorForTesting({ username: 'evtupd-other', password: 'pwd-456' });
     const ownerToken = await loginAuthor('evtupd-author', 'pwd-123');
     const otherToken = await loginAuthor('evtupd-other', 'pwd-456');
@@ -168,7 +168,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('lets an admin post an update to a foreign event', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     await createAuthorForTesting({ username: 'evtupd-admin', password: 'pwd-789', isAdmin: true });
     const ownerToken = await loginAuthor('evtupd-author', 'pwd-123');
     const adminToken = await loginAuthor('evtupd-admin', 'pwd-789');
@@ -184,7 +184,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('rejects an empty update message', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
     const eventId = await createEvent(token, 'Event ohne Nachricht');
 
@@ -197,7 +197,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('rejects a non-string update message instead of crashing', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
     const eventId = await createEvent(token, 'Event mit falschem Typ');
 
@@ -210,7 +210,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('rejects an oversized update message', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
     const eventId = await createEvent(token, 'Event mit zu langer Nachricht');
 
@@ -223,7 +223,7 @@ describe('Event updates API e2e', () => {
   });
 
   it('returns 404 for updates on a non-existent event, 400 for an invalid id', async () => {
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
 
     const missing = await request(app)
@@ -244,7 +244,7 @@ describe('Event updates API e2e', () => {
 
   it('continues when the update notification fails to send', async () => {
     (sendEventUpdateNotification as jest.Mock).mockRejectedValueOnce(new Error('FCM down'));
-    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123' });
+    await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('evtupd-author', 'pwd-123');
     const eventId = await createEvent(token, 'Event mit Push-Fehler');
 

@@ -324,6 +324,8 @@ class SettingsRepository {
       'author_requires_password_change';
   static const String authorLastBackgroundedAtKey =
       'author_last_backgrounded_at';
+  static const String authorLayerGrantIdsKey = 'author_layer_grant_ids';
+  static const String authorTopicGrantIdsKey = 'author_topic_grant_ids';
 
   SettingsRepository(this._box);
 
@@ -592,17 +594,33 @@ class SettingsRepository {
         authorLastBackgroundedAtKey, value.toUtc().toIso8601String());
   }
 
+  List<int> getAuthorLayerGrantIds() {
+    final raw = _box.get(authorLayerGrantIdsKey) as List<dynamic>?;
+    if (raw == null) return <int>[];
+    return raw.whereType<num>().map((value) => value.toInt()).toList();
+  }
+
+  List<int> getAuthorTopicGrantIds() {
+    final raw = _box.get(authorTopicGrantIdsKey) as List<dynamic>?;
+    if (raw == null) return <int>[];
+    return raw.whereType<num>().map((value) => value.toInt()).toList();
+  }
+
   Future<void> saveAuthorSession({
     required int authorId,
     required String username,
     required bool isAdmin,
     required bool requiresPasswordChange,
+    List<int> layerGrantIds = const <int>[],
+    List<int> topicGrantIds = const <int>[],
   }) async {
     await Future.wait([
       _box.put(authorIdKey, authorId),
       _box.put(authorUsernameKey, username),
       _box.put(authorIsAdminKey, isAdmin),
       _box.put(authorRequiresPasswordChangeKey, requiresPasswordChange),
+      _box.put(authorLayerGrantIdsKey, layerGrantIds),
+      _box.put(authorTopicGrantIdsKey, topicGrantIds),
       _box.delete(authorLastBackgroundedAtKey),
     ]);
   }
@@ -615,6 +633,16 @@ class SettingsRepository {
     await _box.put(authorIsAdminKey, value);
   }
 
+  Future<void> setAuthorGrants({
+    required List<int> layerGrantIds,
+    required List<int> topicGrantIds,
+  }) async {
+    await Future.wait([
+      _box.put(authorLayerGrantIdsKey, layerGrantIds),
+      _box.put(authorTopicGrantIdsKey, topicGrantIds),
+    ]);
+  }
+
   Future<void> clearAuthorSession() async {
     await Future.wait([
       _box.delete(authorAuthTokenKey),
@@ -622,6 +650,8 @@ class SettingsRepository {
       _box.delete(authorUsernameKey),
       _box.delete(authorIsAdminKey),
       _box.delete(authorRequiresPasswordChangeKey),
+      _box.delete(authorLayerGrantIdsKey),
+      _box.delete(authorTopicGrantIdsKey),
       _box.delete(authorLastBackgroundedAtKey),
     ]);
   }
