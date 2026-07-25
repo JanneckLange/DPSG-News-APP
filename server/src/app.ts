@@ -25,6 +25,7 @@ import {
   getAuthorLayerGrantIds,
   getAuthorSession,
   getAuthorTopicGrantIds,
+  getEventUpdateById,
   getEventUpdates,
   getEvents,
   getLayerAdmins,
@@ -46,6 +47,8 @@ import {
   updateAuthorDraftById,
   updateAuthorEventById,
   updateEventById,
+  updateEventUpdateById,
+  deleteEventUpdateById,
   updateLayer,
   updateTopic,
   clearDrafts,
@@ -351,15 +354,22 @@ app.get('/api/events', async (req: Request, res: Response) => {
     const viewer = await getViewerSession(req);
     const authorMap = viewer?.author.isAdmin ? new Map((await listAuthors()).map((author) => [author.id, author.username])) : null;
     const currentAuthorId = viewer?.author.id ?? null;
+    const viewerUsable = Boolean(viewer && viewer.requiresPasswordChange === false);
 
-    res.json({
-      events: events.map((event) => ({
+    const enrichedEvents = await Promise.all(events.map(async (event) => {
+      const canManage = viewerUsable
+        ? await canManageWithinLayerScope(viewer!.author, event.authorId, event.layerId)
+        : false;
+      return {
         ...event,
-        canEdit: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
-        canDelete: Boolean(viewer && viewer.requiresPasswordChange === false && (viewer.author.isAdmin || event.authorId === currentAuthorId)),
+        canEdit: canManage,
+        canDelete: canManage,
+        canCreateUpdate: Boolean(viewerUsable && event.authorId === currentAuthorId),
         createdBy: authorMap && event.authorId != null ? authorMap.get(event.authorId) ?? null : undefined,
-      })),
-    });
+      };
+    }));
+
+    res.json({ events: enrichedEvents });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load events' });
@@ -717,13 +727,51 @@ app.delete('/api/author/drafts/:id', async (req: Request, res: Response) => {
   }
 });
 
-async function requireEditableEvent(req: Request, res: Response, eventAuthorId: number | null): Promise<boolean> {
-  const author = res.locals.author as { id: number; isAdmin?: boolean } | undefined;
+// Ownership ODER (Admin UND targetLayerId liegt im eigenen Scope, "und darunter").
+// Rechtematrix aus #1/#16: "edit/delete post" bzw. "edit/delete update".
+async function canManageWithinLayerScope(
+  author: AuthorIdentity | undefined,
+  targetAuthorId: number | null,
+  targetLayerId: number | null
+): Promise<boolean> {
+  if (!author) {
+    return false;
+  }
+  if (targetAuthorId != null && targetAuthorId === author.id) {
+    return true;
+  }
+  if (!author.isAdmin || targetLayerId == null) {
+    return false;
+  }
+  return isLayerInAdminScope(author.adminLayerIds, targetLayerId);
+}
+
+async function requireManageableWithinLayerScope(
+  res: Response,
+  targetAuthorId: number | null,
+  targetLayerId: number | null
+): Promise<boolean> {
+  const author = res.locals.author as AuthorIdentity | undefined;
   if (!author) {
     res.status(401).json({ error: 'Unauthorized' });
     return false;
   }
-  if (!author.isAdmin && eventAuthorId !== author.id) {
+  if (!await canManageWithinLayerScope(author, targetAuthorId, targetLayerId)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  return true;
+}
+
+// Reine Ownership ohne Admin-Bypass - fuer "create update" (Rechtematrix: Admin
+// darf grundsaetzlich keine Updates erstellen, auch nicht innerhalb seines Scopes).
+function requireOwnEvent(res: Response, eventAuthorId: number | null): boolean {
+  const author = res.locals.author as { id: number } | undefined;
+  if (!author) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+  }
+  if (eventAuthorId !== author.id) {
     res.status(403).json({ error: 'Forbidden' });
     return false;
   }
@@ -747,7 +795,7 @@ app.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!current) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    if (!await requireEditableEvent(req, res, current.authorId)) {
+    if (!await requireManageableWithinLayerScope(res, current.authorId, current.layerId)) {
       return;
     }
     const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
@@ -847,7 +895,7 @@ app.delete('/api/events/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    if (!await requireEditableEvent(req, res, current.authorId)) {
+    if (!await requireManageableWithinLayerScope(res, current.authorId, current.layerId)) {
       return;
     }
 
@@ -901,7 +949,15 @@ app.get('/api/events/:id/updates', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Event not found' });
     }
     const updates = await getEventUpdates(id);
-    res.json({ updates });
+    const viewer = await getViewerSession(req);
+    const viewerUsable = Boolean(viewer && viewer.requiresPasswordChange === false);
+    const enrichedUpdates = await Promise.all(updates.map(async (update) => {
+      const canManage = viewerUsable
+        ? await canManageWithinLayerScope(viewer!.author, update.authorId, current.layerId)
+        : false;
+      return { ...update, canEdit: canManage, canDelete: canManage };
+    }));
+    res.json({ updates: enrichedUpdates });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load event updates' });
@@ -925,7 +981,7 @@ app.post('/api/events/:id/updates', async (req: Request, res: Response) => {
     if (!current) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    if (!await requireEditableEvent(req, res, current.authorId)) {
+    if (!requireOwnEvent(res, current.authorId)) {
       return;
     }
 
@@ -951,10 +1007,99 @@ app.post('/api/events/:id/updates', async (req: Request, res: Response) => {
       logRequestError(notificationError, res.locals.requestId);
     }
 
-    res.status(201).json({ update });
+    res.status(201).json({ update: { ...update, canEdit: true, canDelete: true } });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to create event update' });
+  }
+});
+
+app.put('/api/events/:id/updates/:updateId', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const eventId = Number(req.params.id);
+    const updateId = Number(req.params.updateId);
+    if (Number.isNaN(eventId) || eventId <= 0 || Number.isNaN(updateId) || updateId <= 0) {
+      return respondBadRequest(req, res, 'Invalid id');
+    }
+
+    const events = await getEvents();
+    const event = events.find((e) => e.id === eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const update = await getEventUpdateById(updateId);
+    if (!update || update.eventId !== eventId) {
+      return res.status(404).json({ error: 'Update not found' });
+    }
+
+    if (!await requireManageableWithinLayerScope(res, update.authorId, event.layerId)) {
+      return;
+    }
+
+    const { message } = req.body as { message?: string };
+    const messageCheck = validateMessageField(message);
+    if (!messageCheck.valid) {
+      return respondBadRequest(req, res, messageCheck.error);
+    }
+    if (!message || !message.trim()) {
+      return respondBadRequest(req, res, 'Missing update message');
+    }
+
+    const updated = await updateEventUpdateById(updateId, message);
+    if (!updated) {
+      return res.status(404).json({ error: 'Update not found' });
+    }
+    res.json({ update: { ...updated, canEdit: true, canDelete: true } });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to update event update' });
+  }
+});
+
+app.delete('/api/events/:id/updates/:updateId', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const eventId = Number(req.params.id);
+    const updateId = Number(req.params.updateId);
+    if (Number.isNaN(eventId) || eventId <= 0 || Number.isNaN(updateId) || updateId <= 0) {
+      return respondBadRequest(req, res, 'Invalid id');
+    }
+
+    const events = await getEvents();
+    const event = events.find((e) => e.id === eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const update = await getEventUpdateById(updateId);
+    if (!update || update.eventId !== eventId) {
+      return res.status(404).json({ error: 'Update not found' });
+    }
+
+    if (!await requireManageableWithinLayerScope(res, update.authorId, event.layerId)) {
+      return;
+    }
+
+    const deleted = await deleteEventUpdateById(updateId);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Update not found' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to delete event update' });
   }
 });
 

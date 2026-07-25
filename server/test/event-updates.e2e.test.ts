@@ -28,6 +28,7 @@ async function getLayerIdByName(name: string): Promise<number> {
 }
 
 let koelnLayerId: number;
+let hamburgLayerId: number;
 
 async function createEvent(token: string, title: string): Promise<number> {
   const response = await request(app)
@@ -51,6 +52,7 @@ beforeAll(async () => {
   process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD = process.env.AUTHOR_BOOTSTRAP_ONE_TIME_PASSWORD || 'bootstrap-one-time-password';
   await connect();
   koelnLayerId = await getLayerIdByName('Köln');
+  hamburgLayerId = await getLayerIdByName('Hamburg');
 });
 
 beforeEach(async () => {
@@ -167,9 +169,9 @@ describe('Event updates API e2e', () => {
     expect(post.status).toBe(403);
   });
 
-  it('lets an admin post an update to a foreign event', async () => {
+  it('forbids an admin from posting an update, even with matching layer scope (create update ist ausschliesslich Autoren vorbehalten)', async () => {
     await createAuthorForTesting({ username: 'evtupd-author', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
-    await createAuthorForTesting({ username: 'evtupd-admin', password: 'pwd-789', isAdmin: true });
+    await createAuthorForTesting({ username: 'evtupd-admin', password: 'pwd-789', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const ownerToken = await loginAuthor('evtupd-author', 'pwd-123');
     const adminToken = await loginAuthor('evtupd-admin', 'pwd-789');
     const eventId = await createEvent(ownerToken, 'Event für Admin-Update');
@@ -179,8 +181,7 @@ describe('Event updates API e2e', () => {
       .set('authorization', `Bearer ${adminToken}`)
       .send({ message: 'Admin-Update' });
 
-    expect(post.status).toBe(201);
-    expect(post.body.update.authorUsername).toBe('evtupd-admin');
+    expect(post.status).toBe(403);
   });
 
   it('rejects an empty update message', async () => {
@@ -255,5 +256,172 @@ describe('Event updates API e2e', () => {
 
     expect(post.status).toBe(201);
     expect(post.body.update.message).toBe('Trotzdem gespeichert');
+  });
+
+  it('lets the update author edit and delete their own update', async () => {
+    await createAuthorForTesting({ username: 'evtupd-edit-owner', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
+    const token = await loginAuthor('evtupd-edit-owner', 'pwd-123');
+    const eventId = await createEvent(token, 'Event mit eigenem Update');
+    const create = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'Erste Fassung' });
+    const updateId = create.body.update.id as number;
+
+    const edit = await request(app)
+      .put(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'Korrigierte Fassung' });
+    expect(edit.status).toBe(200);
+    expect(edit.body.update.message).toBe('Korrigierte Fassung');
+
+    const del = await request(app)
+      .delete(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${token}`);
+    expect(del.status).toBe(204);
+
+    const list = await request(app).get(`/api/events/${eventId}/updates`);
+    expect(list.body.updates).toHaveLength(0);
+  });
+
+  it('forbids a foreign author from editing or deleting someone else\'s update', async () => {
+    await createAuthorForTesting({ username: 'evtupd-edit-victim', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'evtupd-edit-attacker', password: 'pwd-456', layerGrantIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('evtupd-edit-victim', 'pwd-123');
+    const otherToken = await loginAuthor('evtupd-edit-attacker', 'pwd-456');
+    const eventId = await createEvent(ownerToken, 'Event mit fremdem Update');
+    const create = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({ message: 'Original' });
+    const updateId = create.body.update.id as number;
+
+    const edit = await request(app)
+      .put(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${otherToken}`)
+      .send({ message: 'Manipuliert' });
+    expect(edit.status).toBe(403);
+
+    const del = await request(app)
+      .delete(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${otherToken}`);
+    expect(del.status).toBe(403);
+  });
+
+  it('lets an admin with matching layer scope edit and delete a foreign update', async () => {
+    await createAuthorForTesting({ username: 'evtupd-scope-owner', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'evtupd-scope-admin', password: 'pwd-789', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('evtupd-scope-owner', 'pwd-123');
+    const adminToken = await loginAuthor('evtupd-scope-admin', 'pwd-789');
+    const eventId = await createEvent(ownerToken, 'Event fuer Admin-Scope-Update');
+    const create = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({ message: 'Original' });
+    const updateId = create.body.update.id as number;
+
+    const edit = await request(app)
+      .put(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ message: 'Von Admin korrigiert' });
+    expect(edit.status).toBe(200);
+    expect(edit.body.update.message).toBe('Von Admin korrigiert');
+
+    const del = await request(app)
+      .delete(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(del.status).toBe(204);
+  });
+
+  it('forbids an admin without matching layer scope from editing or deleting a foreign update', async () => {
+    await createAuthorForTesting({ username: 'evtupd-noscope-owner', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'evtupd-noscope-admin', password: 'pwd-789', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    const ownerToken = await loginAuthor('evtupd-noscope-owner', 'pwd-123');
+    const adminToken = await loginAuthor('evtupd-noscope-admin', 'pwd-789');
+    const eventId = await createEvent(ownerToken, 'Event ausserhalb Admin-Scope');
+    const create = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({ message: 'Original' });
+    const updateId = create.body.update.id as number;
+
+    const edit = await request(app)
+      .put(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ message: 'Darf ich nicht' });
+    expect(edit.status).toBe(403);
+
+    const del = await request(app)
+      .delete(`/api/events/${eventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(del.status).toBe(403);
+  });
+
+  it('returns 404 when editing/deleting an unknown update or one belonging to a different event', async () => {
+    await createAuthorForTesting({ username: 'evtupd-404-author', password: 'pwd-123', layerGrantIds: [koelnLayerId, hamburgLayerId] });
+    const token = await loginAuthor('evtupd-404-author', 'pwd-123');
+    const eventId = await createEvent(token, 'Event A');
+    const otherEventResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event B',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        endDate: '2026-05-01T12:00:00Z',
+        location: 'Ort',
+        layerId: hamburgLayerId,
+      });
+    const otherEventId = otherEventResponse.body.event.id as number;
+    const create = await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'Original' });
+    const updateId = create.body.update.id as number;
+
+    const missingUpdate = await request(app)
+      .put(`/api/events/${eventId}/updates/999999`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'x' });
+    expect(missingUpdate.status).toBe(404);
+
+    const mismatchedEvent = await request(app)
+      .put(`/api/events/${otherEventId}/updates/${updateId}`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ message: 'x' });
+    expect(mismatchedEvent.status).toBe(404);
+
+    const invalidId = await request(app)
+      .delete(`/api/events/${eventId}/updates/not-a-number`)
+      .set('authorization', `Bearer ${token}`);
+    expect(invalidId.status).toBe(400);
+  });
+
+  it('personalizes canEdit/canDelete on the updates list based on the requester', async () => {
+    await createAuthorForTesting({ username: 'evtupd-flags-owner', password: 'pwd-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'evtupd-flags-other', password: 'pwd-456', layerGrantIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('evtupd-flags-owner', 'pwd-123');
+    const otherToken = await loginAuthor('evtupd-flags-other', 'pwd-456');
+    const eventId = await createEvent(ownerToken, 'Event fuer Flag-Test');
+    await request(app)
+      .post(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({ message: 'Original' });
+
+    const anonymous = await request(app).get(`/api/events/${eventId}/updates`);
+    expect(anonymous.body.updates[0].canEdit).toBe(false);
+    expect(anonymous.body.updates[0].canDelete).toBe(false);
+
+    const owner = await request(app)
+      .get(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${ownerToken}`);
+    expect(owner.body.updates[0].canEdit).toBe(true);
+    expect(owner.body.updates[0].canDelete).toBe(true);
+
+    const foreign = await request(app)
+      .get(`/api/events/${eventId}/updates`)
+      .set('authorization', `Bearer ${otherToken}`);
+    expect(foreign.body.updates[0].canEdit).toBe(false);
+    expect(foreign.body.updates[0].canDelete).toBe(false);
   });
 });
