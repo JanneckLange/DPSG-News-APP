@@ -991,6 +991,33 @@ export async function getEventUpdates(eventId: number): Promise<EventUpdate[]> {
   return result.rows.map(mapEventUpdateRow);
 }
 
+export async function getEventUpdateById(id: number): Promise<EventUpdate | null> {
+  const result = await ensureClient().query<EventUpdateRow>(
+    `SELECT eu.*, a.username AS author_username
+     FROM event_updates eu
+     LEFT JOIN authors a ON a.id = eu.author_id
+     WHERE eu.id = $1`,
+    [id]
+  );
+  return result.rows[0] ? mapEventUpdateRow(result.rows[0]) : null;
+}
+
+export async function updateEventUpdateById(id: number, message: string): Promise<EventUpdate | null> {
+  const result = await ensureClient().query<EventUpdateRow>(
+    `UPDATE event_updates
+     SET message = $1
+     WHERE id = $2
+     RETURNING *, (SELECT username FROM authors WHERE id = event_updates.author_id) AS author_username`,
+    [message, id]
+  );
+  return result.rows[0] ? mapEventUpdateRow(result.rows[0]) : null;
+}
+
+export async function deleteEventUpdateById(id: number): Promise<boolean> {
+  const result = await ensureClient().query('DELETE FROM event_updates WHERE id = $1', [id]);
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function clearAuthorData(): Promise<void> {
   await ensureClient().query('DELETE FROM author_sessions');
   await ensureClient().query('DELETE FROM author_refresh_sessions');

@@ -23,7 +23,7 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 
   @override
   Future<List<Map<String, dynamic>>> fetchEventUpdates(
-          {required int eventId}) async =>
+          {required int eventId, String? token}) async =>
       [];
 
   @override
@@ -85,6 +85,15 @@ final _sampleEvent = <String, dynamic>{
   'endDate': '2026-08-03T15:00:00Z',
   'description': 'Ein tolles Lager.',
   'authorId': 1,
+};
+
+// canEdit/canDelete werden serverseitig berechnet (Rechtematrix #1/#16) und
+// muessen im Test-Fixture explizit gesetzt werden, sobald der Viewer das
+// Event verwalten koennen soll - der Client leitet das nicht mehr lokal her.
+final _sampleEventOwned = <String, dynamic>{
+  ..._sampleEvent,
+  'canEdit': true,
+  'canDelete': true,
 };
 
 void main() {
@@ -186,7 +195,7 @@ void main() {
           ],
           child: MaterialApp(
             theme: ThemeData.light(),
-            home: EventDetailScreen(event: _sampleEvent),
+            home: EventDetailScreen(event: _sampleEventOwned),
           ),
         ),
       );

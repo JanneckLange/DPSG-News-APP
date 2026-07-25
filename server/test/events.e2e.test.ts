@@ -418,6 +418,151 @@ describe('Events API e2e', () => {
     expect(ownDelete.status).toBe(204);
   });
 
+  it('forbids a foreign author from editing or deleting an event via /api/events/:id', async () => {
+    await createAuthorForTesting({ username: 'events-edit-victim', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'events-edit-attacker', password: 'secret-456', layerGrantIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('events-edit-victim', 'secret-123');
+    const attackerToken = await loginAuthor('events-edit-attacker', 'secret-456');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Fremdes Event',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    const eventId = createResponse.body.event.id as number;
+
+    const foreignUpdate = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${attackerToken}`)
+      .send({
+        title: 'Manipuliert',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    expect(foreignUpdate.status).toBe(403);
+
+    const foreignDelete = await request(app)
+      .delete(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${attackerToken}`);
+    expect(foreignDelete.status).toBe(403);
+  });
+
+  it('lets an admin with matching layer scope edit and delete a foreign event via /api/events/:id', async () => {
+    await createAuthorForTesting({ username: 'events-scope-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'events-scope-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('events-scope-owner', 'secret-123');
+    const adminToken = await loginAuthor('events-scope-admin', 'admin-123');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Event im Admin-Scope',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    const eventId = createResponse.body.event.id as number;
+
+    const adminUpdate = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Von Admin bearbeitet',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    expect(adminUpdate.status).toBe(200);
+    expect(adminUpdate.body.event.title).toBe('Von Admin bearbeitet');
+
+    const adminDelete = await request(app)
+      .delete(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(adminDelete.status).toBe(204);
+  });
+
+  it('forbids an admin without matching layer scope from editing or deleting a foreign event via /api/events/:id', async () => {
+    await createAuthorForTesting({ username: 'events-noscope-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'events-noscope-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    const ownerToken = await loginAuthor('events-noscope-owner', 'secret-123');
+    const adminToken = await loginAuthor('events-noscope-admin', 'admin-123');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Event ausserhalb Admin-Scope',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    const eventId = createResponse.body.event.id as number;
+
+    const adminUpdate = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Darf ich nicht',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    expect(adminUpdate.status).toBe(403);
+
+    const adminDelete = await request(app)
+      .delete(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(adminDelete.status).toBe(403);
+  });
+
+  it('sets canCreateUpdate only for the event owner, not for a scoped admin', async () => {
+    await createAuthorForTesting({ username: 'events-flags-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'events-flags-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('events-flags-owner', 'secret-123');
+    const adminToken = await loginAuthor('events-flags-admin', 'admin-123');
+
+    await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Event fuer Flag-Test',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+
+    const ownerView = await request(app)
+      .get('/api/events')
+      .set('authorization', `Bearer ${ownerToken}`);
+    expect(ownerView.body.events[0].canCreateUpdate).toBe(true);
+
+    const adminView = await request(app)
+      .get('/api/events')
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(adminView.body.events[0].canEdit).toBe(true);
+    expect(adminView.body.events[0].canCreateUpdate).toBe(false);
+  });
+
   it('requires password change after one-time password login', async () => {
     await createAuthorForTesting({
       username: 'author-otp',
