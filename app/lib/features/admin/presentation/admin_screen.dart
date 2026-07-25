@@ -28,10 +28,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   Future<void> _loadUsers() async {
     final requestId = ++_usersRequestId;
     final auth = ref.read(authorAuthProvider);
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (!mounted || requestId != _usersRequestId) return;
-    if (token == null || !auth.isAdmin) {
+    if (!auth.isAdmin) {
+      if (!mounted || requestId != _usersRequestId) return;
       setState(() {
         _loading = false;
         _error = 'Kein Zugriff';
@@ -45,10 +43,17 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     });
 
     try {
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final users = await remote.fetchAdminUsers(token: token);
+      final users =
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+                (token) => ref
+                    .read(sync_service.remoteEventSourceProvider)
+                    .fetchAdminUsers(token: token),
+              );
       if (!mounted || requestId != _usersRequestId) return;
       setState(() => _users = users);
+    } on StateError {
+      if (!mounted || requestId != _usersRequestId) return;
+      setState(() => _error = 'Kein Zugriff');
     } catch (error) {
       if (!mounted || requestId != _usersRequestId) return;
       setState(() => _error = error.toString());
@@ -152,11 +157,16 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                   runSpacing: 8,
                                   children: [
                                     Chip(
-                                      label: Text(isAdmin ? 'Admin' : 'Autor'),
-                                      backgroundColor: isAdmin
-                                          ? scheme.primaryContainer
-                                          : scheme.secondaryContainer,
+                                      label: const Text('Autor'),
+                                      backgroundColor:
+                                          scheme.secondaryContainer,
                                     ),
+                                    if (isAdmin)
+                                      Chip(
+                                        label: const Text('Admin'),
+                                        backgroundColor:
+                                            scheme.primaryContainer,
+                                      ),
                                     if (!isActive)
                                       Chip(
                                         label: const Text('Deaktiviert'),

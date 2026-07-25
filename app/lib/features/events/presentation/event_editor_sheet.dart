@@ -269,10 +269,6 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
         return;
       }
     }
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     final layerTree =
         ref.read(layerTreeProvider).asData?.value ?? <LayerModel>[];
     final layerNamesById = {
@@ -301,42 +297,47 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
 
     setState(() => _saving = true);
     try {
-      if (asDraft) {
-        if (_isEditingDraft) {
-          await remote.updateDraft(
-            token: token,
-            draftId: (widget.existingDraft!['id'] as num).toInt(),
-            draft: payload,
-          );
-        } else {
-          await remote.createDraft(token: token, draft: payload);
-        }
-      } else {
-        if (_isEditingEvent) {
-          await remote.updateOwnEvent(
-            token: token,
-            eventId: (widget.existingEvent!['id'] as num).toInt(),
-            event: payload,
-          );
-        } else {
-          await remote.createOwnEvent(token: token, event: payload);
-          if (_isEditingDraft) {
-            try {
-              await remote.deleteDraft(
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) async {
+          final remote = ref.read(sync_service.remoteEventSourceProvider);
+          if (asDraft) {
+            if (_isEditingDraft) {
+              await remote.updateDraft(
                 token: token,
                 draftId: (widget.existingDraft!['id'] as num).toInt(),
+                draft: payload,
               );
-            } catch (error) {
-              if (mounted) {
-                showErrorToast(
-                  ref,
-                  'Event wurde veröffentlicht, der ursprüngliche Entwurf konnte aber nicht automatisch gelöscht werden: ${describeRemoteError(error)}',
-                );
+            } else {
+              await remote.createDraft(token: token, draft: payload);
+            }
+          } else {
+            if (_isEditingEvent) {
+              await remote.updateOwnEvent(
+                token: token,
+                eventId: (widget.existingEvent!['id'] as num).toInt(),
+                event: payload,
+              );
+            } else {
+              await remote.createOwnEvent(token: token, event: payload);
+              if (_isEditingDraft) {
+                try {
+                  await remote.deleteDraft(
+                    token: token,
+                    draftId: (widget.existingDraft!['id'] as num).toInt(),
+                  );
+                } catch (error) {
+                  if (mounted) {
+                    showErrorToast(
+                      ref,
+                      'Event wurde veröffentlicht, der ursprüngliche Entwurf konnte aber nicht automatisch gelöscht werden: ${describeRemoteError(error)}',
+                    );
+                  }
+                }
               }
             }
           }
-        }
-      }
+        },
+      );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (mounted) showErrorToast(ref, describeRemoteError(error));

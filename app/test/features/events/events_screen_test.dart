@@ -82,6 +82,7 @@ Future<void> _pumpEventsScreen(
               repository: repository,
               remote: remote,
               secureStorage: secureStorage,
+              ref: ref,
               initialState:
                   const AuthorAuthState(isLoggedIn: false, isLocked: false),
             ),

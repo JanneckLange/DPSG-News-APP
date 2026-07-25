@@ -112,7 +112,6 @@ export type DraftInput = {
 type LayerRow = {
   id: number;
   name: string;
-  type: string;
   parent_id: number | null;
   created_at: string;
   updated_at: string;
@@ -121,7 +120,6 @@ type LayerRow = {
 export type Layer = {
   id: number;
   name: string;
-  type: string;
   parentId: number | null;
   createdAt: string;
   updatedAt: string;
@@ -129,7 +127,6 @@ export type Layer = {
 
 export type LayerInput = {
   name: string;
-  type: string;
   parentId?: number | null;
 };
 
@@ -430,13 +427,12 @@ export async function connect(): Promise<void> {
     CREATE TABLE IF NOT EXISTS layers (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
-      type TEXT NOT NULL,
       parent_id INTEGER REFERENCES layers(id) ON DELETE CASCADE,
       url TEXT,
       groups TEXT[],
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE NULLS NOT DISTINCT (type, name, parent_id)
+      UNIQUE NULLS NOT DISTINCT (name, parent_id)
     );
   `);
   await client.query(`CREATE INDEX IF NOT EXISTS layers_parent_id_idx ON layers(parent_id);`);
@@ -519,6 +515,23 @@ export async function connect(): Promise<void> {
   await client.query(`CREATE INDEX IF NOT EXISTS drafts_author_id_idx ON drafts(author_id);`);
   await migrateDvToLayerId('events');
   await migrateDvToLayerId('drafts');
+  // Die freie "Typ"-Klassifizierung (bundesverband/bezirk/stamm/dv/...) wird
+  // nicht mehr gebraucht: jeder Layer ist gleichermassen waehlbar, der
+  // Wurzel-Layer wird ausschliesslich strukturell ueber parent_id IS NULL
+  // erkannt. migrateDvToLayerId() (oben) braucht dafuer noch die alte
+  // type-Spalte, muss also vor diesem Drop laufen.
+  await client.query(`ALTER TABLE layers DROP CONSTRAINT IF EXISTS layers_type_name_parent_id_key;`);
+  await client.query(`ALTER TABLE layers DROP COLUMN IF EXISTS type;`);
+  await client.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'layers_name_parent_id_key'
+      ) THEN
+        ALTER TABLE layers ADD CONSTRAINT layers_name_parent_id_key UNIQUE NULLS NOT DISTINCT (name, parent_id);
+      END IF;
+    END $$;
+  `);
   await migrateTopicToTopicId('events');
   await migrateTopicToTopicId('drafts');
   await client.query(`
@@ -542,24 +555,32 @@ export async function connect(): Promise<void> {
 
 async function ensureSeedLayers(): Promise<void> {
   const db = ensureClient();
-  const bundesverbandResult = await db.query<{ id: number }>(
-    `INSERT INTO layers (name, type, parent_id)
-     VALUES ($1, 'bundesverband', NULL)
-     ON CONFLICT (type, name, parent_id) DO UPDATE SET name = EXCLUDED.name
-     RETURNING id`,
+  const existingRoot = await db.query<{ id: number }>(
+    `SELECT id FROM layers WHERE name = $1 AND parent_id IS NULL LIMIT 1`,
     [BUNDESVERBAND_NAME]
   );
-  const bundesverbandId = bundesverbandResult.rows[0].id;
+  const bundesverbandId = existingRoot.rows[0]
+    ? existingRoot.rows[0].id
+    : (
+        await db.query<{ id: number }>(
+          `INSERT INTO layers (name, parent_id) VALUES ($1, NULL) RETURNING id`,
+          [BUNDESVERBAND_NAME]
+        )
+      ).rows[0].id;
 
   for (const dv of SEED_DVS) {
-    const dvResult = await db.query<{ id: number }>(
-      `INSERT INTO layers (name, type, parent_id)
-       VALUES ($1, 'dv', $2)
-       ON CONFLICT (type, name, parent_id) DO UPDATE SET name = EXCLUDED.name
-       RETURNING id`,
+    const existingDv = await db.query<{ id: number }>(
+      `SELECT id FROM layers WHERE name = $1 AND parent_id = $2 LIMIT 1`,
       [dv.name, bundesverbandId]
     );
-    const dvId = dvResult.rows[0].id;
+    const dvId = existingDv.rows[0]
+      ? existingDv.rows[0].id
+      : (
+          await db.query<{ id: number }>(
+            `INSERT INTO layers (name, parent_id) VALUES ($1, $2) RETURNING id`,
+            [dv.name, bundesverbandId]
+          )
+        ).rows[0].id;
     for (const group of dv.groups ?? []) {
       await db.query(
         `INSERT INTO topics (name, layer_id)
@@ -576,7 +597,7 @@ async function migrateAdminLayerId(): Promise<void> {
   await db.query(`ALTER TABLE authors ADD COLUMN IF NOT EXISTS admin_layer_id INTEGER REFERENCES layers(id);`);
   await db.query(
     `UPDATE authors
-     SET admin_layer_id = (SELECT id FROM layers WHERE type = 'bundesverband' AND parent_id IS NULL)
+     SET admin_layer_id = (SELECT id FROM layers WHERE parent_id IS NULL LIMIT 1)
      WHERE is_admin = TRUE AND admin_layer_id IS NULL`
   );
 }
@@ -768,7 +789,6 @@ export function mapLayerRow(row: LayerRow): Layer {
   return {
     id: row.id,
     name: row.name,
-    type: row.type,
     parentId: row.parent_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -1020,7 +1040,7 @@ export async function createAuthorForTesting(options: {
   let adminLayerIds = options.adminLayerIds ?? [];
   if ((options.isAdmin ?? false) && adminLayerIds.length === 0) {
     const root = await db.query<{ id: number }>(
-      `SELECT id FROM layers WHERE type = 'bundesverband' AND parent_id IS NULL LIMIT 1`
+      `SELECT id FROM layers WHERE parent_id IS NULL LIMIT 1`
     );
     const rootId = root.rows[0]?.id;
     adminLayerIds = rootId ? [rootId] : [];
@@ -1403,7 +1423,7 @@ export async function changeAuthorPassword(
 }
 
 export async function getLayers(): Promise<Layer[]> {
-  const result = await ensureClient().query<LayerRow>('SELECT * FROM layers ORDER BY type ASC, name ASC');
+  const result = await ensureClient().query<LayerRow>('SELECT * FROM layers ORDER BY name ASC');
   return result.rows.map(mapLayerRow);
 }
 
@@ -1440,7 +1460,7 @@ export async function getLayerSubtree(rootLayerIds: number[]): Promise<Layer[]> 
        SELECT l.* FROM layers l
        JOIN descendants d ON l.parent_id = d.id
      )
-     SELECT DISTINCT * FROM descendants ORDER BY type ASC, name ASC`,
+     SELECT DISTINCT * FROM descendants ORDER BY name ASC`,
     [rootLayerIds]
   );
   return result.rows.map(mapLayerRow);
@@ -1647,10 +1667,10 @@ export async function deleteTopic(id: number): Promise<DeleteTopicResult> {
 
 export async function createLayer(input: LayerInput): Promise<Layer> {
   const result = await ensureClient().query<LayerRow>(
-    `INSERT INTO layers (name, type, parent_id)
-     VALUES ($1, $2, $3)
+    `INSERT INTO layers (name, parent_id)
+     VALUES ($1, $2)
      RETURNING *`,
-    [input.name, input.type, input.parentId ?? null]
+    [input.name, input.parentId ?? null]
   );
   return mapLayerRow(result.rows[0]);
 }
@@ -1681,12 +1701,11 @@ export async function updateLayer(id: number, input: LayerInput): Promise<Update
   const result = await db.query<LayerRow>(
     `UPDATE layers
      SET name = $1,
-         type = $2,
-         parent_id = $3,
+         parent_id = $2,
          updated_at = NOW()
-     WHERE id = $4
+     WHERE id = $3
      RETURNING *`,
-    [input.name, input.type, nextParentId, id]
+    [input.name, nextParentId, id]
   );
   if (!result.rows[0]) {
     return { status: 'not_found' };

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:animated_tree_view/animated_tree_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import '../../author/data/author_auth_provider.dart';
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../settings/domain/layer_model.dart';
+import '../domain/topic_model.dart';
 import 'layer_detail_screen.dart';
 
 /// Breite, die links fuer den animated_tree_view-Auf-/Zuklapp-Indikator
@@ -26,11 +29,28 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
   bool _loadingLayers = true;
   String? _layersError;
   int _layersRequestId = 0;
+  List<TopicModel> _topics = <TopicModel>[];
 
   @override
   void initState() {
     super.initState();
     _loadLayers();
+    unawaited(_loadTopics());
+  }
+
+  Future<void> _loadTopics() async {
+    try {
+      final remote = ref.read(sync_service.remoteEventSourceProvider);
+      final response = await remote.fetchTopics();
+      final topics =
+          List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
+              .map(TopicModel.fromJson)
+              .toList();
+      if (!mounted) return;
+      setState(() => _topics = topics);
+    } catch (_) {
+      // Sublabel zeigt dann nur die Sub-Layer-Anzahl, keine Topic-Anzahl.
+    }
   }
 
   Future<void> _loadLayers() async {
@@ -40,26 +60,23 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
       _layersError = null;
     });
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (!mounted || requestId != _layersRequestId) return;
-    if (token == null) {
-      setState(() {
-        _loadingLayers = false;
-        _layersError = 'Kein Zugriff';
-      });
-      return;
-    }
-
     try {
-      final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final response = await remote.fetchAdminLayers(token: token);
       final layers =
-          List<Map<String, dynamic>>.from(response['layers'] as List<dynamic>)
+          await ref.read(authorAuthProvider.notifier).callAuthenticated(
+        (token) async {
+          final remote = ref.read(sync_service.remoteEventSourceProvider);
+          final response = await remote.fetchAdminLayers(token: token);
+          return List<Map<String, dynamic>>.from(
+                  response['layers'] as List<dynamic>)
               .map(LayerModel.fromJson)
               .toList();
+        },
+      );
       if (!mounted || requestId != _layersRequestId) return;
       setState(() => _layers = layers);
+    } on StateError {
+      if (!mounted || requestId != _layersRequestId) return;
+      setState(() => _layersError = 'Kein Zugriff');
     } catch (error) {
       if (!mounted || requestId != _layersRequestId) return;
       setState(() => _layersError = error.toString());
@@ -101,18 +118,15 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     final result = await _showLayerFormDialog(title: 'Unterlayer anlegen');
     if (result == null) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.createLayer(
-        token: token,
-        name: result.name,
-        type: result.type,
-        parentId: parentId,
-      );
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) =>
+                ref.read(sync_service.remoteEventSourceProvider).createLayer(
+                      token: token,
+                      name: result.name,
+                      parentId: parentId,
+                    ),
+          );
       await _loadLayers();
     } catch (error) {
       if (!mounted) return;
@@ -131,13 +145,12 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     );
     if (name == null) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.updateLayer(token: token, layerId: layer.id, name: name);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .updateLayer(token: token, layerId: layer.id, name: name),
+          );
       await _loadLayers();
     } catch (error) {
       if (!mounted) return;
@@ -156,13 +169,12 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     );
     if (!confirmed) return;
 
-    final token =
-        await ref.read(authorAuthProvider.notifier).getValidAccessToken();
-    if (token == null) return;
-
-    final remote = ref.read(sync_service.remoteEventSourceProvider);
     try {
-      await remote.deleteLayer(token: token, layerId: layer.id);
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .deleteLayer(token: token, layerId: layer.id),
+          );
       await _loadLayers();
     } catch (error) {
       if (!mounted) return;
@@ -238,7 +250,8 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
 
   bool _didAutoExpandRoot = false;
 
-  void _onTreeReady(TreeViewController<LayerModel?, TreeNode<LayerModel?>> controller,
+  void _onTreeReady(
+      TreeViewController<LayerModel?, TreeNode<LayerModel?>> controller,
       TreeNode<LayerModel?> tree) {
     // Nur beim allerersten Aufbau des Baums automatisch aufklappen: der
     // initiale Flat-List-Aufbau des Packages beruecksichtigt keine vorab
@@ -256,6 +269,9 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
     final layer = node.data;
     if (layer == null) return const SizedBox.shrink();
     final isRoot = layer.parentId == null;
+    final subLayerCount = _childrenByParentId[layer.id]?.length ?? 0;
+    final topicCount =
+        _topics.where((topic) => topic.layerId == layer.id).length;
 
     return Row(
       children: [
@@ -264,8 +280,20 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
           child: InkWell(
             onTap: () => _openLayerDetail(layer),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(layer.name, style: Theme.of(context).textTheme.bodyLarge),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(layer.name,
+                      style: Theme.of(context).textTheme.bodyLarge),
+                  Text(
+                    '$subLayerCount Sub-Layer, $topicCount Topics',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -318,7 +346,8 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
         tree: tree,
         showRootNode: false,
         onTreeReady: (controller) => _onTreeReady(controller, tree),
-        expansionIndicatorBuilder: (context, node) => ChevronIndicator.rightDown(
+        expansionIndicatorBuilder: (context, node) =>
+            ChevronIndicator.rightDown(
           tree: node,
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.all(8),
@@ -399,10 +428,9 @@ class _NameDialogState extends State<_NameDialog> {
 }
 
 class _LayerFormResult {
-  const _LayerFormResult({required this.name, required this.type});
+  const _LayerFormResult({required this.name});
 
   final String name;
-  final String type;
 }
 
 class _LayerFormDialog extends StatefulWidget {
@@ -417,12 +445,10 @@ class _LayerFormDialog extends StatefulWidget {
 class _LayerFormDialogState extends State<_LayerFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _typeController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _typeController.dispose();
     super.dispose();
   }
 
@@ -444,16 +470,6 @@ class _LayerFormDialogState extends State<_LayerFormDialog> {
                   ? 'Bitte einen Namen eingeben.'
                   : null,
             ),
-            TextFormField(
-              controller: _typeController,
-              decoration: const InputDecoration(
-                labelText: 'Typ',
-                hintText: 'z.B. bezirk, stamm',
-              ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'Bitte einen Typ eingeben.'
-                  : null,
-            ),
           ],
         ),
       ),
@@ -467,7 +483,6 @@ class _LayerFormDialogState extends State<_LayerFormDialog> {
             if (_formKey.currentState?.validate() ?? false) {
               Navigator.of(context).pop(_LayerFormResult(
                 name: _nameController.text.trim(),
-                type: _typeController.text.trim(),
               ));
             }
           },

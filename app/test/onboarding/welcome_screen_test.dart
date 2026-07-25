@@ -128,6 +128,7 @@ void main() {
       (WidgetTester tester) async {
     await tester.runAsync(() async {
       await pumpWelcomeScreen(tester);
+      await tester.pumpAndSettle();
 
       await tester.tap(find.text('Hamburg'));
       await tester.pump();

@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/settings/data/settings_repository.dart';
+import 'sync_service.dart' as sync_service;
 
 final apnsTokenProvider = StateProvider<String?>((ref) => null);
 
@@ -157,15 +158,24 @@ class NotificationService {
     }
 
     final selectedLayerIds = settingsRepository.getSelectedLayerIds();
-    final selectedTopicsByLayer = settingsRepository.getSelectedTopicsByLayer();
+    final selectedTopicIdsByLayer =
+        settingsRepository.getSelectedTopicsByLayer();
     final savedEventIds = settingsRepository.getSavedEventIds();
     final topics = <String>{'events'};
 
+    final hasTopicSelections =
+        selectedTopicIdsByLayer.values.any((ids) => ids.isNotEmpty);
+    final topicNameById = hasTopicSelections
+        ? await _fetchTopicNamesById()
+        : const <int, String>{};
+
     for (final layerId in selectedLayerIds) {
       topics.add('events_layer_$layerId');
-      final selectedTopics = selectedTopicsByLayer[layerId] ?? <String>[];
-      for (final topic in selectedTopics) {
-        topics.add('events_layer_${layerId}_${_normalizeTopicName(topic)}');
+      final selectedTopicIds = selectedTopicIdsByLayer[layerId] ?? <int>[];
+      for (final topicId in selectedTopicIds) {
+        final topicName = topicNameById[topicId];
+        if (topicName == null) continue;
+        topics.add('events_layer_${layerId}_${_normalizeTopicName(topicName)}');
       }
     }
 
@@ -187,6 +197,27 @@ class NotificationService {
     }
 
     await settingsRepository.setSubscribedTopics(newTopics);
+  }
+
+  /// Loest die lokal nur als ID gespeicherten Topic-Auswahlen zu Namen auf,
+  /// damit sich das FCM-Topic-String-Format (basiert auf dem Namen) nicht
+  /// aendert. Schlaegt der Abruf fehl, werden betroffene Topic-IDs beim
+  /// naechsten Refresh einfach erneut versucht (keine harte Fehlerausgabe).
+  Future<Map<int, String>> _fetchTopicNamesById() async {
+    try {
+      final remote = _ref.read(sync_service.remoteEventSourceProvider);
+      final response = await remote.fetchTopics();
+      final topics =
+          List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>);
+      return {
+        for (final topic in topics)
+          (topic['id'] as num).toInt(): topic['name'] as String,
+      };
+    } catch (error, stack) {
+      log('Failed to fetch topic names for subscription refresh: $error');
+      log('$stack');
+      return const <int, String>{};
+    }
   }
 
   String _normalizeTopicName(String value) {

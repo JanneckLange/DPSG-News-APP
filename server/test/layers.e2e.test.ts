@@ -38,12 +38,12 @@ describe('Layers API e2e', () => {
     expect(response.status).toBe(200);
     expect(response.body.lastChange).toEqual(expect.any(String));
 
-    const layers = response.body.layers as Array<{ id: number; name: string; type: string; parentId: number | null }>;
-    const bundesverband = layers.find((l) => l.type === 'bundesverband');
+    const layers = response.body.layers as Array<{ id: number; name: string; parentId: number | null }>;
+    const bundesverband = layers.find((l) => l.parentId === null);
     expect(bundesverband).toBeDefined();
     expect(bundesverband!.parentId).toBeNull();
 
-    const dvs = layers.filter((l) => l.type === 'dv');
+    const dvs = layers.filter((l) => l.parentId === bundesverband!.id);
     expect(dvs).toHaveLength(25);
     expect(dvs.every((dv) => dv.parentId === bundesverband!.id)).toBe(true);
 
@@ -55,13 +55,13 @@ describe('Layers API e2e', () => {
     await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
     const token = await loginAuthor('author-a', 'secret-123');
 
-    const unauthenticated = await request(app).post('/api/admin/layers').send({ name: 'Bezirk Nord', type: 'bezirk' });
+    const unauthenticated = await request(app).post('/api/admin/layers').send({ name: 'Bezirk Nord' });
     expect(unauthenticated.status).toBe(401);
 
     const nonAdmin = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${token}`)
-      .send({ name: 'Bezirk Nord', type: 'bezirk' });
+      .send({ name: 'Bezirk Nord' });
     expect(nonAdmin.status).toBe(403);
   });
 
@@ -70,14 +70,14 @@ describe('Layers API e2e', () => {
     const adminToken = await loginAuthor('admin-layers', 'admin-123');
 
     const layersResponse = await request(app).get('/api/layers');
-    const koelnLayer = (layersResponse.body.layers as Array<{ id: number; name: string; type: string }>).find(
-      (l) => l.name === 'Köln' && l.type === 'dv'
+    const koelnLayer = (layersResponse.body.layers as Array<{ id: number; name: string }>).find(
+      (l) => l.name === 'Köln'
     )!;
 
     const createResponse = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Bezirk Süd', type: 'bezirk', parentId: koelnLayer.id });
+      .send({ name: 'Bezirk Süd', parentId: koelnLayer.id });
     expect(createResponse.status).toBe(201);
     const createdLayer = createResponse.body.layer as { id: number; name: string; parentId: number };
     expect(createdLayer.name).toBe('Bezirk Süd');
@@ -136,20 +136,20 @@ describe('Layers API e2e', () => {
     const oversizedName = 'a'.repeat(MAX_TITLE_LENGTH + 1);
 
     const layersResponse = await request(app).get('/api/layers');
-    const koelnLayer = (layersResponse.body.layers as Array<{ id: number; name: string; type: string }>).find(
-      (l) => l.name === 'Köln' && l.type === 'dv'
+    const koelnLayer = (layersResponse.body.layers as Array<{ id: number; name: string }>).find(
+      (l) => l.name === 'Köln'
     )!;
 
     const createResponse = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ name: oversizedName, type: 'bezirk', parentId: koelnLayer.id });
+      .send({ name: oversizedName, parentId: koelnLayer.id });
     expect(createResponse.status).toBe(400);
 
     const validCreateResponse = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Bezirk Ost', type: 'bezirk', parentId: koelnLayer.id });
+      .send({ name: 'Bezirk Ost', parentId: koelnLayer.id });
     expect(validCreateResponse.status).toBe(201);
     const createdLayer = validCreateResponse.body.layer as { id: number };
 
@@ -167,9 +167,9 @@ describe('Layers API e2e', () => {
     const adminToken = await loginAuthor('admin-layers-root', 'admin-123');
 
     const layersResponse = await request(app).get('/api/layers');
-    const layers = layersResponse.body.layers as Array<{ id: number; name: string; type: string; parentId: number | null }>;
-    const bundesverband = layers.find((l) => l.type === 'bundesverband')!;
-    const koelnLayer = layers.find((l) => l.name === 'Köln' && l.type === 'dv')!;
+    const layers = layersResponse.body.layers as Array<{ id: number; name: string; parentId: number | null }>;
+    const bundesverband = layers.find((l) => l.parentId === null)!;
+    const koelnLayer = layers.find((l) => l.name === 'Köln')!;
 
     // Root layer cannot be deleted.
     const deleteRootBlocked = await request(app)
@@ -188,9 +188,12 @@ describe('Layers API e2e', () => {
 
   it('rejects layer creation, rename and deletion outside the admin\'s own layer branch', async () => {
     const layersResponse = await request(app).get('/api/layers');
-    const layers = layersResponse.body.layers as Array<{ id: number; name: string; type: string; parentId: number | null }>;
-    const koelnLayer = layers.find((l) => l.name === 'Köln' && l.type === 'dv')!;
-    const otherDvLayer = layers.find((l) => l.type === 'dv' && l.id !== koelnLayer.id)!;
+    const layers = layersResponse.body.layers as Array<{ id: number; name: string; parentId: number | null }>;
+    const bundesverbandBranch = layers.find((l) => l.parentId === null)!;
+    const koelnLayer = layers.find((l) => l.name === 'Köln')!;
+    const otherDvLayer = layers.find(
+      (l) => l.parentId === bundesverbandBranch.id && l.id !== koelnLayer.id
+    )!;
 
     await createAuthorForTesting({
       username: 'admin-layers-scoped',
@@ -204,14 +207,14 @@ describe('Layers API e2e', () => {
     const createOutsideScope = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Bezirk Fremd', type: 'bezirk', parentId: otherDvLayer.id });
+      .send({ name: 'Bezirk Fremd', parentId: otherDvLayer.id });
     expect(createOutsideScope.status).toBe(403);
 
     // Creating within the own branch is allowed.
     const createInScope = await request(app)
       .post('/api/admin/layers')
       .set('authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Bezirk Eigen', type: 'bezirk', parentId: koelnLayer.id });
+      .send({ name: 'Bezirk Eigen', parentId: koelnLayer.id });
     expect(createInScope.status).toBe(201);
     const createdLayer = createInScope.body.layer as { id: number };
 
@@ -237,10 +240,10 @@ describe('Layers API e2e', () => {
 
   it('returns only the admin\'s own layer branch on GET /api/admin/layers', async () => {
     const layersResponse = await request(app).get('/api/layers');
-    const layers = layersResponse.body.layers as Array<{ id: number; name: string; type: string; parentId: number | null }>;
-    const bundesverband = layers.find((l) => l.type === 'bundesverband')!;
-    const koelnLayer = layers.find((l) => l.name === 'Köln' && l.type === 'dv')!;
-    const otherDvLayer = layers.find((l) => l.type === 'dv' && l.id !== koelnLayer.id)!;
+    const layers = layersResponse.body.layers as Array<{ id: number; name: string; parentId: number | null }>;
+    const bundesverband = layers.find((l) => l.parentId === null)!;
+    const koelnLayer = layers.find((l) => l.name === 'Köln')!;
+    const otherDvLayer = layers.find((l) => l.parentId === bundesverband.id && l.id !== koelnLayer.id)!;
 
     const unauthenticated = await request(app).get('/api/admin/layers');
     expect(unauthenticated.status).toBe(401);

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
+import '../../../core/services/app_navigation_service.dart';
+import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../events/data/remote_event_source.dart';
@@ -80,7 +82,7 @@ final authorAuthProvider =
   final remote = ref.read(sync_service.remoteEventSourceProvider);
   final storage = ref.read(secureStorageServiceProvider);
   return AuthorAuthNotifier(
-      repository: repository, remote: remote, secureStorage: storage);
+      repository: repository, remote: remote, secureStorage: storage, ref: ref);
 });
 
 class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
@@ -88,11 +90,13 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     required SettingsRepository repository,
     required RemoteEventSource remote,
     required SecureStorageService secureStorage,
+    required Ref ref,
     LocalAuthentication? localAuthentication,
     bool restoreSessionOnInit = true,
   })  : _repository = repository,
         _remote = remote,
         _secureStorage = secureStorage,
+        _ref = ref,
         _localAuth = localAuthentication ?? LocalAuthentication(),
         super(AuthorAuthState.signedOut()) {
     if (restoreSessionOnInit) {
@@ -103,6 +107,7 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   final SettingsRepository _repository;
   final RemoteEventSource _remote;
   final SecureStorageService _secureStorage;
+  final Ref _ref;
   final LocalAuthentication _localAuth;
 
   Future<void> _restoreSession() async {
@@ -230,7 +235,13 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
             expiresAt.toUtc().subtract(const Duration(seconds: 30)))) {
       return token;
     }
+    return _forceRefresh();
+  }
 
+  /// Erneuert den Access-Token unabhaengig von der lokal gespeicherten
+  /// Ablaufzeit -- wird sowohl vom proaktiven [getValidAccessToken] als auch
+  /// reaktiv von [callAuthenticated] nach einem Live-401 genutzt.
+  Future<String?> _forceRefresh() async {
     final refreshToken = state.refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
       await logout();
@@ -248,6 +259,47 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       }
       rethrow;
     }
+  }
+
+  /// Fuehrt einen authentifizierten Request aus. Antwortet der Server dabei
+  /// mit 401 (z.B. weil die Session zwischenzeitlich anderswo widerrufen
+  /// wurde), wird der Token einmal zwangserneuert und der Request einmal
+  /// automatisch wiederholt. Schlaegt auch das fehl, wird der Nutzer
+  /// ausgeloggt und zur Root-Route zurueckgeschickt.
+  Future<T> callAuthenticated<T>(
+      Future<T> Function(String token) request) async {
+    final token = await getValidAccessToken();
+    if (token == null) {
+      throw StateError('Not logged in');
+    }
+    try {
+      return await request(token);
+    } on RemoteEventSourceException catch (error) {
+      if (error.statusCode != 401) {
+        rethrow;
+      }
+      final refreshedToken = await _forceRefresh();
+      if (refreshedToken == null) {
+        _notifySessionExpired();
+        rethrow;
+      }
+      try {
+        return await request(refreshedToken);
+      } on RemoteEventSourceException catch (retryError) {
+        if (retryError.statusCode == 401) {
+          await logout();
+          _notifySessionExpired();
+        }
+        rethrow;
+      }
+    }
+  }
+
+  void _notifySessionExpired() {
+    final navigatorKey = _ref.read(appNavigatorKeyProvider);
+    navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    showErrorToastForKey(
+        navigatorKey, 'Sitzung abgelaufen, bitte erneut anmelden.');
   }
 
   Future<void> onAppBackgrounded() async {
