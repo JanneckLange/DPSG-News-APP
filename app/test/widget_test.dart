@@ -62,6 +62,16 @@ class FakeAdminRemoteEventSource extends FakeRemoteEventSource {
   }
 
   @override
+  Future<Map<String, dynamic>> fetchAdminLayers({required String token}) async {
+    return const {'layers': <Map<String, dynamic>>[]};
+  }
+
+  @override
+  Future<Map<String, dynamic>> fetchTopics({int? layerId}) async {
+    return const {'topics': <Map<String, dynamic>>[]};
+  }
+
+  @override
   Future<Map<String, dynamic>> createAdminUser({
     required String token,
     required String username,
@@ -414,7 +424,7 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Admin-Bereich'), findsOneWidget);
-    expect(find.text('Layer & Themen verwalten'), findsOneWidget);
+    expect(find.text('Alle Nutzer'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

@@ -74,6 +74,49 @@ describe('Layers API e2e', () => {
     expect(otherDv!.hasAuthors).toBe(false);
   });
 
+  it('reports authorCount on GET /api/admin/layers, excluding admins', async () => {
+    const layersResponse = await request(app).get('/api/layers');
+    const layers = layersResponse.body.layers as Array<{ id: number; name: string; parentId: number | null }>;
+    const bundesverband = layers.find((l) => l.parentId === null)!;
+    const koelnLayer = layers.find((l) => l.name === 'Köln')!;
+
+    await createAuthorForTesting({
+      username: 'admin-authorcount-root',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerIds: [bundesverband.id],
+    });
+    const adminToken = await loginAuthor('admin-authorcount-root', 'admin-123');
+
+    const before = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${adminToken}`);
+    expect(before.status).toBe(200);
+    const koelnBefore = (before.body.layers as Array<{ id: number; authorCount: number }>).find((l) => l.id === koelnLayer.id);
+    expect(koelnBefore!.authorCount).toBe(0);
+
+    await createAuthorForTesting({
+      username: 'author-authorcount-1',
+      password: 'secret-123',
+      layerGrantIds: [koelnLayer.id],
+    });
+    await createAuthorForTesting({
+      username: 'author-authorcount-2',
+      password: 'secret-123',
+      layerGrantIds: [koelnLayer.id],
+    });
+    // Ein Admin mit direktem Layer-Grant auf demselben Layer darf nicht mitgezaehlt werden.
+    await createAuthorForTesting({
+      username: 'admin-authorcount-grant',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerIds: [koelnLayer.id],
+      layerGrantIds: [koelnLayer.id],
+    });
+
+    const after = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${adminToken}`);
+    const koelnAfter = (after.body.layers as Array<{ id: number; authorCount: number }>).find((l) => l.id === koelnLayer.id);
+    expect(koelnAfter!.authorCount).toBe(2);
+  });
+
   it('rejects layer creation and mutation for non-admins and unauthenticated users', async () => {
     await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
     const token = await loginAuthor('author-a', 'secret-123');

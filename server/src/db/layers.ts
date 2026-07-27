@@ -9,6 +9,7 @@ type LayerRow = {
   created_at: string;
   updated_at: string;
   has_authors: boolean;
+  author_count?: number;
 };
 
 export type Layer = {
@@ -18,6 +19,7 @@ export type Layer = {
   createdAt: string;
   updatedAt: string;
   hasAuthors: boolean;
+  authorCount?: number;
 };
 
 export type LayerInput = {
@@ -31,6 +33,18 @@ export type LayerInput = {
 // selbst keine Spalte `id`, daher ist das nie mehrdeutig.
 const HAS_AUTHORS_SUBQUERY = `EXISTS (SELECT 1 FROM author_layer_grants alg WHERE alg.layer_id = id) AS has_authors`;
 
+// Nur fuer getLayerSubtree() (Admin-Baum) -- explizite Korrelation ueber
+// descendants.id statt bare `id`, weil die innere IN-Subquery ueber
+// `authors` eine eigene Spalte `id` mitbringt: ein direkter JOIN gegen
+// authors wuerde das bare `id` in `WHERE alg.layer_id = id` faelschlich
+// auf authors.id statt auf die aeussere Zeile binden (stiller Zaehlfehler,
+// kein SQL-Fehler). Die IN-Subquery ist bewusst unkorreliert gehalten.
+const LAYER_AUTHOR_COUNT_SUBQUERY = `(
+  SELECT COUNT(*)::int FROM author_layer_grants alg
+  WHERE alg.layer_id = descendants.id
+    AND alg.author_id IN (SELECT id FROM authors WHERE is_admin = FALSE)
+) AS author_count`;
+
 export function mapLayerRow(row: LayerRow): Layer {
   return {
     id: row.id,
@@ -39,6 +53,7 @@ export function mapLayerRow(row: LayerRow): Layer {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     hasAuthors: row.has_authors,
+    authorCount: row.author_count,
   };
 }
 
@@ -85,7 +100,7 @@ export async function getLayerSubtree(rootLayerIds: number[]): Promise<Layer[]> 
        SELECT l.* FROM layers l
        JOIN descendants d ON l.parent_id = d.id
      )
-     SELECT DISTINCT *, ${HAS_AUTHORS_SUBQUERY} FROM descendants ORDER BY name ASC`,
+     SELECT DISTINCT *, ${HAS_AUTHORS_SUBQUERY}, ${LAYER_AUTHOR_COUNT_SUBQUERY} FROM descendants ORDER BY name ASC`,
     [rootLayerIds]
   );
   return result.rows.map(mapLayerRow);

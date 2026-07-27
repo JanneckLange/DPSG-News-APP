@@ -82,6 +82,7 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
         .expand((ids) => ids)
         .toSet();
     unawaited(_loadTopics());
+    unawaited(ref.read(layerTreeProvider.notifier).refresh());
 
     // Ein bereits (lokal) gecachter Layer-Baum kann schon vor dem ersten
     // Build vorliegen -- direkt in die Felder pruenen statt ueber setState
@@ -245,17 +246,20 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
 
     return layerTreeAsync.when(
       data: (layers) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: LayerTopicTree(
-            layers: _visibleLayers(layers),
-            topics: _topics,
-            selectedLayerIds: _selectedLayerIds,
-            selectedTopicIds: _selectedTopicIds,
-            shrinkWrap: false,
-            emptyLabel: 'Keine DVs verfügbar.',
-            onLayerToggled: _toggleLayer,
-            onTopicToggled: _toggleTopic,
+        return RefreshIndicator(
+          onRefresh: () => ref.read(layerTreeProvider.notifier).refresh(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: LayerTopicTree(
+              layers: _visibleLayers(layers),
+              topics: _topics,
+              selectedLayerIds: _selectedLayerIds,
+              selectedTopicIds: _selectedTopicIds,
+              shrinkWrap: false,
+              emptyLabel: 'Keine DVs verfügbar.',
+              onLayerToggled: _toggleLayer,
+              onTopicToggled: _toggleTopic,
+            ),
           ),
         );
       },

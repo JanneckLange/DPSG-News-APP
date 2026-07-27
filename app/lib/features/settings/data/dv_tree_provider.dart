@@ -32,6 +32,13 @@ class LayerTreeNotifier extends StateNotifier<AsyncValue<List<LayerModel>>> {
   final settings_repo.SettingsRepository _repository;
   final RemoteEventSource _remoteSource;
 
+  /// Laedt den Layer-Baum erneut vom Server. Der Notifier laedt sonst nur
+  /// einmal beim Erzeugen (App-Start) -- ohne diesen expliziten Aufruf
+  /// bleiben neue Layer bzw. geaenderte `hasAuthors`-Zuordnungen bis zum
+  /// naechsten App-Neustart unsichtbar (z.B. beim Oeffnen der DV-Auswahl
+  /// oder des Event-Editors).
+  Future<void> refresh() => _loadTree();
+
   Future<void> _loadTree() async {
     final localTree = _repository.getLayerTree();
     if (localTree != null) {
