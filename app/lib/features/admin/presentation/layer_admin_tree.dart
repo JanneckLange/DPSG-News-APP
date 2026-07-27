@@ -17,14 +17,14 @@ import 'layer_detail_screen.dart';
 /// navigieren statt nur auf-/zuzuklappen).
 const double _expansionIndicatorWidth = 40;
 
-class LayerAdminScreen extends ConsumerStatefulWidget {
-  const LayerAdminScreen({super.key});
+class LayerAdminTree extends ConsumerStatefulWidget {
+  const LayerAdminTree({super.key});
 
   @override
-  ConsumerState<LayerAdminScreen> createState() => _LayerAdminScreenState();
+  ConsumerState<LayerAdminTree> createState() => _LayerAdminTreeState();
 }
 
-class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
+class _LayerAdminTreeState extends ConsumerState<LayerAdminTree> {
   List<LayerModel> _layers = <LayerModel>[];
   bool _loadingLayers = true;
   String? _layersError;
@@ -288,7 +288,7 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
                   Text(layer.name,
                       style: Theme.of(context).textTheme.bodyLarge),
                   Text(
-                    '$subLayerCount Sub-Layer, $topicCount Topics',
+                    '${layer.authorCount ?? 0} Autoren, $subLayerCount Sub-Layer, $topicCount Topics',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
@@ -359,10 +359,7 @@ class _LayerAdminScreenState extends ConsumerState<LayerAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Layer & Themen verwalten')),
-      body: _buildBody(),
-    );
+    return _buildBody();
   }
 }
 

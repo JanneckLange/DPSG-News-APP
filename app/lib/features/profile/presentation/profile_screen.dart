@@ -115,7 +115,8 @@ class ProfileScreen extends ConsumerWidget {
                       ListTile(
                         leading: const Icon(Icons.admin_panel_settings),
                         title: const Text('Admin-Bereich'),
-                        subtitle: const Text('Nutzerverwaltung und Freigaben'),
+                        subtitle:
+                            const Text('Layer, Themen und Nutzer verwalten'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
                           Navigator.of(context).push(
