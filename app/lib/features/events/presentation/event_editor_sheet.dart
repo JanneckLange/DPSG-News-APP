@@ -103,6 +103,12 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     if (_selectedLayerId != null) {
       unawaited(_loadTopicsForLayer(_selectedLayerId!));
     }
+    // Layer-Liste und Autoren-Rechte laden sonst nur einmal beim App-Start
+    // bzw. bei Login/Token-Refresh -- ohne diesen Refresh wuerden kuerzlich
+    // hinzugefuegte Layer bzw. neu vergebene Layer-Rechte hier erst nach
+    // einem App-Neustart auftauchen.
+    unawaited(ref.read(layerTreeProvider.notifier).refresh());
+    unawaited(ref.read(authorAuthProvider.notifier).refreshSession());
   }
 
   Future<void> _loadTopicsForLayer(int layerId) async {

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import {
+  AuthorIdentity,
   EventInput,
   createAuthorEvent,
   createEventUpdate,
@@ -39,9 +40,18 @@ eventsRouter.get('/api/author/events', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const author = res.locals.author as { id: number };
+    const author = res.locals.author as AuthorIdentity;
     const events = await getAuthorEvents(author.id);
-    res.json({ events });
+    const enrichedEvents = await Promise.all(events.map(async (event) => {
+      const canManage = await canManageWithinLayerScope(author, event.authorId, event.layerId);
+      return {
+        ...event,
+        canEdit: canManage,
+        canDelete: canManage,
+        canCreateUpdate: event.authorId === author.id,
+      };
+    }));
+    res.json({ events: enrichedEvents });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load own events' });

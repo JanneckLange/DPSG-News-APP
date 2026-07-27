@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/author/data/author_auth_provider.dart';
 import '../../features/events/data/event_repository.dart';
 import '../../features/events/data/remote_event_source.dart';
 import '../../features/settings/data/settings_repository.dart';
@@ -54,7 +55,11 @@ class SyncService {
     _logger.logEvent('events_sync_started');
     _ref.read(eventSyncStatusProvider.notifier).state = null;
     try {
-      final events = await _remoteSource.fetchEvents();
+      final auth = _ref.read(authorAuthProvider);
+      final token = auth.isLoggedIn
+          ? await _ref.read(authorAuthProvider.notifier).getValidAccessToken()
+          : null;
+      final events = await _remoteSource.fetchEvents(token: token);
       await _repository.saveEvents(events);
       _lastSyncedAt = DateTime.now();
       _logger.logEvent('events_synced', properties: {'count': events.length});

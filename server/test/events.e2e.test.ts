@@ -563,6 +563,30 @@ describe('Events API e2e', () => {
     expect(adminView.body.events[0].canCreateUpdate).toBe(false);
   });
 
+  it('sets canEdit/canDelete/canCreateUpdate for the owner on /api/author/events', async () => {
+    await createAuthorForTesting({ username: 'own-events-flags-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('own-events-flags-owner', 'secret-123');
+
+    await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Eigenes Event fuer Flag-Test',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+
+    const ownEvents = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`);
+    expect(ownEvents.body.events[0].canEdit).toBe(true);
+    expect(ownEvents.body.events[0].canDelete).toBe(true);
+    expect(ownEvents.body.events[0].canCreateUpdate).toBe(true);
+  });
+
   it('requires password change after one-time password login', async () => {
     await createAuthorForTesting({
       username: 'author-otp',
