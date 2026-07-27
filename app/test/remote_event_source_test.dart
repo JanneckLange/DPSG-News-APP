@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -540,6 +541,248 @@ void main() {
           predicate((RemoteEventSourceException e) =>
               e.serverMessage == 'Missing update message' &&
               e.statusCode == 400),
+        ),
+      ),
+    );
+  });
+
+  test('loginAuthor returns a parsed AuthorLoginSession on HTTP 200',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/auth/login');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {
+        'username': 'max',
+        'password': 'geheim123',
+      });
+      return http.Response(
+        '{"accessToken":"access-1","refreshToken":"refresh-1","expiresAt":"2026-01-01T00:00:00.000Z","refreshExpiresAt":"2026-01-08T00:00:00.000Z","requiresPasswordChange":false,"author":{"id":7,"username":"max","isAdmin":true,"layerGrantIds":[1,2],"topicGrantIds":[3]}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final session =
+        await source.loginAuthor(username: 'max', password: 'geheim123');
+
+    expect(session.accessToken, 'access-1');
+    expect(session.refreshToken, 'refresh-1');
+    expect(session.authorId, 7);
+    expect(session.username, 'max');
+    expect(session.isAdmin, isTrue);
+    expect(session.requiresPasswordChange, isFalse);
+    expect(session.layerGrantIds, [1, 2]);
+    expect(session.topicGrantIds, [3]);
+  });
+
+  test('loginAuthor throws RemoteEventSourceException with the server message on invalid credentials',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Invalid credentials"}', 401);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.loginAuthor(username: 'max', password: 'wrong'),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Invalid credentials' &&
+              e.statusCode == 401),
+        ),
+      ),
+    );
+  });
+
+  test(
+      'loginAuthor propagates a raw TimeoutException instead of RemoteEventSourceException '
+      '(pre-existing inconsistency: only some remote_event_source methods map timeouts, this one does not)',
+      () async {
+    final client = MockClient((request) {
+      return Future<http.Response>.delayed(
+        const Duration(seconds: 2),
+        () => http.Response('{}', 200),
+      );
+    });
+
+    final source = RemoteEventSource(
+      baseUrl: baseUrl,
+      client: client,
+      timeout: const Duration(milliseconds: 100),
+    );
+
+    expect(
+      source.loginAuthor(username: 'max', password: 'geheim123'),
+      throwsA(isA<TimeoutException>()),
+    );
+  });
+
+  test('refreshAuthorSession returns a parsed AuthorLoginSession on HTTP 200',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/auth/refresh');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {'refreshToken': 'refresh-1'});
+      return http.Response(
+        '{"accessToken":"access-2","refreshToken":"refresh-2","expiresAt":"2026-01-01T00:00:00.000Z","refreshExpiresAt":"2026-01-08T00:00:00.000Z","requiresPasswordChange":false,"author":{"id":7,"username":"max","isAdmin":false}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final session =
+        await source.refreshAuthorSession(refreshToken: 'refresh-1');
+
+    expect(session.accessToken, 'access-2');
+    expect(session.refreshToken, 'refresh-2');
+    expect(session.layerGrantIds, isEmpty);
+    expect(session.topicGrantIds, isEmpty);
+  });
+
+  test(
+      'refreshAuthorSession throws RemoteEventSourceException on an invalid refresh token',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Invalid refresh token"}', 401);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.refreshAuthorSession(refreshToken: 'garbage'),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Invalid refresh token'),
+        ),
+      ),
+    );
+  });
+
+  test('logoutAuthor sends an authenticated POST to /api/auth/logout',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/auth/logout');
+      expect(request.method, 'POST');
+      expect(request.headers[HttpHeaders.authorizationHeader], 'Bearer tok');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.logoutAuthor(token: 'tok');
+  });
+
+  test('logoutAuthor throws RemoteEventSourceException on non-204 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Unauthorized"}', 401);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.logoutAuthor(token: 'expired'),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('fetchAuthorSession returns a parsed AuthorSessionState on HTTP 200',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/auth/me');
+      expect(request.method, 'GET');
+      expect(request.headers[HttpHeaders.authorizationHeader], 'Bearer tok');
+      return http.Response(
+        '{"requiresPasswordChange":true,"author":{"isAdmin":true,"layerGrantIds":[4],"topicGrantIds":[5,6]}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final session = await source.fetchAuthorSession(token: 'tok');
+
+    expect(session.requiresPasswordChange, isTrue);
+    expect(session.isAdmin, isTrue);
+    expect(session.layerGrantIds, [4]);
+    expect(session.topicGrantIds, [5, 6]);
+  });
+
+  test(
+      'fetchAuthorSession throws RemoteEventSourceException when the session is no longer valid',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Unauthorized"}', 401);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchAuthorSession(token: 'expired'),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test(
+      'changeAuthorPassword includes oldPassword in the request body when provided',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/auth/change-password');
+      expect(jsonDecode(request.body), {
+        'newPassword': 'new-password-1',
+        'oldPassword': 'old-password',
+      });
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.changeAuthorPassword(
+      token: 'tok',
+      oldPassword: 'old-password',
+      newPassword: 'new-password-1',
+    );
+  });
+
+  test(
+      'changeAuthorPassword omits oldPassword from the request body when absent (one-time-password flow)',
+      () async {
+    final client = MockClient((request) async {
+      expect(jsonDecode(request.body), {'newPassword': 'new-password-1'});
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.changeAuthorPassword(
+      token: 'tok',
+      newPassword: 'new-password-1',
+    );
+  });
+
+  test(
+      'changeAuthorPassword throws RemoteEventSourceException with the server message on a wrong old password',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Invalid old password"}', 400);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.changeAuthorPassword(
+        token: 'tok',
+        oldPassword: 'wrong',
+        newPassword: 'new-password-1',
+      ),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Invalid old password'),
         ),
       ),
     );
