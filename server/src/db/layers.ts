@@ -8,6 +8,7 @@ type LayerRow = {
   parent_id: number | null;
   created_at: string;
   updated_at: string;
+  has_authors: boolean;
 };
 
 export type Layer = {
@@ -16,12 +17,19 @@ export type Layer = {
   parentId: number | null;
   createdAt: string;
   updatedAt: string;
+  hasAuthors: boolean;
 };
 
 export type LayerInput = {
   name: string;
   parentId?: number | null;
 };
+
+// `id` bleibt unqualifiziert, damit die Subquery unabhaengig vom
+// FROM-Alias der jeweiligen Query (layers, descendants, RETURNING-Zeile)
+// korrekt auf die aeussere Zeile korreliert -- author_layer_grants hat
+// selbst keine Spalte `id`, daher ist das nie mehrdeutig.
+const HAS_AUTHORS_SUBQUERY = `EXISTS (SELECT 1 FROM author_layer_grants alg WHERE alg.layer_id = id) AS has_authors`;
 
 export function mapLayerRow(row: LayerRow): Layer {
   return {
@@ -30,16 +38,22 @@ export function mapLayerRow(row: LayerRow): Layer {
     parentId: row.parent_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    hasAuthors: row.has_authors,
   };
 }
 
 export async function getLayers(): Promise<Layer[]> {
-  const result = await ensureClient().query<LayerRow>('SELECT * FROM layers ORDER BY name ASC');
+  const result = await ensureClient().query<LayerRow>(
+    `SELECT *, ${HAS_AUTHORS_SUBQUERY} FROM layers ORDER BY name ASC`
+  );
   return result.rows.map(mapLayerRow);
 }
 
 export async function getLayerById(id: number): Promise<Layer | null> {
-  const result = await ensureClient().query<LayerRow>('SELECT * FROM layers WHERE id = $1', [id]);
+  const result = await ensureClient().query<LayerRow>(
+    `SELECT *, ${HAS_AUTHORS_SUBQUERY} FROM layers WHERE id = $1`,
+    [id]
+  );
   return result.rows[0] ? mapLayerRow(result.rows[0]) : null;
 }
 
@@ -71,7 +85,7 @@ export async function getLayerSubtree(rootLayerIds: number[]): Promise<Layer[]> 
        SELECT l.* FROM layers l
        JOIN descendants d ON l.parent_id = d.id
      )
-     SELECT DISTINCT * FROM descendants ORDER BY name ASC`,
+     SELECT DISTINCT *, ${HAS_AUTHORS_SUBQUERY} FROM descendants ORDER BY name ASC`,
     [rootLayerIds]
   );
   return result.rows.map(mapLayerRow);
@@ -175,7 +189,7 @@ export async function createLayer(input: LayerInput): Promise<Layer> {
   const result = await ensureClient().query<LayerRow>(
     `INSERT INTO layers (name, parent_id)
      VALUES ($1, $2)
-     RETURNING *`,
+     RETURNING *, FALSE AS has_authors`,
     [input.name, input.parentId ?? null]
   );
   return mapLayerRow(result.rows[0]);
@@ -210,7 +224,7 @@ export async function updateLayer(id: number, input: LayerInput): Promise<Update
          parent_id = $2,
          updated_at = NOW()
      WHERE id = $3
-     RETURNING *`,
+     RETURNING *, ${HAS_AUTHORS_SUBQUERY}`,
     [input.name, nextParentId, id]
   );
   if (!result.rows[0]) {
