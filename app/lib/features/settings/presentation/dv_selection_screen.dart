@@ -26,6 +26,34 @@ class DvSelectionScreen extends StatelessWidget {
   }
 }
 
+/// Layer, die weder selbst Autoren haben noch einen Nachfahren mit Autoren
+/// besitzen, werden aus der Auswahl entfernt (#42/#43): sie koennen nie
+/// Inhalte liefern. Layer ohne eigene Autoren, aber mit einem
+/// Autoren-Nachfahren, bleiben sichtbar, damit ihre Kinder ihre Einordnung
+/// im Baum behalten.
+List<LayerModel> _visibleLayers(List<LayerModel> layers) {
+  final childrenByParentId = <int, List<LayerModel>>{};
+  for (final layer in layers) {
+    final parentId = layer.parentId;
+    if (parentId == null) continue;
+    childrenByParentId.putIfAbsent(parentId, () => <LayerModel>[]).add(layer);
+  }
+
+  final hasAuthorDescendantCache = <int, bool>{};
+  bool hasAuthorDescendant(int layerId) {
+    return hasAuthorDescendantCache.putIfAbsent(layerId, () {
+      for (final child in childrenByParentId[layerId] ?? const <LayerModel>[]) {
+        if (child.hasAuthors || hasAuthorDescendant(child.id)) return true;
+      }
+      return false;
+    });
+  }
+
+  return layers
+      .where((layer) => layer.hasAuthors || hasAuthorDescendant(layer.id))
+      .toList();
+}
+
 class DvSelectionEditor extends ConsumerStatefulWidget {
   const DvSelectionEditor({super.key, this.autosave = false});
 
@@ -54,6 +82,15 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
         .expand((ids) => ids)
         .toSet();
     unawaited(_loadTopics());
+
+    // Ein bereits (lokal) gecachter Layer-Baum kann schon vor dem ersten
+    // Build vorliegen -- direkt in die Felder pruenen statt ueber setState
+    // (das ist vor initState/dem ersten Build nicht erlaubt). Kuenftige
+    // Aenderungen des Baums fängt ref.listen in build() ab.
+    final cachedLayers = ref.read(layerTreeProvider).asData?.value;
+    if (cachedLayers != null) {
+      _removeLayerSelections(_selectedAuthorlessLayerIds(cachedLayers));
+    }
   }
 
   @override
@@ -120,6 +157,42 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
     await repository.setSelectedLayerIds(_selectedLayerIds.toList()..sort());
   }
 
+  /// Bereits ausgewaehlte Layer, die in [layers] als autorenlos gefuehrt
+  /// werden (#42/#43) -- Schnittmenge mit der aktuellen Auswahl.
+  Set<int> _selectedAuthorlessLayerIds(List<LayerModel> layers) {
+    final authorlessIds = layers
+        .where((layer) => !layer.hasAuthors)
+        .map((layer) => layer.id)
+        .toSet();
+    return _selectedLayerIds.intersection(authorlessIds);
+  }
+
+  /// Entfernt die angegebenen Layer (und ihre Topics) direkt aus den
+  /// Auswahl-Feldern, ohne setState -- fuer den Aufruf vor dem ersten Build.
+  void _removeLayerSelections(Iterable<int> layerIds) {
+    for (final layerId in layerIds) {
+      _selectedLayerIds.remove(layerId);
+      final topicIdsForLayer = _topics
+          .where((topic) => topic.layerId == layerId)
+          .map((topic) => topic.id)
+          .toSet();
+      _selectedTopicIds.removeWhere(topicIdsForLayer.contains);
+    }
+  }
+
+  /// Entfernt bereits ausgewaehlte Layer, die zwischenzeitlich autorenlos
+  /// geworden sind, still aus der Auswahl (#43) -- ohne Rueckmeldung, analog
+  /// zum bisherigen Verhalten bei geloeschten Layern.
+  void _pruneAuthorlessSelections(List<LayerModel> layers) {
+    final toRemove = _selectedAuthorlessLayerIds(layers);
+    if (toRemove.isEmpty) return;
+
+    setState(() => _removeLayerSelections(toRemove));
+    if (widget.autosave) {
+      unawaited(_persistLayerSelection());
+    }
+  }
+
   Future<void> _persistTopicsForLayer(int layerId) async {
     final repository = ref.read(settingsRepositoryProvider);
     final idsForLayer = _topics
@@ -165,13 +238,17 @@ class DvSelectionEditorState extends ConsumerState<DvSelectionEditor> {
   @override
   Widget build(BuildContext context) {
     final layerTreeAsync = ref.watch(layerTreeProvider);
+    ref.listen<AsyncValue<List<LayerModel>>>(layerTreeProvider, (previous, next) {
+      final layers = next.asData?.value;
+      if (layers != null) _pruneAuthorlessSelections(layers);
+    });
 
     return layerTreeAsync.when(
       data: (layers) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: LayerTopicTree(
-            layers: layers,
+            layers: _visibleLayers(layers),
             topics: _topics,
             selectedLayerIds: _selectedLayerIds,
             selectedTopicIds: _selectedTopicIds,
