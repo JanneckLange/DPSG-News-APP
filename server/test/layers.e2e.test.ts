@@ -51,6 +51,29 @@ describe('Layers API e2e', () => {
     expect(koeln).toBeDefined();
   });
 
+  it('reports hasAuthors based on author_layer_grants (#42)', async () => {
+    const before = await request(app).get('/api/layers');
+    const layersBefore = before.body.layers as Array<{ id: number; name: string; hasAuthors: boolean }>;
+    const koeln = layersBefore.find((l) => l.name === 'Köln');
+    expect(koeln).toBeDefined();
+    expect(koeln!.hasAuthors).toBe(false);
+
+    await createAuthorForTesting({
+      username: 'author-koeln',
+      password: 'secret-123',
+      layerGrantIds: [koeln!.id],
+    });
+
+    const after = await request(app).get('/api/layers');
+    const layersAfter = after.body.layers as Array<{ id: number; parentId: number | null; hasAuthors: boolean }>;
+    const koelnAfter = layersAfter.find((l) => l.id === koeln!.id);
+    expect(koelnAfter!.hasAuthors).toBe(true);
+
+    const otherDv = layersAfter.find((l) => l.id !== koeln!.id && l.parentId !== null);
+    expect(otherDv).toBeDefined();
+    expect(otherDv!.hasAuthors).toBe(false);
+  });
+
   it('rejects layer creation and mutation for non-admins and unauthenticated users', async () => {
     await createAuthorForTesting({ username: 'author-a', password: 'secret-123' });
     const token = await loginAuthor('author-a', 'secret-123');
