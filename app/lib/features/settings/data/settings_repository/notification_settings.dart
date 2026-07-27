@@ -9,8 +9,7 @@ mixin _NotificationSettings on _SettingsRepositoryBase {
       _box.put(SettingsKeys.notificationsEnabledKey, enabled);
 
   bool getNewEventPushEnabled() =>
-      _box.get(SettingsKeys.newEventPushEnabledKey, defaultValue: true)
-          as bool;
+      _box.get(SettingsKeys.newEventPushEnabledKey, defaultValue: true) as bool;
 
   Future<void> setNewEventPushEnabled(bool enabled) async =>
       _box.put(SettingsKeys.newEventPushEnabledKey, enabled);
@@ -50,7 +49,8 @@ mixin _NotificationSettings on _SettingsRepositoryBase {
   }
 
   Map<String, DateTime> getEventViewedAt() {
-    final raw = _box.get(SettingsKeys.eventViewedAtKey) as Map<dynamic, dynamic>?;
+    final raw =
+        _box.get(SettingsKeys.eventViewedAtKey) as Map<dynamic, dynamic>?;
     if (raw == null) return <String, DateTime>{};
     final result = <String, DateTime>{};
     for (final entry in raw.entries) {

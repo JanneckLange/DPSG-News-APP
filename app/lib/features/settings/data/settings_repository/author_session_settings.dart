@@ -34,8 +34,8 @@ mixin _AuthorSessionSettings on _SettingsRepositoryBase {
       await _box.delete(SettingsKeys.authorLastBackgroundedAtKey);
       return;
     }
-    await _box.put(
-        SettingsKeys.authorLastBackgroundedAtKey, value.toUtc().toIso8601String());
+    await _box.put(SettingsKeys.authorLastBackgroundedAtKey,
+        value.toUtc().toIso8601String());
   }
 
   List<int> getAuthorLayerGrantIds() {
@@ -62,7 +62,8 @@ mixin _AuthorSessionSettings on _SettingsRepositoryBase {
       _box.put(SettingsKeys.authorIdKey, authorId),
       _box.put(SettingsKeys.authorUsernameKey, username),
       _box.put(SettingsKeys.authorIsAdminKey, isAdmin),
-      _box.put(SettingsKeys.authorRequiresPasswordChangeKey, requiresPasswordChange),
+      _box.put(
+          SettingsKeys.authorRequiresPasswordChangeKey, requiresPasswordChange),
       _box.put(SettingsKeys.authorLayerGrantIdsKey, layerGrantIds),
       _box.put(SettingsKeys.authorTopicGrantIdsKey, topicGrantIds),
       _box.delete(SettingsKeys.authorLastBackgroundedAtKey),
