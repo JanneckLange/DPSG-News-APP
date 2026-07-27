@@ -1188,4 +1188,233 @@ void main() {
       throwsA(isA<RemoteEventSourceException>()),
     );
   });
+
+  test('fetchAdminLayers returns the parsed layer subtree on HTTP 200',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/layers');
+      expect(request.method, 'GET');
+      expect(request.headers[HttpHeaders.authorizationHeader], 'Bearer tok');
+      return http.Response(
+        '{"layers":[{"id":3,"name":"Koeln"}]}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result = await source.fetchAdminLayers(token: 'tok');
+
+    expect((result['layers'] as List).first['name'], 'Koeln');
+  });
+
+  test(
+      'fetchAdminLayers throws RemoteEventSourceException when the acting admin has no admin layers',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchAdminLayers(token: 'tok'),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('createLayer posts name and optional parentId and returns the created layer',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/layers');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {'name': 'Neue Ebene', 'parentId': 3});
+      return http.Response(
+        '{"layer":{"id":10,"name":"Neue Ebene"}}',
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result = await source.createLayer(
+      token: 'tok',
+      name: 'Neue Ebene',
+      parentId: 3,
+    );
+
+    expect(result['layer']['id'], 10);
+  });
+
+  test('createLayer omits parentId from the body when not provided', () async {
+    final client = MockClient((request) async {
+      expect(jsonDecode(request.body), {'name': 'Root-Ebene'});
+      return http.Response('{"layer":{"id":11}}', 201);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.createLayer(token: 'tok', name: 'Root-Ebene');
+  });
+
+  test(
+      'createLayer throws RemoteEventSourceException when the name already exists under the parent',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response(
+          '{"error":"A layer with this name already exists"}', 409);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.createLayer(token: 'tok', name: 'Duplikat'),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'A layer with this name already exists'),
+        ),
+      ),
+    );
+  });
+
+  test('updateLayer patches the name on /api/admin/layers/:id', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/layers/3');
+      expect(request.method, 'PATCH');
+      expect(jsonDecode(request.body), {'name': 'Umbenannt'});
+      return http.Response(
+        '{"layer":{"id":3,"name":"Umbenannt"}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result =
+        await source.updateLayer(token: 'tok', layerId: 3, name: 'Umbenannt');
+
+    expect(result['layer']['name'], 'Umbenannt');
+  });
+
+  test('updateLayer throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Layer not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.updateLayer(token: 'tok', layerId: 999, name: 'x'),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('deleteLayer sends DELETE to /api/admin/layers/:id', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/layers/3');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.deleteLayer(token: 'tok', layerId: 3);
+  });
+
+  test(
+      'deleteLayer throws RemoteEventSourceException when the layer still has children or events',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response(
+          '{"error":"Layer has child layers or referenced events"}', 409);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.deleteLayer(token: 'tok', layerId: 3),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Layer has child layers or referenced events'),
+        ),
+      ),
+    );
+  });
+
+  test('checkHealth reports healthy=true on HTTP 200', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/health');
+      return http.Response('{"status":"ok"}', 200);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final status = await source.checkHealth();
+
+    expect(status.healthy, isTrue);
+    expect(status.message, 'Server erreichbar');
+  });
+
+  test(
+      'checkHealth reports healthy=false with the status code on a non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('Service Unavailable', 503);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final status = await source.checkHealth();
+
+    expect(status.healthy, isFalse);
+    expect(status.message, contains('503'));
+  });
+
+  test('checkHealth throws RemoteEventSourceException on timeout', () async {
+    final client = MockClient((request) {
+      return Future<http.Response>.delayed(
+        const Duration(seconds: 2),
+        () => http.Response('{}', 200),
+      );
+    });
+
+    final source = RemoteEventSource(
+      baseUrl: baseUrl,
+      client: client,
+      timeout: const Duration(milliseconds: 100),
+    );
+
+    expect(
+      source.checkHealth(),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.message.contains('Health check timed out')),
+        ),
+      ),
+    );
+  });
+
+  test(
+      'checkHealth throws RemoteEventSourceException when the server is unreachable',
+      () async {
+    final client = MockClient((request) async {
+      throw const SocketException('Failed host lookup');
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.checkHealth(),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.message.contains('Unable to reach health endpoint')),
+        ),
+      ),
+    );
+  });
 }
