@@ -787,4 +787,405 @@ void main() {
       ),
     );
   });
+
+  test('fetchAdminUsers returns the parsed user list on HTTP 200', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users');
+      expect(request.method, 'GET');
+      expect(request.headers[HttpHeaders.authorizationHeader], 'Bearer tok');
+      return http.Response(
+        '{"users":[{"id":1,"username":"max"}]}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final users = await source.fetchAdminUsers(token: 'tok');
+
+    expect(users, hasLength(1));
+    expect(users.first['username'], 'max');
+  });
+
+  test('fetchAdminUsers throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchAdminUsers(token: 'tok'),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Forbidden'),
+        ),
+      ),
+    );
+  });
+
+  test('fetchLayerAdmins returns the parsed admin list on HTTP 200', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/layers/3/admins');
+      expect(request.method, 'GET');
+      return http.Response(
+        '{"admins":[{"id":2,"username":"admin-koeln"}]}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final admins = await source.fetchLayerAdmins(token: 'tok', layerId: 3);
+
+    expect(admins, hasLength(1));
+    expect(admins.first['username'], 'admin-koeln');
+  });
+
+  test(
+      'fetchLayerAdmins throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('Not found', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchLayerAdmins(token: 'tok', layerId: 999),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('createAdminUser posts username/isAdmin/layerIds and returns the created user',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {
+        'username': 'new-admin',
+        'isAdmin': true,
+        'layerIds': [3],
+      });
+      return http.Response(
+        '{"author":{"id":9,"username":"new-admin"}}',
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result = await source.createAdminUser(
+      token: 'tok',
+      username: 'new-admin',
+      isAdmin: true,
+      layerIds: [3],
+    );
+
+    expect(result['author']['id'], 9);
+  });
+
+  test('createAdminUser omits layerIds from the body when not provided',
+      () async {
+    final client = MockClient((request) async {
+      expect(jsonDecode(request.body), {
+        'username': 'plain-author',
+        'isAdmin': false,
+      });
+      return http.Response('{"author":{"id":10}}', 201);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.createAdminUser(token: 'tok', username: 'plain-author');
+  });
+
+  test(
+      'createAdminUser throws RemoteEventSourceException when the layerId is outside the acting admin\'s scope',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.createAdminUser(
+          token: 'tok', username: 'x', isAdmin: true, layerIds: [1]),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('setAdminUserActive patches isActive on /api/admin/users/:id',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4');
+      expect(request.method, 'PATCH');
+      expect(jsonDecode(request.body), {'isActive': false});
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.setAdminUserActive(token: 'tok', userId: 4, isActive: false);
+  });
+
+  test(
+      'setAdminUserActive throws RemoteEventSourceException on non-204 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.setAdminUserActive(token: 'tok', userId: 999, isActive: true),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('deleteAdminUser sends DELETE to /api/admin/users/:id', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.deleteAdminUser(token: 'tok', userId: 4);
+  });
+
+  test(
+      'deleteAdminUser throws RemoteEventSourceException when outside the acting admin\'s scope',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.deleteAdminUser(token: 'tok', userId: 4),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test(
+      'resetAdminUserPassword returns the generated one-time password on HTTP 200',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4/reset-password');
+      expect(request.method, 'POST');
+      return http.Response(
+        '{"oneTimePassword":"temp-abc-123"}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final otp = await source.resetAdminUserPassword(token: 'tok', userId: 4);
+
+    expect(otp, 'temp-abc-123');
+  });
+
+  test(
+      'resetAdminUserPassword throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.resetAdminUserPassword(token: 'tok', userId: 999),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('addAdminLayer posts layerId to /api/admin/users/:id/admin-layers',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4/admin-layers');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {'layerId': 3});
+      return http.Response('{"adminLayerIds":[3]}', 201);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result =
+        await source.addAdminLayer(token: 'tok', userId: 4, layerId: 3);
+
+    expect(result['adminLayerIds'], [3]);
+  });
+
+  test(
+      'addAdminLayer throws RemoteEventSourceException when the layer is outside scope',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.addAdminLayer(token: 'tok', userId: 4, layerId: 1),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('removeAdminLayer sends DELETE to /api/admin/users/:id/admin-layers/:layerId',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4/admin-layers/3');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.removeAdminLayer(token: 'tok', userId: 4, layerId: 3);
+  });
+
+  test(
+      'removeAdminLayer throws RemoteEventSourceException when removing the last remaining admin layer',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response(
+          '{"error":"Cannot remove the last remaining admin layer"}', 400);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.removeAdminLayer(token: 'tok', userId: 4, layerId: 3),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Cannot remove the last remaining admin layer'),
+        ),
+      ),
+    );
+  });
+
+  test('addAuthorLayerGrant posts layerId to /api/admin/users/:id/layer-grants',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4/layer-grants');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {'layerId': 3});
+      return http.Response('{"layerGrantIds":[3]}', 201);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result =
+        await source.addAuthorLayerGrant(token: 'tok', userId: 4, layerId: 3);
+
+    expect(result['layerGrantIds'], [3]);
+  });
+
+  test(
+      'addAuthorLayerGrant throws RemoteEventSourceException when outside the acting admin\'s scope',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.addAuthorLayerGrant(token: 'tok', userId: 4, layerId: 1),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test(
+      'removeAuthorLayerGrant sends DELETE to /api/admin/users/:id/layer-grants/:layerId',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4/layer-grants/3');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.removeAuthorLayerGrant(token: 'tok', userId: 4, layerId: 3);
+  });
+
+  test(
+      'removeAuthorLayerGrant throws RemoteEventSourceException on non-204 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.removeAuthorLayerGrant(token: 'tok', userId: 4, layerId: 3),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('addAuthorTopicGrant posts topicId to /api/admin/users/:id/topic-grants',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4/topic-grants');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {'topicId': 5});
+      return http.Response('{"topicGrantIds":[5]}', 201);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final result =
+        await source.addAuthorTopicGrant(token: 'tok', userId: 4, topicId: 5);
+
+    expect(result['topicGrantIds'], [5]);
+  });
+
+  test(
+      'addAuthorTopicGrant throws RemoteEventSourceException when the topic\'s layer is outside scope',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.addAuthorTopicGrant(token: 'tok', userId: 4, topicId: 5),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test(
+      'removeAuthorTopicGrant sends DELETE to /api/admin/users/:id/topic-grants/:topicId',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/admin/users/4/topic-grants/5');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.removeAuthorTopicGrant(token: 'tok', userId: 4, topicId: 5);
+  });
+
+  test(
+      'removeAuthorTopicGrant throws RemoteEventSourceException on non-204 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.removeAuthorTopicGrant(token: 'tok', userId: 4, topicId: 5),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
 }
