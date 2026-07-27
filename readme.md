@@ -103,7 +103,7 @@ measure what caveman save you: run /caveman-stats (numbers are estimates)
 ### 1. Neues Feature starten
 
 ```bash
-claude --worktree <feature-name> --name <feature-name>
+claude --worktree feat-92 --name feat-92
 ```
 
 Dadurch wird automatisch ein neuer Git-Worktree mit einem eigenen Feature-Branch erstellt. So bleiben Features sauber voneinander getrennt und `main` wird niemals direkt bearbeitet.

@@ -28,7 +28,6 @@ Before implementing:
 
 * Read only the files that are likely relevant to the task.
 * Never scan the repository broadly. Expand the search incrementally only when required.
-* Identify the files you expect to modify and explain why.
 * Follow existing architecture and patterns.
 * Keep the scope focused on the requested task.
 * Challenge my proposed solution if you find a simpler, safer, more maintainable or more user-friendly alternative. Explain the trade-offs briefly.
@@ -64,11 +63,8 @@ Before considering a task complete:
 ## Git
 
 Never work directly on `main` or `master`.
-
 Development must happen inside a feature branch or Claude worktree.
-
 If the current branch is `main` or `master`, stop and instruct me to restart Claude using a worktree.
-
 Create local checkpoint commits after coherent vertical slices.
 
 Never automatically:
@@ -99,7 +95,8 @@ When compacting, preserve:
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
 Rules:
-- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+* For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+* If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+* Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+* After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
