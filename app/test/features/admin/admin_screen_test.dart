@@ -37,9 +37,10 @@ class _FakeRemoteEventSource extends RemoteEventSource {
     return users;
   }
 
-  // LayerAdminScreen wird beim Antippen von "Layer & Themen verwalten"
-  // gepusht und laedt in initState eigene Daten -- leere, aber gueltige
-  // Antworten reichen, damit die Navigation nicht crasht.
+  // LayerAdminTree wird direkt in AdminScreen eingebettet (kein eigener
+  // Screen/Navigation mehr, siehe "Layer-Baum direkt anzeigen") und laedt in
+  // initState eigene Daten -- leere, aber gueltige Antworten reichen, damit
+  // das Einbetten nicht crasht.
   @override
   Future<Map<String, dynamic>> fetchAdminLayers({required String token}) async {
     return {'layers': <Map<String, dynamic>>[]};
@@ -133,7 +134,7 @@ void main() {
   });
 
   testWidgets(
-      'shows the user list with Autor/Admin/Deaktiviert/Reset-offen chips',
+      'shows the user list with Autor/Admin/Deaktiviert/Reset-offen chips after opening "Alle Nutzer"',
       (tester) async {
     final remote = _FakeRemoteEventSource(users: [
       {'username': 'aktiver-autor', 'isActive': true, 'isAdmin': false},
@@ -145,6 +146,8 @@ void main() {
       },
     ]);
     await pumpScreen(tester, remote);
+    await tester.tap(find.text('Alle Nutzer'));
+    await tester.pumpAndSettle();
 
     expect(remote.fetchAdminUsersCallCount, 1);
     expect(find.text('aktiver-autor'), findsOneWidget);
@@ -161,6 +164,8 @@ void main() {
       fetchAdminUsersError: RemoteEventSourceException('Server down'),
     );
     await pumpScreen(tester, remote);
+    await tester.tap(find.text('Alle Nutzer'));
+    await tester.pumpAndSettle();
 
     expect(
       find.text('RemoteEventSourceException: Server down'),
@@ -171,6 +176,8 @@ void main() {
   testWidgets('the refresh button reloads the user list', (tester) async {
     final remote = _FakeRemoteEventSource(users: const []);
     await pumpScreen(tester, remote);
+    await tester.tap(find.text('Alle Nutzer'));
+    await tester.pumpAndSettle();
 
     expect(remote.fetchAdminUsersCallCount, 1);
 
@@ -181,15 +188,11 @@ void main() {
   });
 
   testWidgets(
-      'tapping "Layer & Themen verwalten" navigates to the layer admin screen',
+      'embeds the layer tree directly without a separate navigation step (#71: kein eigener Scaffold mehr)',
       (tester) async {
     final remote = _FakeRemoteEventSource();
     await pumpScreen(tester, remote);
 
-    await tester.tap(find.text('Layer & Themen verwalten'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Layer & Themen verwalten'), findsOneWidget);
     expect(find.text('Keine Layer vorhanden.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -7,6 +7,7 @@ export type AuthorRow = {
   is_active: boolean;
   is_admin: boolean;
   admin_layer_id: number | null;
+  created_by_author_id: number | null;
 };
 
 export type AuthorRowWithAdminLayers = AuthorRow & { admin_layer_ids: number[] };
@@ -25,4 +26,5 @@ export type AuthorRecord = {
   adminLayerIds: number[];
   layerGrantIds: number[];
   topicGrantIds: number[];
+  createdByAuthorId: number | null;
 };

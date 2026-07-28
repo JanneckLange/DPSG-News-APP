@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dpsg_news_app/core/services/hive_service.dart';
 import 'package:dpsg_news_app/core/services/sync_service.dart' as sync_service;
 import 'package:dpsg_news_app/features/admin/domain/topic_model.dart';
-import 'package:dpsg_news_app/features/admin/presentation/layer_admin_screen.dart';
+import 'package:dpsg_news_app/features/admin/presentation/layer_admin_tree.dart';
 import 'package:dpsg_news_app/features/author/data/author_auth_provider.dart';
 import 'package:dpsg_news_app/features/events/data/remote_event_source.dart';
 import 'package:dpsg_news_app/features/settings/domain/layer_model.dart';
@@ -127,6 +127,7 @@ AuthorAuthState _loggedInState() {
     refreshToken: 'refresh-token',
     authorId: 1,
     username: 'author',
+    isAdmin: true,
     expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
     refreshExpiresAt: DateTime.now().toUtc().add(const Duration(days: 7)),
   );
@@ -161,7 +162,11 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: LayerAdminScreen()),
+        // LayerAdminTree hat (anders als der ehemalige LayerAdminScreen) keinen
+        // eigenen Scaffold mehr - der Baum wird direkt im Admin-Bereich
+        // eingebettet angezeigt (siehe Umbenennung layer_admin_screen.dart ->
+        // layer_admin_tree.dart, "kein eigener Scaffold").
+        child: const MaterialApp(home: Scaffold(body: LayerAdminTree())),
       ),
     );
     await tester.pumpAndSettle();
@@ -185,7 +190,7 @@ void main() {
   );
 
   testWidgets(
-      'renders the layer tree with sub-layer and topic counts after loading',
+      'renders the layer tree with author/sub-layer/topic counts after loading (server-scoped data, #18/#112)',
       (tester) async {
     final remote = _FakeRemoteEventSource(
       layers: const [bundesverband, koeln],
@@ -194,9 +199,32 @@ void main() {
     await pumpScreen(tester, remote);
 
     expect(find.text('Bundesverband'), findsOneWidget);
-    expect(find.text('1 Sub-Layer, 1 Topics'), findsOneWidget);
+    expect(find.text('0 Autoren, 1 Sub-Layer, 1 Topics'), findsOneWidget);
     expect(find.text('Köln'), findsOneWidget);
-    expect(find.text('0 Sub-Layer, 0 Topics'), findsOneWidget);
+    expect(find.text('0 Autoren, 0 Sub-Layer, 0 Topics'), findsOneWidget);
+  });
+
+  testWidgets('shows the author count returned by the admin layer endpoint',
+      (tester) async {
+    final remote = _FakeRemoteEventSource(
+      layers: const [
+        LayerModel(id: 1, name: 'Hamburg', parentId: null, authorCount: 2),
+        LayerModel(id: 2, name: 'Köln', parentId: 1, authorCount: 0),
+      ],
+      topics: [
+        const TopicModel(
+          id: 10,
+          name: 'Wölflinge',
+          layerId: 2,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        ),
+      ],
+    );
+    await pumpScreen(tester, remote);
+
+    expect(find.text('2 Autoren, 1 Sub-Layer, 0 Topics'), findsOneWidget);
+    expect(find.text('0 Autoren, 0 Sub-Layer, 1 Topics'), findsOneWidget);
   });
 
   testWidgets('shows an empty-state message when there are no layers',
