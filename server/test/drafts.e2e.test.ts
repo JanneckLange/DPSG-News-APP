@@ -163,14 +163,27 @@ describe('Drafts API e2e', () => {
     expect(updateRes.body.draft.publishAt).toBeUndefined();
   });
 
-  it('rejects a draft with an oversized CTA label', async () => {
-    await createAuthorForTesting({ username: 'draft-author-cta', password: 'pwd-123' });
-    const token = await loginAuthor('draft-author-cta', 'pwd-123');
+  it('accepts a mailto: cta1Url for a draft', async () => {
+    await createAuthorForTesting({ username: 'draft-author-mailto', password: 'pwd-123' });
+    const token = await loginAuthor('draft-author-mailto', 'pwd-123');
 
     const res = await request(app)
       .post('/api/author/drafts')
       .set('authorization', `Bearer ${token}`)
-      .send({ title: 'Draft', cta1Label: 'x'.repeat(21) });
+      .send({ title: 'Draft', cta1Url: 'mailto:kontakt@example.org' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.draft.cta1Url).toBe('mailto:kontakt@example.org');
+  });
+
+  it('rejects a draft with a mailto: cta2Url', async () => {
+    await createAuthorForTesting({ username: 'draft-author-cta2-mailto', password: 'pwd-123' });
+    const token = await loginAuthor('draft-author-cta2-mailto', 'pwd-123');
+
+    const res = await request(app)
+      .post('/api/author/drafts')
+      .set('authorization', `Bearer ${token}`)
+      .send({ title: 'Draft', cta2Url: 'mailto:kontakt@example.org' });
 
     expect(res.status).toBe(400);
   });

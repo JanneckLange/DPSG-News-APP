@@ -1,5 +1,4 @@
 import {
-  MAX_LABEL_LENGTH,
   MAX_LOCATION_ADDRESS_LENGTH,
   MAX_LONG_TEXT_LENGTH,
   MAX_TITLE_LENGTH,
@@ -17,7 +16,6 @@ describe('validateEventTextFields', () => {
       locationLat: 50.1,
       locationLng: 8.7,
       topicId: undefined,
-      cta1Label: 'Anmelden',
       cta1Url: 'https://example.org/anmeldung',
     });
     expect(result.valid).toBe(true);
@@ -62,11 +60,6 @@ describe('validateEventTextFields', () => {
     expect(result.valid).toBe(false);
   });
 
-  it('rejects an oversized CTA label', () => {
-    const result = validateEventTextFields({ title: 'Test', cta1Label: 'x'.repeat(MAX_LABEL_LENGTH + 1) });
-    expect(result.valid).toBe(false);
-  });
-
   it('rejects a CTA URL that exceeds the max length', () => {
     const longUrl = `https://example.org/${'a'.repeat(MAX_URL_LENGTH)}`;
     const result = validateEventTextFields({ title: 'Test', cta1Url: longUrl });
@@ -86,6 +79,31 @@ describe('validateEventTextFields', () => {
   it('accepts a CTA URL without an explicit scheme (treated as https)', () => {
     const result = validateEventTextFields({ title: 'Test', cta1Url: 'www.google.com' });
     expect(result.valid).toBe(true);
+  });
+
+  it('accepts a mailto: URL for cta1Url', () => {
+    const result = validateEventTextFields({ title: 'Test', cta1Url: 'mailto:max@example.org' });
+    expect(result.valid).toBe(true);
+  });
+
+  it('accepts a bare email address for cta1Url', () => {
+    const result = validateEventTextFields({ title: 'Test', cta1Url: 'max@example.org' });
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects an invalid mailto address for cta1Url', () => {
+    const result = validateEventTextFields({ title: 'Test', cta1Url: 'mailto:ungueltig' });
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('cta1Url') });
+  });
+
+  it('rejects a mailto: URL for cta2Url', () => {
+    const result = validateEventTextFields({ title: 'Test', cta2Url: 'mailto:max@example.org' });
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('cta2Url') });
+  });
+
+  it('rejects a bare email address for cta2Url', () => {
+    const result = validateEventTextFields({ title: 'Test', cta2Url: 'max@example.org' });
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('cta2Url') });
   });
 
   it('rejects a topicId that does not belong to the selected layer', () => {

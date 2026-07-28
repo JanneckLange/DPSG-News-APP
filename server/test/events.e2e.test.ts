@@ -206,7 +206,7 @@ describe('Events API e2e', () => {
     expect(ownResponse.body.events[0].title).toBe('Test Event');
   });
 
-  it('persists and returns CTA button fields through create and update', async () => {
+  it('persists and returns CTA button URLs through create and update, without persisting labels', async () => {
     await createAuthorForTesting({ username: 'author-cta', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-cta', 'secret-123');
 
@@ -222,26 +222,22 @@ describe('Events API e2e', () => {
         locationLat: 50.5,
         locationLng: 7.0,
         layerId: koelnLayerId,
-        cta1Label: 'Anmelden',
         cta1Url: 'https://example.org/anmeldung',
-        cta2Label: 'Mehr Infos',
         cta2Url: 'https://example.org/infos',
       });
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.event).toMatchObject({
-      cta1Label: 'Anmelden',
       cta1Url: 'https://example.org/anmeldung',
-      cta2Label: 'Mehr Infos',
       cta2Url: 'https://example.org/infos',
     });
+    expect(createResponse.body.event.cta1Label).toBeUndefined();
+    expect(createResponse.body.event.cta2Label).toBeUndefined();
 
     const eventId = createResponse.body.event.id as number;
     const publicResponse = await request(app).get('/api/events');
     expect(publicResponse.status).toBe(200);
     expect(publicResponse.body.events[0]).toMatchObject({
-      cta1Label: 'Anmelden',
       cta1Url: 'https://example.org/anmeldung',
-      cta2Label: 'Mehr Infos',
       cta2Url: 'https://example.org/infos',
     });
 
@@ -257,16 +253,48 @@ describe('Events API e2e', () => {
         locationLat: 50.5,
         locationLng: 7.0,
         layerId: koelnLayerId,
-        cta1Label: 'Jetzt anmelden',
         cta1Url: 'https://example.org/anmeldung-neu',
       });
     expect(updateResponse.status).toBe(200);
     expect(updateResponse.body.event).toMatchObject({
-      cta1Label: 'Jetzt anmelden',
       cta1Url: 'https://example.org/anmeldung-neu',
     });
+    expect(updateResponse.body.event.cta1Label).toBeUndefined();
     expect(updateResponse.body.event.cta2Label).toBeUndefined();
     expect(updateResponse.body.event.cta2Url).toBeUndefined();
+  });
+
+  it('accepts a mailto: cta1Url and rejects a mailto: cta2Url', async () => {
+    await createAuthorForTesting({ username: 'author-cta-mailto', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const token = await loginAuthor('author-cta-mailto', 'secret-123');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event mit Mail-CTA',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        endDate: '2026-05-01T12:00:00Z',
+        layerId: koelnLayerId,
+        cta1Url: 'mailto:kontakt@example.org',
+      });
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.event.cta1Url).toBe('mailto:kontakt@example.org');
+    expect(createResponse.body.event.cta1Label).toBeUndefined();
+
+    const rejectedResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event mit ungueltigem CTA2',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        endDate: '2026-05-01T12:00:00Z',
+        layerId: koelnLayerId,
+        cta2Url: 'mailto:kontakt@example.org',
+      });
+    expect(rejectedResponse.status).toBe(400);
   });
 
   it('hides an event with a future publishAt from the public listing but keeps it manageable and visible to its author', async () => {
@@ -399,7 +427,6 @@ describe('Events API e2e', () => {
         locationLat: 50.5,
         locationLng: 7.0,
         layerId: koelnLayerId,
-        cta1Label: 'Klick mich',
         cta1Url: 'javascript:alert(1)',
       });
     expect(response.status).toBe(400);

@@ -11,9 +11,7 @@ type DraftRow = {
   location_lng: number | null;
   layer_id: number | null;
   topic_id?: number | null;
-  cta1_label: string | null;
   cta1_url: string | null;
-  cta2_label: string | null;
   cta2_url: string | null;
   is_public: boolean;
   publish_at: string | null;
@@ -34,9 +32,7 @@ export type Draft = {
   locationLng?: number;
   layerId: number | null;
   topicId?: number;
-  cta1Label?: string;
   cta1Url?: string;
-  cta2Label?: string;
   cta2Url?: string;
   isPublic: boolean;
   publishAt?: string;
@@ -57,9 +53,7 @@ export type DraftInput = {
   locationLng?: number;
   layerId?: number;
   topicId?: number;
-  cta1Label?: string;
   cta1Url?: string;
-  cta2Label?: string;
   cta2Url?: string;
   isPublic?: boolean;
   publishAt?: string;
@@ -118,9 +112,7 @@ export function mapDraftRow(row: DraftRow): Draft {
   if (row.location_address != null) out.locationAddress = row.location_address;
   if (row.location_lat != null) out.locationLat = row.location_lat;
   if (row.location_lng != null) out.locationLng = row.location_lng;
-  if (row.cta1_label != null) out.cta1Label = row.cta1_label;
   if (row.cta1_url != null) out.cta1Url = row.cta1_url;
-  if (row.cta2_label != null) out.cta2Label = row.cta2_label;
   if (row.cta2_url != null) out.cta2Url = row.cta2_url;
   if (row.publish_at != null) out.publishAt = row.publish_at;
   if (row.registration_deadline != null) out.registrationDeadline = row.registration_deadline;
@@ -129,10 +121,10 @@ export function mapDraftRow(row: DraftRow): Draft {
 
 export async function createAuthorDraft(draft: DraftInput, authorId: number): Promise<Draft> {
   const result = await ensureClient().query<DraftRow>(
-    `INSERT INTO drafts (title, description, start_date, end_date, location_address, location_lat, location_lng, layer_id, topic_id, cta1_label, cta1_url, cta2_label, cta2_url, is_public, publish_at, registration_deadline, author_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+    `INSERT INTO drafts (title, description, start_date, end_date, location_address, location_lat, location_lng, layer_id, topic_id, cta1_url, cta2_url, is_public, publish_at, registration_deadline, author_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING *`,
-    [draft.title, draft.description ?? null, draft.startDate ?? null, draft.endDate ?? null, draft.locationAddress ?? null, draft.locationLat ?? null, draft.locationLng ?? null, draft.layerId ?? null, draft.topicId ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, draft.isPublic ?? false, draft.publishAt ?? null, draft.registrationDeadline ?? null, authorId]
+    [draft.title, draft.description ?? null, draft.startDate ?? null, draft.endDate ?? null, draft.locationAddress ?? null, draft.locationLat ?? null, draft.locationLng ?? null, draft.layerId ?? null, draft.topicId ?? null, draft.cta1Url ?? null, draft.cta2Url ?? null, draft.isPublic ?? false, draft.publishAt ?? null, draft.registrationDeadline ?? null, authorId]
   );
   return mapDraftRow(result.rows[0]);
 }
@@ -158,17 +150,15 @@ export async function updateAuthorDraftById(id: number, authorId: number, draft:
          location_lng = $7,
          layer_id = $8,
          topic_id = $9,
-         cta1_label = $10,
-         cta1_url = $11,
-         cta2_label = $12,
-         cta2_url = $13,
-         is_public = $14,
-         publish_at = $15,
-         registration_deadline = $16,
+         cta1_url = $10,
+         cta2_url = $11,
+         is_public = $12,
+         publish_at = $13,
+         registration_deadline = $14,
          modified_at = NOW()
-    WHERE id = $17 AND author_id = $18
+    WHERE id = $15 AND author_id = $16
      RETURNING *`,
-    [draft.title, draft.description, draft.startDate, draft.endDate, draft.locationAddress ?? null, draft.locationLat ?? null, draft.locationLng ?? null, draft.layerId ?? null, draft.topicId ?? null, draft.cta1Label ?? null, draft.cta1Url ?? null, draft.cta2Label ?? null, draft.cta2Url ?? null, draft.isPublic ?? false, draft.publishAt ?? null, draft.registrationDeadline ?? null, id, authorId]
+    [draft.title, draft.description, draft.startDate, draft.endDate, draft.locationAddress ?? null, draft.locationLat ?? null, draft.locationLng ?? null, draft.layerId ?? null, draft.topicId ?? null, draft.cta1Url ?? null, draft.cta2Url ?? null, draft.isPublic ?? false, draft.publishAt ?? null, draft.registrationDeadline ?? null, id, authorId]
   );
   return result.rows[0] ? mapDraftRow(result.rows[0]) : null;
 }

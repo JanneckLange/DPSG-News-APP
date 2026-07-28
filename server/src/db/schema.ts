@@ -91,9 +91,7 @@ export async function connect(): Promise<void> {
       location_lng DOUBLE PRECISION,
       dv TEXT,
       topic TEXT,
-      cta1_label TEXT,
       cta1_url TEXT,
-      cta2_label TEXT,
       cta2_url TEXT,
       author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -101,10 +99,10 @@ export async function connect(): Promise<void> {
     );
   `);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS topic TEXT;`);
-  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta1_label TEXT;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta1_url TEXT;`);
-  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
+  await client.query(`ALTER TABLE events DROP COLUMN IF EXISTS cta1_label;`);
+  await client.query(`ALTER TABLE events DROP COLUMN IF EXISTS cta2_label;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_address TEXT;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION;`);
@@ -139,19 +137,17 @@ export async function connect(): Promise<void> {
       location_lng DOUBLE PRECISION,
       dv TEXT,
       topic TEXT,
-      cta1_label TEXT,
       cta1_url TEXT,
-      cta2_label TEXT,
       cta2_url TEXT,
       author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
-  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta1_label TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta1_url TEXT;`);
-  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
+  await client.query(`ALTER TABLE drafts DROP COLUMN IF EXISTS cta1_label;`);
+  await client.query(`ALTER TABLE drafts DROP COLUMN IF EXISTS cta2_label;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS location_address TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION;`);
