@@ -220,6 +220,63 @@ describe('Events API e2e', () => {
     expect(updateResponse.body.event.cta2Url).toBeUndefined();
   });
 
+  it('hides an event with a future publishAt from the public listing but keeps it manageable and visible to its author', async () => {
+    await createAuthorForTesting({ username: 'author-publish', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const token = await loginAuthor('author-publish', 'secret-123');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Zukuenftiges Event',
+        description: 'Beschreibung',
+        startDate: '2099-01-01T10:00:00Z',
+        endDate: '2099-01-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        isPublic: true,
+        publishAt: '2099-01-01T00:00:00Z',
+        registrationDeadline: '2098-12-01T00:00:00Z',
+      });
+    expect(createResponse.status).toBe(201);
+    expect(createResponse.body.event).toMatchObject({
+      isPublic: true,
+      publishAt: '2099-01-01T00:00:00.000Z',
+      registrationDeadline: '2098-12-01T00:00:00.000Z',
+    });
+    const eventId = createResponse.body.event.id as number;
+
+    const publicResponse = await request(app).get('/api/events');
+    expect(publicResponse.status).toBe(200);
+    expect(
+      (publicResponse.body.events as Array<{ id: number }>).find((event) => event.id === eventId)
+    ).toBeUndefined();
+
+    const ownResponse = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${token}`);
+    expect(ownResponse.status).toBe(200);
+    expect(
+      (ownResponse.body.events as Array<{ id: number }>).find((event) => event.id === eventId)
+    ).toMatchObject({ isPublic: true, publishAt: '2099-01-01T00:00:00.000Z' });
+
+    const updateResponse = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Zukuenftiges Event aktualisiert',
+        description: 'Beschreibung',
+        startDate: '2099-01-01T10:00:00Z',
+        endDate: '2099-01-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        isPublic: true,
+        publishAt: '2099-01-01T00:00:00Z',
+      });
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body.event.title).toBe('Zukuenftiges Event aktualisiert');
+  });
+
   it('rejects events with an oversized title', async () => {
     await createAuthorForTesting({ username: 'author-oversized', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-oversized', 'secret-123');
@@ -235,6 +292,37 @@ describe('Events API e2e', () => {
         layerId: koelnLayerId,
       });
     expect(response.status).toBe(400);
+  });
+
+  it('rejects a non-boolean isPublic and an invalid publishAt', async () => {
+    await createAuthorForTesting({ username: 'author-invalid-publish', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const token = await loginAuthor('author-invalid-publish', 'secret-123');
+
+    const invalidIsPublic = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        isPublic: 'yes',
+      });
+    expect(invalidIsPublic.status).toBe(400);
+
+    const invalidPublishAt = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+        publishAt: 'not-a-date',
+      });
+    expect(invalidPublishAt.status).toBe(400);
   });
 
   it('rejects a CTA URL with a javascript: scheme', async () => {

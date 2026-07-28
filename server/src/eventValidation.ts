@@ -56,6 +56,26 @@ function validateOptionalCtaUrl(fieldName: string, value: unknown): FieldValidat
   return VALID_RESULT;
 }
 
+function validateOptionalBoolean(fieldName: string, value: unknown): FieldValidation {
+  if (value === undefined || value === null) {
+    return VALID_RESULT;
+  }
+  if (typeof value !== 'boolean') {
+    return invalid(`Field '${fieldName}' must be a boolean`);
+  }
+  return VALID_RESULT;
+}
+
+function validateOptionalDate(fieldName: string, value: unknown): FieldValidation {
+  if (value === undefined || value === null) {
+    return VALID_RESULT;
+  }
+  if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
+    return invalid(`Field '${fieldName}' must be a valid date`);
+  }
+  return VALID_RESULT;
+}
+
 function validateTopic(validTopicIds: number[] | null | undefined, value: unknown): FieldValidation {
   if (value === undefined || value === null) {
     return VALID_RESULT;
@@ -79,6 +99,9 @@ export function validateEventTextFields(body: Record<string, unknown>, validTopi
     validateOptionalCtaUrl('cta1Url', body.cta1Url),
     validateOptionalText('cta2Label', body.cta2Label, MAX_LABEL_LENGTH),
     validateOptionalCtaUrl('cta2Url', body.cta2Url),
+    validateOptionalBoolean('isPublic', body.isPublic),
+    validateOptionalDate('publishAt', body.publishAt),
+    validateOptionalDate('registrationDeadline', body.registrationDeadline),
   ];
   for (const check of checks) {
     if (!check.valid) {
