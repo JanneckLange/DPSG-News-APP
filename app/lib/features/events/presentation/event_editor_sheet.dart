@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/error_toast_service.dart';
+import '../../../core/services/logging_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../../shared/utils/date_format_utils.dart';
 import '../../../shared/utils/geoapify_service.dart';
+import '../../../shared/utils/nominatim_service.dart';
 import '../../admin/domain/topic_model.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
@@ -39,6 +41,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   double? _locationLng;
   Timer? _locationAutocompleteDebounce;
   List<GeoapifyAddress> _locationSuggestions = [];
+  TextEditingController? _locationTextController;
+  int _locationRequestId = 0;
+  bool _locationSearchUnavailable = false;
   DateTime? _startDate;
   DateTime? _endDate;
   int? _selectedLayerId;
@@ -282,12 +287,18 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
         return;
       }
     }
+    // Falls keine Adresse aus der Vorschlagsliste ausgewaehlt wurde, aber
+    // Freitext im Ortsfeld steht (z. B. weil die Adresssuche nicht verfuegbar
+    // war), diesen Text ohne Koordinaten als Ortsangabe uebernehmen.
+    final typedLocation = _locationTextController?.text.trim();
+    final resolvedLocationAddress = _locationAddress ??
+        ((typedLocation != null && typedLocation.isNotEmpty) ? typedLocation : null);
     final payload = <String, dynamic>{
       'title': title,
       'description': _descriptionController.text.trim(),
       if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
       if (_endDate != null) 'endDate': _endDate!.toIso8601String(),
-      if (_locationAddress != null) 'locationAddress': _locationAddress,
+      if (resolvedLocationAddress != null) 'locationAddress': resolvedLocationAddress,
       if (_locationLat != null) 'locationLat': _locationLat,
       if (_locationLng != null) 'locationLng': _locationLng,
       if (_selectedLayerId != null) 'layerId': _selectedLayerId,
@@ -470,19 +481,57 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                         if (_locationAutocompleteDebounce?.isActive ?? false) {
                           _locationAutocompleteDebounce!.cancel();
                         }
+                        final requestId = ++_locationRequestId;
+                        final logger = ref.read(loggingServiceProvider);
                         final completer = Completer<Iterable<String>>();
                         _locationAutocompleteDebounce = Timer(
                           const Duration(milliseconds: 500),
                           () async {
+                            List<GeoapifyAddress> results = [];
+                            var unavailable = false;
                             try {
-                              _locationSuggestions = await autocompleteAddress(query);
-                              completer.complete(
-                                _locationSuggestions.map((address) => address.formatted),
+                              results = await autocompleteAddress(query, logger: logger);
+                            } catch (primaryError, primaryStack) {
+                              await logger.logServiceError(
+                                'geoapify',
+                                'autocomplete_failed query_len=${query.length}',
+                                error: primaryError,
+                                stackTrace: primaryStack,
                               );
-                            } catch (_) {
-                              _locationSuggestions = [];
-                              completer.complete(const Iterable<String>.empty());
+                              try {
+                                results = await autocompleteAddressNominatim(
+                                  query,
+                                  logger: logger,
+                                );
+                              } catch (fallbackError, fallbackStack) {
+                                await logger.logServiceError(
+                                  'nominatim',
+                                  'autocomplete_fallback_failed query_len=${query.length}',
+                                  error: fallbackError,
+                                  stackTrace: fallbackStack,
+                                );
+                                unavailable = true;
+                              }
                             }
+                            if (requestId != _locationRequestId) {
+                              // Ein neuerer Request laeuft bereits - dieses
+                              // veraltete Ergebnis verwerfen, damit die
+                              // Vorschlagsliste nicht mit _locationSuggestions
+                              // auseinanderlaeuft (Race-Condition durch
+                              // Timer.cancel(), das laufende Callbacks nicht
+                              // stoppt).
+                              completer.complete(const Iterable<String>.empty());
+                              return;
+                            }
+                            _locationSuggestions = results;
+                            if (mounted) {
+                              setState(() => _locationSearchUnavailable = unavailable);
+                            } else {
+                              _locationSearchUnavailable = unavailable;
+                            }
+                            completer.complete(
+                              _locationSuggestions.map((address) => address.formatted),
+                            );
                           },
                         );
                         return completer.future;
@@ -503,13 +552,15 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                         FocusNode focusNode,
                         VoidCallback onFieldSubmitted,
                       ) {
+                        _locationTextController = textEditingController;
                         return TextFormField(
                           controller: textEditingController,
                           focusNode: focusNode,
                           decoration: InputDecoration(
                             labelText: 'Ort',
-                            helperText:
-                                'Adresse aus der Vorschlagsliste auswählen, um den Ort zu speichern.',
+                            helperText: _locationSearchUnavailable
+                                ? 'Adresssuche derzeit nicht verfügbar - Adresse kann unten frei eingegeben werden.'
+                                : 'Adresse aus der Vorschlagsliste wählen oder frei eingeben, falls keine Vorschläge erscheinen.',
                             suffixIcon: _locationAddress != null
                                 ? IconButton(
                                     icon: const Icon(Icons.clear),

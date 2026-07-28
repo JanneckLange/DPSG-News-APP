@@ -26,6 +26,9 @@ if [ -f "$APP_ROOT/.env.example" ]; then
   if [ -n "${LOG_MAX_SIZE_MB:-}" ]; then
     printf 'LOG_MAX_SIZE_MB=%s\n' "$LOG_MAX_SIZE_MB" >> "$APP_ROOT/.env"
   fi
+  if [ -n "${GEOAPIFY_KEY:-}" ]; then
+    printf 'GEOAPIFY_KEY=%s\n' "$GEOAPIFY_KEY" >> "$APP_ROOT/.env"
+  fi
   echo "Created app/.env from app/.env.example"
 else
   echo "No app/.env.example found; skipping app env preparation"
