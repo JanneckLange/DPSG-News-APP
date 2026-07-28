@@ -67,6 +67,7 @@ export {
   mapLayerRow,
   getLayers,
   getLayerById,
+  getRootLayerId,
   isLayerInAdminScope,
   getLayerSubtree,
   getLayerAdmins,

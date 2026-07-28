@@ -67,6 +67,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   }
 
   Future<void> _loadLayerContext() async {
+    List<LayerModel> layers = <LayerModel>[];
     try {
       final response =
           await ref.read(authorAuthProvider.notifier).callAuthenticated(
@@ -74,7 +75,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                     .read(sync_service.remoteEventSourceProvider)
                     .fetchAdminLayers(token: token),
               );
-      final layers =
+      layers =
           List<Map<String, dynamic>>.from(response['layers'] as List<dynamic>)
               .map(LayerModel.fromJson)
               .toList();
@@ -83,13 +84,20 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     } catch (_) {
       // Layer-Namen bleiben dann als "Layer #id" sichtbar.
     }
+    // Topics je Layer laden statt global (/api/topics ohne layerId) - der
+    // eigene Layer-Zweig aus fetchAdminLayers ist bereits serverseitig
+    // gescoped, damit bleiben auch die geladenen Topics auf den eigenen
+    // Scope beschraenkt (#113).
     try {
       final remote = ref.read(sync_service.remoteEventSourceProvider);
-      final response = await remote.fetchTopics();
-      final topics =
+      final topics = <TopicModel>[];
+      for (final layer in layers) {
+        final response = await remote.fetchTopics(layerId: layer.id);
+        topics.addAll(
           List<Map<String, dynamic>>.from(response['topics'] as List<dynamic>)
-              .map(TopicModel.fromJson)
-              .toList();
+              .map(TopicModel.fromJson),
+        );
+      }
       if (!mounted) return;
       setState(() => _availableTopics = topics);
     } catch (_) {

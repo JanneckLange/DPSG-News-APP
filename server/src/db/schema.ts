@@ -25,6 +25,7 @@ export async function connect(): Promise<void> {
   await client.query(`ALTER TABLE authors ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT TRUE;`);
   await client.query(`ALTER TABLE authors ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;`);
   await client.query(`ALTER TABLE authors ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;`);
+  await client.query(`ALTER TABLE authors ADD COLUMN IF NOT EXISTS created_by_author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL;`);
   await client.query(`
     CREATE TABLE IF NOT EXISTS author_sessions (
       token TEXT PRIMARY KEY,

@@ -361,6 +361,23 @@ describe('Events API e2e', () => {
     expect(response.status).toBe(400);
   });
 
+  it('rejects a valid layerId the author has no grant for (#114)', async () => {
+    await createAuthorForTesting({ username: 'author-no-grant', password: 'secret-123' });
+    const token = await loginAuthor('author-no-grant', 'secret-123');
+
+    const response = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    expect(response.status).toBe(403);
+  });
+
   it('rejects a topicId that does not belong to the selected layer', async () => {
     await createAuthorForTesting({
       username: 'author-bad-topic',
@@ -619,6 +636,70 @@ describe('Events API e2e', () => {
       .delete(`/api/events/${eventId}`)
       .set('authorization', `Bearer ${adminToken}`);
     expect(adminDelete.status).toBe(403);
+  });
+
+  it('forbids an owner from moving their own event to a layer/topic without a grant via /api/author/events/:id (#111)', async () => {
+    await createAuthorForTesting({ username: 'events-move-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('events-move-owner', 'secret-123');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Event in Koeln',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    const eventId = createResponse.body.event.id as number;
+
+    const moveOutsideGrant = await request(app)
+      .put(`/api/author/events/${eventId}`)
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Verschoben',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: hamburgLayerId,
+      });
+    expect(moveOutsideGrant.status).toBe(403);
+  });
+
+  it('forbids a scoped admin from moving a foreign event to a layer outside their own scope via /api/events/:id (#111)', async () => {
+    await createAuthorForTesting({ username: 'events-move-owner-2', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'events-move-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('events-move-owner-2', 'secret-123');
+    const adminToken = await loginAuthor('events-move-admin', 'admin-123');
+
+    const createResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({
+        title: 'Event in Koeln',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    const eventId = createResponse.body.event.id as number;
+
+    const moveOutsideScope = await request(app)
+      .put(`/api/events/${eventId}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Verschoben',
+        description: 'Body',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        location: 'Ort',
+        layerId: hamburgLayerId,
+      });
+    expect(moveOutsideScope.status).toBe(403);
   });
 
   it('sets canCreateUpdate only for the event owner, not for a scoped admin', async () => {

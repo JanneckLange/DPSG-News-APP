@@ -158,6 +158,7 @@ export async function createAuthorForTesting(options: {
   adminLayerIds?: number[];
   layerGrantIds?: number[];
   topicGrantIds?: number[];
+  createdByAuthorId?: number | null;
 }): Promise<AuthorIdentity> {
   const db = ensureClient();
   let adminLayerIds = options.adminLayerIds ?? [];
@@ -173,8 +174,8 @@ export async function createAuthorForTesting(options: {
   await db.query('BEGIN');
   try {
     const result = await db.query<AuthorRow>(
-      `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
-       VALUES ($1, $2, $3, $4, TRUE, $5)
+      `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin, created_by_author_id)
+       VALUES ($1, $2, $3, $4, TRUE, $5, $6)
        RETURNING *`,
       [
         options.username,
@@ -182,6 +183,7 @@ export async function createAuthorForTesting(options: {
         options.oneTimePassword ? hashPassword(options.oneTimePassword) : null,
         options.mustChangePassword ?? false,
         options.isAdmin ?? false,
+        options.createdByAuthorId ?? null,
       ]
     );
     const author = result.rows[0];
@@ -381,6 +383,7 @@ export function mapAuthorRecord(row: AuthorRowWithGrants): AuthorRecord {
     adminLayerIds: row.admin_layer_ids,
     layerGrantIds: row.layer_grant_ids,
     topicGrantIds: row.topic_grant_ids,
+    createdByAuthorId: row.created_by_author_id,
   };
 }
 
@@ -403,6 +406,7 @@ export async function createAuthor(options: {
   username: string;
   isAdmin?: boolean;
   adminLayerIds?: number[];
+  createdByAuthorId?: number | null;
 }): Promise<{ author: AuthorRecord; oneTimePassword: string }> {
   const db = ensureClient();
   const oneTimePassword = randomUUID().split('-')[0];
@@ -410,10 +414,10 @@ export async function createAuthor(options: {
   await db.query('BEGIN');
   try {
     const result = await db.query<AuthorRow>(
-      `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin)
-       VALUES ($1, $2, $3, TRUE, TRUE, $4)
+      `INSERT INTO authors (username, password_hash, one_time_password_hash, must_change_password, is_active, is_admin, created_by_author_id)
+       VALUES ($1, $2, $3, TRUE, TRUE, $4, $5)
        RETURNING *`,
-      [options.username, hashPassword(randomUUID()), hashPassword(oneTimePassword), options.isAdmin ?? false]
+      [options.username, hashPassword(randomUUID()), hashPassword(oneTimePassword), options.isAdmin ?? false, options.createdByAuthorId ?? null]
     );
     const author = result.rows[0];
     for (const layerId of adminLayerIds) {
