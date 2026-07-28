@@ -1417,4 +1417,287 @@ void main() {
       ),
     );
   });
+
+  test('createEvent posts to /api/events and returns the created event',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/events');
+      expect(request.method, 'POST');
+      expect(jsonDecode(request.body), {'title': 'Sommerlager'});
+      return http.Response(
+        '{"event":{"id":1,"title":"Sommerlager"}}',
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final event = await source.createEvent({'title': 'Sommerlager'});
+
+    expect(event['id'], 1);
+  });
+
+  test('createEvent throws RemoteEventSourceException on non-201 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Missing title"}', 400);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.createEvent({}),
+      throwsA(
+        allOf(
+          isA<RemoteEventSourceException>(),
+          predicate((RemoteEventSourceException e) =>
+              e.serverMessage == 'Missing title'),
+        ),
+      ),
+    );
+  });
+
+  test('fetchOwnEvents returns the author\'s own events on HTTP 200',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/author/events');
+      expect(request.headers[HttpHeaders.authorizationHeader], 'Bearer tok');
+      return http.Response(
+        '{"events":[{"id":1,"title":"Sommerlager"}]}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final events = await source.fetchOwnEvents(token: 'tok');
+
+    expect(events, hasLength(1));
+  });
+
+  test('fetchOwnEvents throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('Unauthorized', 401);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.fetchOwnEvents(token: 'expired'),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('createOwnEvent posts to /api/author/events and returns the created event',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/author/events');
+      expect(request.method, 'POST');
+      return http.Response(
+        '{"event":{"id":3,"title":"Zeltlager"}}',
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final event = await source.createOwnEvent(
+      token: 'tok',
+      event: {'title': 'Zeltlager'},
+    );
+
+    expect(event['id'], 3);
+  });
+
+  test('updateEvent puts to /api/events/:id and returns the updated event',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/events/5');
+      expect(request.method, 'PUT');
+      return http.Response(
+        '{"event":{"id":5,"title":"Umbenannt"}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final event = await source.updateEvent(
+      token: 'tok',
+      eventId: 5,
+      event: {'title': 'Umbenannt'},
+    );
+
+    expect(event['title'], 'Umbenannt');
+  });
+
+  test('updateEvent throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Event not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.updateEvent(token: 'tok', eventId: 999, event: {}),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('deleteEvent sends DELETE to /api/events/:id', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/events/5');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.deleteEvent(token: 'tok', eventId: 5);
+  });
+
+  test('deleteEvent throws RemoteEventSourceException on non-204 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.deleteEvent(token: 'tok', eventId: 5),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test(
+      'updateOwnEvent puts to /api/author/events/:id and returns the updated event',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/author/events/5');
+      expect(request.method, 'PUT');
+      return http.Response(
+        '{"event":{"id":5,"title":"Umbenannt"}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final event = await source.updateOwnEvent(
+      token: 'tok',
+      eventId: 5,
+      event: {'title': 'Umbenannt'},
+    );
+
+    expect(event['title'], 'Umbenannt');
+  });
+
+  test('updateOwnEvent throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Not your event"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.updateOwnEvent(token: 'tok', eventId: 5, event: {}),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('deleteOwnEvent sends DELETE to /api/author/events/:id', () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/author/events/5');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.deleteOwnEvent(token: 'tok', eventId: 5);
+  });
+
+  test('deleteOwnEvent throws RemoteEventSourceException on non-204 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Not your event"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.deleteOwnEvent(token: 'tok', eventId: 5),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test(
+      'updateEventUpdate puts to /api/events/:id/updates/:updateId and returns the updated entry',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/events/42/updates/7');
+      expect(request.method, 'PUT');
+      expect(jsonDecode(request.body), {'message': 'Korrigiert'});
+      return http.Response(
+        '{"update":{"id":7,"message":"Korrigiert"}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    final update = await source.updateEventUpdate(
+      token: 'tok',
+      eventId: 42,
+      updateId: 7,
+      message: 'Korrigiert',
+    );
+
+    expect(update['message'], 'Korrigiert');
+  });
+
+  test(
+      'updateEventUpdate throws RemoteEventSourceException on non-200 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Update not found"}', 404);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.updateEventUpdate(
+          token: 'tok', eventId: 42, updateId: 999, message: 'x'),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
+
+  test('deleteEventUpdate sends DELETE to /api/events/:id/updates/:updateId',
+      () async {
+    final client = MockClient((request) async {
+      expect(request.url.path, '/api/events/42/updates/7');
+      expect(request.method, 'DELETE');
+      return http.Response('', 204);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+    await source.deleteEventUpdate(token: 'tok', eventId: 42, updateId: 7);
+  });
+
+  test(
+      'deleteEventUpdate throws RemoteEventSourceException on non-204 response',
+      () async {
+    final client = MockClient((request) async {
+      return http.Response('{"error":"Forbidden"}', 403);
+    });
+
+    final source = RemoteEventSource(baseUrl: baseUrl, client: client);
+
+    expect(
+      source.deleteEventUpdate(token: 'tok', eventId: 42, updateId: 7),
+      throwsA(isA<RemoteEventSourceException>()),
+    );
+  });
 }
