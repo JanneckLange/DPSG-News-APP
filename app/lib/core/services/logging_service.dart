@@ -383,7 +383,10 @@ class LoggingService {
     final sanitized = <String, String>{};
     for (final entry in uri.queryParameters.entries) {
       final lower = entry.key.toLowerCase();
-      if (lower.contains('token') || lower.contains('secret') || lower.contains('auth')) {
+      if (lower.contains('token') ||
+          lower.contains('secret') ||
+          lower.contains('auth') ||
+          lower.contains('key')) {
         sanitized[entry.key] = '<redacted>';
       } else {
         sanitized[entry.key] = entry.value;
