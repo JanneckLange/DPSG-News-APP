@@ -8,6 +8,7 @@ import 'package:dpsg_news_app/core/services/hive_service.dart';
 import 'package:dpsg_news_app/core/services/sync_service.dart' as sync_service;
 import 'package:dpsg_news_app/features/author/data/author_auth_provider.dart';
 import 'package:dpsg_news_app/features/events/data/remote_event_source.dart';
+import 'package:dpsg_news_app/features/events/domain/event_cta_labels.dart';
 import 'package:dpsg_news_app/features/events/presentation/event_detail_screen.dart';
 import 'package:dpsg_news_app/features/settings/data/settings_repository.dart'
     as settings_repo;
@@ -98,6 +99,41 @@ final _sampleEventOwned = <String, dynamic>{
   'canEdit': true,
   'canDelete': true,
 };
+
+Future<void> _pumpEvent(WidgetTester tester, Map<String, dynamic> event) async {
+  final repository =
+      settings_repo.SettingsRepository(HiveService.getSettingsBox());
+  final secureStorage = FakeSecureStorageService();
+  final remote = _FakeRemoteEventSource();
+
+  await tester.runAsync(() async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sync_service.remoteEventSourceProvider.overrideWithValue(remote),
+          settings_repo.settingsRepositoryProvider
+              .overrideWithValue(repository),
+          authorAuthProvider.overrideWith(
+            (ref) => TestAuthorAuthNotifier(
+              repository: repository,
+              remote: remote,
+              secureStorage: secureStorage,
+              ref: ref,
+              initialState:
+                  const AuthorAuthState(isLoggedIn: false, isLocked: false),
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: ThemeData.light(),
+          home: EventDetailScreen(event: event),
+        ),
+      ),
+    );
+    await tester.pump();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+  });
+}
 
 void main() {
   setUpAll(() async {
@@ -265,5 +301,64 @@ void main() {
 
     expect(container.read(settings_repo.eventViewedAtProvider).containsKey('1'),
         isTrue);
+  });
+
+  testWidgets('renders only CTA1 as a FilledButton when CTA2 is absent',
+      (tester) async {
+    await _pumpEvent(tester, {
+      ..._sampleEvent,
+      'cta1Url': 'https://example.org/anmeldung',
+    });
+
+    expect(find.widgetWithText(FilledButton, kEventCta1Label), findsOneWidget);
+    expect(find.text(kEventCta2Label), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('renders CTA2 as a FilledButton (primary) when CTA1 is absent',
+      (tester) async {
+    await _pumpEvent(tester, {
+      ..._sampleEvent,
+      'cta2Url': 'https://example.org/infos',
+    });
+
+    expect(find.widgetWithText(FilledButton, kEventCta2Label), findsOneWidget);
+    expect(find.text(kEventCta1Label), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'renders CTA1 as primary and CTA2 as secondary when both are set',
+      (tester) async {
+    await _pumpEvent(tester, {
+      ..._sampleEvent,
+      'cta1Url': 'https://example.org/anmeldung',
+      'cta2Url': 'https://example.org/infos',
+    });
+
+    expect(find.widgetWithText(FilledButton, kEventCta1Label), findsOneWidget);
+    expect(
+        find.widgetWithText(OutlinedButton, kEventCta2Label), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'shows an email confirmation dialog when CTA1 is a mailto address',
+      (tester) async {
+    await _pumpEvent(tester, {
+      ..._sampleEvent,
+      'cta1Url': 'mailto:kontakt@example.org',
+    });
+
+    await tester.tap(find.widgetWithText(FilledButton, kEventCta1Label));
+    await tester.pumpAndSettle();
+
+    expect(find.text('E-Mail senden'), findsOneWidget);
+    expect(find.textContaining('kontakt@example.org'), findsOneWidget);
+    expect(find.text('Webseite öffnen'), findsNothing);
+
+    // Dialog ueber "Abbrechen" schliessen, statt launchUrl auszuloesen.
+    await tester.tap(find.text('Abbrechen'));
+    await tester.pumpAndSettle();
   });
 }

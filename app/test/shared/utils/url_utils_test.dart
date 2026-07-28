@@ -27,4 +27,39 @@ void main() {
       expect(isHttpOrHttpsUri(Uri.parse('www.example.org')), isFalse);
     });
   });
+
+  group('looksLikeMailto', () {
+    test('accepts an explicit mailto: prefix', () {
+      expect(looksLikeMailto('mailto:max@example.org'), isTrue);
+    });
+
+    test('accepts a bare email address without scheme', () {
+      expect(looksLikeMailto('max@example.org'), isTrue);
+    });
+
+    test('rejects an http(s) URL even if it contains @ in the userinfo part', () {
+      expect(looksLikeMailto('https://user@example.org'), isFalse);
+    });
+
+    test('rejects a plain https URL without @', () {
+      expect(looksLikeMailto('https://example.org'), isFalse);
+    });
+  });
+
+  group('extractMailtoAddress', () {
+    test('strips the mailto: prefix', () {
+      expect(extractMailtoAddress('mailto:max@example.org'), 'max@example.org');
+    });
+
+    test('returns a bare address unchanged', () {
+      expect(extractMailtoAddress('max@example.org'), 'max@example.org');
+    });
+
+    test('strips query parameters', () {
+      expect(
+        extractMailtoAddress('mailto:max@example.org?subject=Hallo'),
+        'max@example.org',
+      );
+    });
+  });
 }
