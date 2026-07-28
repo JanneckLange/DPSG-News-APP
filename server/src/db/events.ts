@@ -14,6 +14,9 @@ type EventRow = {
   cta1_url: string | null;
   cta2_label: string | null;
   cta2_url: string | null;
+  is_public: boolean;
+  publish_at: string | null;
+  registration_deadline: string | null;
   author_id: number | null;
   created_at: string;
   modified_at: string;
@@ -33,6 +36,9 @@ export type Event = {
   cta1Url?: string;
   cta2Label?: string;
   cta2Url?: string;
+  isPublic: boolean;
+  publishAt?: string;
+  registrationDeadline?: string;
   authorId: number | null;
   createdAt: string;
   modifiedAt: string;
@@ -51,6 +57,9 @@ export type EventInput = {
   cta1Url?: string;
   cta2Label?: string;
   cta2Url?: string;
+  isPublic?: boolean;
+  publishAt?: string;
+  registrationDeadline?: string;
 };
 
 export function mapEventRow(row: EventRow): Event {
@@ -62,6 +71,7 @@ export function mapEventRow(row: EventRow): Event {
     endDate: row.end_date ?? '',
     location: row.location ?? '',
     layerId: row.layer_id,
+    isPublic: row.is_public,
     authorId: row.author_id,
     createdAt: row.created_at,
     modifiedAt: row.modified_at,
@@ -73,16 +83,33 @@ export function mapEventRow(row: EventRow): Event {
   if (row.cta1_url != null) out.cta1Url = row.cta1_url;
   if (row.cta2_label != null) out.cta2Label = row.cta2_label;
   if (row.cta2_url != null) out.cta2Url = row.cta2_url;
+  if (row.publish_at != null) out.publishAt = row.publish_at;
+  if (row.registration_deadline != null) out.registrationDeadline = row.registration_deadline;
   if (row.last_update_at != null) out.lastUpdateAt = row.last_update_at;
   return out;
 }
 
 const EVENT_SELECT_WITH_LAST_UPDATE = `SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e`;
 
-export async function getEvents(layerId?: number): Promise<Event[]> {
-  const query: QueryConfig = layerId
-    ? { text: `${EVENT_SELECT_WITH_LAST_UPDATE} WHERE e.layer_id = $1 ORDER BY e.start_date ASC`, values: [layerId] }
-    : { text: `${EVENT_SELECT_WITH_LAST_UPDATE} ORDER BY e.start_date ASC`, values: [] };
+export type GetEventsOptions = {
+  includeUnpublished?: boolean;
+};
+
+export async function getEvents(layerId?: number, options: GetEventsOptions = {}): Promise<Event[]> {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  if (layerId) {
+    values.push(layerId);
+    conditions.push(`e.layer_id = $${values.length}`);
+  }
+  if (!options.includeUnpublished) {
+    conditions.push(`(e.publish_at IS NULL OR e.publish_at <= NOW())`);
+  }
+  const where = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+  const query: QueryConfig = {
+    text: `${EVENT_SELECT_WITH_LAST_UPDATE}${where} ORDER BY e.start_date ASC`,
+    values,
+  };
   const result = await ensureClient().query<EventRow>(query);
   return result.rows.map(mapEventRow);
 }
@@ -99,10 +126,10 @@ export async function createAuthorEvent(event: EventInput, authorId: number | nu
   const layerId = event.layerId ?? null;
 
   const result = await ensureClient().query<EventRow>(
-    `INSERT INTO events (title, description, start_date, end_date, location, layer_id, topic_id, cta1_label, cta1_url, cta2_label, cta2_url, author_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    `INSERT INTO events (title, description, start_date, end_date, location, layer_id, topic_id, cta1_label, cta1_url, cta2_label, cta2_url, is_public, publish_at, registration_deadline, author_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      RETURNING *`,
-    [event.title, description, startDate, endDate, location, layerId, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, authorId]
+    [event.title, description, startDate, endDate, location, layerId, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, authorId]
   );
   return mapEventRow(result.rows[0]);
 }
@@ -135,10 +162,13 @@ export async function updateAuthorEventById(id: number, authorId: number, event:
          cta1_url = $9,
          cta2_label = $10,
          cta2_url = $11,
+         is_public = $12,
+         publish_at = $13,
+         registration_deadline = $14,
          modified_at = NOW()
-    WHERE id = $12 AND author_id = $13
+    WHERE id = $15 AND author_id = $16
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id, authorId]
+    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, id, authorId]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
@@ -158,10 +188,13 @@ export async function updateEventById(id: number, event: EventInput): Promise<Ev
          cta1_url = $9,
          cta2_label = $10,
          cta2_url = $11,
+         is_public = $12,
+         publish_at = $13,
+         registration_deadline = $14,
          modified_at = NOW()
-    WHERE id = $12
+    WHERE id = $15
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, id]
+    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, id]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }

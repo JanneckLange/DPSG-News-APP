@@ -133,6 +133,36 @@ describe('Drafts API e2e', () => {
     expect(res.body.draft.topicId).toBe(roverTopicId);
   });
 
+  it('persists isPublic, publishAt and registrationDeadline through create and update', async () => {
+    await createAuthorForTesting({ username: 'draft-author-publish', password: 'pwd-123' });
+    const token = await loginAuthor('draft-author-publish', 'pwd-123');
+
+    const createRes = await request(app)
+      .post('/api/author/drafts')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Draft mit Terminen',
+        isPublic: true,
+        publishAt: '2099-01-01T00:00:00Z',
+        registrationDeadline: '2098-12-01T00:00:00Z',
+      });
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.draft).toMatchObject({
+      isPublic: true,
+      publishAt: '2099-01-01T00:00:00.000Z',
+      registrationDeadline: '2098-12-01T00:00:00.000Z',
+    });
+
+    const draftId = createRes.body.draft.id as number;
+    const updateRes = await request(app)
+      .put(`/api/author/drafts/${draftId}`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ title: 'Draft mit Terminen aktualisiert', isPublic: false });
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.draft.isPublic).toBe(false);
+    expect(updateRes.body.draft.publishAt).toBeUndefined();
+  });
+
   it('rejects a draft with an oversized CTA label', async () => {
     await createAuthorForTesting({ username: 'draft-author-cta', password: 'pwd-123' });
     const token = await loginAuthor('draft-author-cta', 'pwd-123');

@@ -95,6 +95,8 @@ describe('Database helper', () => {
       end_date: '2026-01-01T12:00:00Z',
       location: 'Ort',
       layer_id: 7,
+      is_public: false,
+      publish_at: null,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
     };
@@ -102,9 +104,9 @@ describe('Database helper', () => {
     mockQuery.mockResolvedValueOnce({ rows: [row], rowCount: 1 });
     let events = await getEvents();
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ layerId: 7 });
+    expect(events[0]).toMatchObject({ layerId: 7, isPublic: false });
     expect(mockQuery).toHaveBeenLastCalledWith({
-      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e ORDER BY e.start_date ASC',
+      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e WHERE (e.publish_at IS NULL OR e.publish_at <= NOW()) ORDER BY e.start_date ASC',
       values: [],
     });
 
@@ -112,8 +114,16 @@ describe('Database helper', () => {
     events = await getEvents(7);
     expect(events[0]).toMatchObject({ layerId: 7 });
     expect(mockQuery).toHaveBeenLastCalledWith({
-      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e WHERE e.layer_id = $1 ORDER BY e.start_date ASC',
+      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e WHERE e.layer_id = $1 AND (e.publish_at IS NULL OR e.publish_at <= NOW()) ORDER BY e.start_date ASC',
       values: [7],
+    });
+
+    mockQuery.mockResolvedValueOnce({ rows: [row], rowCount: 1 });
+    events = await getEvents(undefined, { includeUnpublished: true });
+    expect(events[0]).toMatchObject({ layerId: 7 });
+    expect(mockQuery).toHaveBeenLastCalledWith({
+      text: 'SELECT e.*, (SELECT MAX(eu.created_at) FROM event_updates eu WHERE eu.event_id = e.id) AS last_update_at FROM events e ORDER BY e.start_date ASC',
+      values: [],
     });
   });
 

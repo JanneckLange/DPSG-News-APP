@@ -68,7 +68,7 @@ eventsRouter.post('/api/events', async (req: Request, res: Response) => {
       return;
     }
 
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as EventInput;
     const layerId = parseLayerId((req.body as EventInput).layerId);
     if (!title || !description || !startDate || !location || !layerId) {
       return respondBadRequest(req, res, 'Missing required event fields');
@@ -87,7 +87,7 @@ eventsRouter.post('/api/events', async (req: Request, res: Response) => {
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline }, author.id);
 
     logInfo('Created event, sending push notification', {
       requestId: res.locals.requestId,
@@ -129,7 +129,7 @@ eventsRouter.post('/api/author/events', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as EventInput;
     const layerId = parseLayerId((req.body as EventInput).layerId);
     if (!title || !description || !startDate || !location || !layerId) {
       return respondBadRequest(req, res, 'Missing required event fields');
@@ -148,7 +148,7 @@ eventsRouter.post('/api/author/events', async (req: Request, res: Response) => {
     }
 
     const author = res.locals.author as { id: number };
-    const event = await createAuthorEvent({ title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url }, author.id);
+    const event = await createAuthorEvent({ title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline }, author.id);
     res.status(201).json({ event });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -168,7 +168,7 @@ eventsRouter.put('/api/events/:id', async (req: Request, res: Response) => {
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid event id');
     }
-    const events = await getEvents();
+    const events = await getEvents(undefined, { includeUnpublished: true });
     const current = events.find((event) => event.id === id);
     if (!current) {
       return res.status(404).json({ error: 'Event not found' });
@@ -176,7 +176,7 @@ eventsRouter.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!await requireManageableWithinLayerScope(res, current.authorId, current.layerId)) {
       return;
     }
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as EventInput;
     const layerId = parseLayerId((req.body as EventInput).layerId);
     if (!title || !description || !startDate || !location || !layerId) {
       return respondBadRequest(req, res, 'Missing required event fields');
@@ -214,6 +214,9 @@ eventsRouter.put('/api/events/:id', async (req: Request, res: Response) => {
       cta1Url,
       cta2Label,
       cta2Url,
+      isPublic,
+      publishAt,
+      registrationDeadline,
     });
     if (!updated) {
       return res.status(404).json({ error: 'Event not found' });
@@ -238,13 +241,13 @@ eventsRouter.put('/api/author/events/:id', async (req: Request, res: Response) =
       return respondBadRequest(req, res, 'Invalid event id');
     }
     const author = res.locals.author as { id: number };
-    const events = await getEvents();
+    const events = await getEvents(undefined, { includeUnpublished: true });
     const current = events.find((event) => event.id === id);
     if (!current || current.authorId !== author.id) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
+    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as EventInput;
     const layerId = parseLayerId((req.body as EventInput).layerId);
     if (!title || !description || !startDate || !location || !layerId) {
       return respondBadRequest(req, res, 'Missing required event fields');
@@ -265,7 +268,7 @@ eventsRouter.put('/api/author/events/:id', async (req: Request, res: Response) =
       return respondBadRequest(req, res, fieldsCheck.error);
     }
 
-    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url });
+    const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline });
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -290,7 +293,7 @@ eventsRouter.delete('/api/events/:id', async (req: Request, res: Response) => {
       return respondBadRequest(req, res, 'Invalid event id');
     }
 
-    const events = await getEvents();
+    const events = await getEvents(undefined, { includeUnpublished: true });
     const current = events.find((event) => event.id === id);
     if (!current) {
       return res.status(404).json({ error: 'Event not found' });
@@ -344,7 +347,7 @@ eventsRouter.get('/api/events/:id/updates', async (req: Request, res: Response) 
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid event id');
     }
-    const events = await getEvents();
+    const events = await getEvents(undefined, { includeUnpublished: true });
     const current = events.find((event) => event.id === id);
     if (!current) {
       return res.status(404).json({ error: 'Event not found' });
@@ -377,7 +380,7 @@ eventsRouter.post('/api/events/:id/updates', async (req: Request, res: Response)
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid event id');
     }
-    const events = await getEvents();
+    const events = await getEvents(undefined, { includeUnpublished: true });
     const current = events.find((event) => event.id === id);
     if (!current) {
       return res.status(404).json({ error: 'Event not found' });
@@ -429,7 +432,7 @@ eventsRouter.put('/api/events/:id/updates/:updateId', async (req: Request, res: 
       return respondBadRequest(req, res, 'Invalid id');
     }
 
-    const events = await getEvents();
+    const events = await getEvents(undefined, { includeUnpublished: true });
     const event = events.find((e) => e.id === eventId);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -478,7 +481,7 @@ eventsRouter.delete('/api/events/:id/updates/:updateId', async (req: Request, re
       return respondBadRequest(req, res, 'Invalid id');
     }
 
-    const events = await getEvents();
+    const events = await getEvents(undefined, { includeUnpublished: true });
     const event = events.find((e) => e.id === eventId);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });

@@ -106,6 +106,9 @@ export async function connect(): Promise<void> {
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`);
   await client.query(`UPDATE events SET modified_at = created_at WHERE modified_at IS NULL;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_deadline TIMESTAMPTZ;`);
   await client.query(`
     DO $$
     BEGIN
@@ -141,6 +144,9 @@ export async function connect(): Promise<void> {
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta1_url TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS registration_deadline TIMESTAMPTZ;`);
   await client.query(`CREATE INDEX IF NOT EXISTS drafts_author_id_idx ON drafts(author_id);`);
   await migrateDvToLayerId('events');
   await migrateDvToLayerId('drafts');
