@@ -312,7 +312,7 @@ describe('Drafts API e2e', () => {
         description: 'Body',
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
         layerId: koelnLayerId,
       });
     expect(adminEditAttempt.status).toBe(404);
@@ -330,7 +330,7 @@ describe('Drafts API e2e', () => {
         description: 'Body',
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
         layerId: koelnLayerId,
       });
     expect(authorEditAttemptViaEventsPath.status).toBe(404);

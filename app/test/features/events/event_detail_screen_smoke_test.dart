@@ -11,6 +11,7 @@ import 'package:dpsg_news_app/features/events/data/remote_event_source.dart';
 import 'package:dpsg_news_app/features/events/presentation/event_detail_screen.dart';
 import 'package:dpsg_news_app/features/settings/data/settings_repository.dart'
     as settings_repo;
+import 'package:dpsg_news_app/shared/widgets/location_map_view.dart';
 
 import '../../widget_test.dart'
     show FakeSecureStorageService, TestAuthorAuthNotifier;
@@ -78,7 +79,9 @@ Future<void> _pumpUntilFound(WidgetTester tester, Finder finder,
 final _sampleEvent = <String, dynamic>{
   'id': 1,
   'title': 'Sommerlager',
-  'location': 'Zeltplatz',
+  'locationAddress': 'Zeltplatz',
+  'locationLat': 50.9375,
+  'locationLng': 6.9603,
   'layerId': _koelnLayerId,
   'topicId': _pfadfinderTopicId,
   'startDate': '2026-08-01T10:00:00Z',
@@ -108,7 +111,7 @@ void main() {
   });
 
   testWidgets(
-      'renders title in AppBar, DV/Topic chips and location placeholder',
+      'renders title in AppBar, DV/Topic chips and location map',
       (tester) async {
     final repository =
         settings_repo.SettingsRepository(HiveService.getSettingsBox());
@@ -154,6 +157,7 @@ void main() {
     expect(find.text('DV: Köln'), findsOneWidget);
     expect(find.text('Thema: Pfadfinder'), findsOneWidget);
     expect(find.text('Zeltplatz'), findsOneWidget);
+    expect(find.byType(LocationMapView), findsOneWidget);
     expect(find.byType(PopupMenuButton<String>), findsNothing);
     expect(tester.takeException(), isNull);
   });

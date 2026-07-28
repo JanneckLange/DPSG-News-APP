@@ -5,7 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../settings/data/dv_tree_provider.dart';
 import '../../../shared/utils/date_format_utils.dart';
 import '../../../shared/widgets/labeled_chip.dart';
-import '../../../shared/widgets/location_placeholder.dart';
+import '../../../shared/widgets/location_map_view.dart';
 
 class EventDetailsPreview extends ConsumerWidget {
   const EventDetailsPreview({super.key, required this.event});
@@ -15,7 +15,9 @@ class EventDetailsPreview extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final title = event['title']?.toString() ?? 'Unbenannt';
-    final location = event['location']?.toString() ?? 'Unbekannt';
+    final locationAddress = event['locationAddress']?.toString();
+    final locationLat = (event['locationLat'] as num?)?.toDouble();
+    final locationLng = (event['locationLng'] as num?)?.toDouble();
     final eventLayerId = (event['layerId'] as num?)?.toInt();
     final dv = ref.watch(layerNamesByIdProvider)[eventLayerId] ?? 'Unbekannt';
     final topic = event['topic']?.toString();
@@ -48,8 +50,15 @@ class EventDetailsPreview extends ConsumerWidget {
               ),
           ],
         ),
-        const SizedBox(height: 12),
-        LocationPlaceholder(label: location),
+        if (locationLat != null && locationLng != null) ...[
+          const SizedBox(height: 12),
+          LocationMapView(
+            lat: locationLat,
+            lng: locationLng,
+            address: locationAddress,
+            interactive: false,
+          ),
+        ],
         const SizedBox(height: 16),
         Row(
           children: [

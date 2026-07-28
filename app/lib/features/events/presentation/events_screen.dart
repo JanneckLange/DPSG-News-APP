@@ -225,7 +225,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                   },
                   child: EventListTile(
                     title: event['title'] as String? ?? '',
-                    location: event['location'] as String? ?? '',
+                    location: event['locationAddress'] as String?,
                     layerName: layerNamesById[eventLayerId] ?? 'Unbekannt',
                     topic: event['topic'] as String?,
                     startDate: startDate,

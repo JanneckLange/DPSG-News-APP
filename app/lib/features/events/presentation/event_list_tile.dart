@@ -27,7 +27,7 @@ class EventListTile extends StatelessWidget {
   });
 
   final String title;
-  final String location;
+  final String? location;
   final String layerName;
   final String? topic;
   final DateTime? startDate;
@@ -102,18 +102,20 @@ class EventListTile extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.place,
-                            size: 16, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(location,
-                              style: Theme.of(context).textTheme.bodySmall),
-                        ),
-                      ],
-                    ),
+                    if (location != null && location!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.place,
+                              size: 16, color: scheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(location!,
+                                style: Theme.of(context).textTheme.bodySmall),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (createdBy != null) ...[
                       const SizedBox(height: 2),
                       Text(

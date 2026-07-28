@@ -24,7 +24,7 @@ class FakeRemoteEventSource extends RemoteEventSource {
     return [
       {
         'title': 'Test Event',
-        'location': 'Testort',
+        'locationAddress': 'Testort',
         'layerId': 1,
       },
     ];

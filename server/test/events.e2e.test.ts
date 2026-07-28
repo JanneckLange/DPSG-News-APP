@@ -62,7 +62,9 @@ describe('Events API e2e', () => {
       description: 'No token',
       startDate: '2026-01-01T10:00:00Z',
       endDate: '2026-01-01T12:00:00Z',
-      location: 'Ort',
+      locationAddress: 'Ort',
+      locationLat: 50.5,
+      locationLng: 7.0,
       layerId: koelnLayerId,
     });
 
@@ -82,6 +84,39 @@ describe('Events API e2e', () => {
     expect(res.status).toBe(400);
   });
 
+  it('allows creating and publishing an event without a location (location is optional)', async () => {
+    await createAuthorForTesting({ username: 'author-no-location', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const token = await loginAuthor('author-no-location', 'secret-123');
+
+    const ownCreateResponse = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event ohne Ort',
+        description: 'Beschreibung',
+        startDate: '2026-03-01T10:00:00Z',
+        endDate: '2026-03-01T12:00:00Z',
+        layerId: koelnLayerId,
+      });
+    expect(ownCreateResponse.status).toBe(201);
+    expect(ownCreateResponse.body.event.locationAddress).toBeUndefined();
+    expect(ownCreateResponse.body.event.locationLat).toBeUndefined();
+    expect(ownCreateResponse.body.event.locationLng).toBeUndefined();
+
+    const publicCreateResponse = await request(app)
+      .post('/api/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event ohne Ort (public)',
+        description: 'Beschreibung',
+        startDate: '2026-03-02T10:00:00Z',
+        endDate: '2026-03-02T12:00:00Z',
+        layerId: koelnLayerId,
+      });
+    expect(publicCreateResponse.status).toBe(201);
+    expect(publicCreateResponse.body.event.locationAddress).toBeUndefined();
+  });
+
   it('allows creating and updating events without an endDate (falls back to startDate)', async () => {
     await createAuthorForTesting({ username: 'author-enddate', password: 'secret-123', layerGrantIds: [koelnLayerId] });
     const token = await loginAuthor('author-enddate', 'secret-123');
@@ -93,7 +128,9 @@ describe('Events API e2e', () => {
         title: 'Ohne Enddatum',
         description: 'Beschreibung',
         startDate: '2026-04-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(createResponse.status).toBe(201);
@@ -106,7 +143,9 @@ describe('Events API e2e', () => {
         title: 'Ohne Enddatum (public)',
         description: 'Beschreibung',
         startDate: '2026-04-02T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(publicCreateResponse.status).toBe(201);
@@ -120,7 +159,9 @@ describe('Events API e2e', () => {
         title: 'Ohne Enddatum aktualisiert',
         description: 'Beschreibung',
         startDate: '2026-04-03T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(updateResponse.status).toBe(200);
@@ -136,7 +177,9 @@ describe('Events API e2e', () => {
       description: 'Beschreibung',
       startDate: '2026-01-01T10:00:00Z',
       endDate: '2026-01-01T12:00:00Z',
-      location: 'Ort',
+      locationAddress: 'Ort',
+      locationLat: 50.5,
+      locationLng: 7.0,
       layerId: koelnLayerId,
     };
 
@@ -148,7 +191,9 @@ describe('Events API e2e', () => {
     expect(createResponse.body.event).toMatchObject({
       title: eventBody.title,
       description: eventBody.description,
-      location: eventBody.location,
+      locationAddress: eventBody.locationAddress,
+      locationLat: eventBody.locationLat,
+      locationLng: eventBody.locationLng,
       layerId: eventBody.layerId,
       authorId: expect.any(Number),
     });
@@ -173,7 +218,9 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
         endDate: '2026-05-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         cta1Label: 'Anmelden',
         cta1Url: 'https://example.org/anmeldung',
@@ -206,7 +253,9 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
         endDate: '2026-05-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         cta1Label: 'Jetzt anmelden',
         cta1Url: 'https://example.org/anmeldung-neu',
@@ -232,7 +281,9 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2099-01-01T10:00:00Z',
         endDate: '2099-01-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         isPublic: true,
         publishAt: '2099-01-01T00:00:00Z',
@@ -268,7 +319,9 @@ describe('Events API e2e', () => {
         description: 'Beschreibung',
         startDate: '2099-01-01T10:00:00Z',
         endDate: '2099-01-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         isPublic: true,
         publishAt: '2099-01-01T00:00:00Z',
@@ -288,7 +341,9 @@ describe('Events API e2e', () => {
         title: 'x'.repeat(101),
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(response.status).toBe(400);
@@ -305,7 +360,9 @@ describe('Events API e2e', () => {
         title: 'Event',
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         isPublic: 'yes',
       });
@@ -318,7 +375,9 @@ describe('Events API e2e', () => {
         title: 'Event',
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         publishAt: 'not-a-date',
       });
@@ -336,7 +395,9 @@ describe('Events API e2e', () => {
         title: 'Event',
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         cta1Label: 'Klick mich',
         cta1Url: 'javascript:alert(1)',
@@ -355,7 +416,9 @@ describe('Events API e2e', () => {
         title: 'Event',
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: 999999,
       });
     expect(response.status).toBe(400);
@@ -372,7 +435,9 @@ describe('Events API e2e', () => {
         title: 'Event',
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(response.status).toBe(403);
@@ -394,7 +459,9 @@ describe('Events API e2e', () => {
         title: 'Event',
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
         topicId: hamburgRoverTopicId,
       });
@@ -417,7 +484,9 @@ describe('Events API e2e', () => {
         title: 'Event',
         description: 'Beschreibung',
         startDate: '2026-05-01T10:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: hamburgLayerId,
         topicId: hamburgRoverTopicId,
       });
@@ -439,7 +508,9 @@ describe('Events API e2e', () => {
         description: 'A',
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     await request(app)
@@ -450,7 +521,9 @@ describe('Events API e2e', () => {
         description: 'B',
         startDate: '2026-02-01T10:00:00Z',
         endDate: '2026-02-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: hamburgLayerId,
       });
 
@@ -480,7 +553,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
@@ -493,7 +568,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(foreignUpdate.status).toBe(404);
@@ -506,7 +583,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(ownUpdate.status).toBe(200);
@@ -537,7 +616,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
@@ -550,7 +631,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(foreignUpdate.status).toBe(403);
@@ -575,7 +658,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
@@ -588,7 +673,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(adminUpdate.status).toBe(200);
@@ -614,7 +701,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
@@ -627,7 +716,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(adminUpdate.status).toBe(403);
@@ -650,7 +741,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
@@ -663,7 +756,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: hamburgLayerId,
       });
     expect(moveOutsideGrant.status).toBe(403);
@@ -683,7 +778,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
@@ -696,7 +793,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: hamburgLayerId,
       });
     expect(moveOutsideScope.status).toBe(403);
@@ -716,7 +815,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
 
@@ -744,7 +845,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-03-01T10:00:00Z',
         endDate: '2026-03-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
 
@@ -780,7 +883,9 @@ describe('Events API e2e', () => {
         description: 'Blocked',
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(createBlocked.status).toBe(403);
@@ -802,7 +907,9 @@ describe('Events API e2e', () => {
         description: 'Allowed',
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(createAllowed.status).toBe(401);
@@ -822,7 +929,9 @@ describe('Events API e2e', () => {
         description: 'Allowed',
         startDate: '2026-01-01T10:00:00Z',
         endDate: '2026-01-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(createAfterRelogin.status).toBe(201);
@@ -924,7 +1033,9 @@ describe('Events API e2e', () => {
         description: 'Should still create event',
         startDate: '2026-05-01T10:00:00Z',
         endDate: '2026-05-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
 
@@ -946,7 +1057,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     const eventId = createResponse.body.event.id as number;
@@ -971,7 +1084,9 @@ describe('Events API e2e', () => {
         description: 'Body',
         startDate: '2026-06-01T10:00:00Z',
         endDate: '2026-06-01T12:00:00Z',
-        location: 'Ort',
+        locationAddress: 'Ort',
+        locationLat: 50.5,
+        locationLng: 7.0,
         layerId: koelnLayerId,
       });
     expect(adminUpdate.status).toBe(200);

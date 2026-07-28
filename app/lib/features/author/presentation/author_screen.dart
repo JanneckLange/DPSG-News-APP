@@ -192,7 +192,7 @@ class AuthorScreen extends ConsumerWidget {
                   for (final event in events)
                     EventListTile(
                       title: event['title'] as String? ?? '',
-                      location: event['location'] as String? ?? '',
+                      location: event['locationAddress'] as String?,
                       layerName:
                           layerNamesById[(event['layerId'] as num?)?.toInt()] ??
                               'Kein DV',
@@ -215,7 +215,7 @@ class AuthorScreen extends ConsumerWidget {
                   for (final draft in drafts)
                     EventListTile(
                       title: draft['title'] as String? ?? '',
-                      location: draft['location'] as String? ?? '',
+                      location: draft['locationAddress'] as String?,
                       layerName:
                           layerNamesById[(draft['layerId'] as num?)?.toInt()] ??
                               'Kein DV',

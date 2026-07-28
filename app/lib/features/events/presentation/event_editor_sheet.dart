@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../../shared/utils/date_format_utils.dart';
+import '../../../shared/utils/geoapify_service.dart';
 import '../../admin/domain/topic_model.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
@@ -29,11 +30,15 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _locationController = TextEditingController();
   final _cta1LabelController = TextEditingController();
   final _cta1UrlController = TextEditingController();
   final _cta2LabelController = TextEditingController();
   final _cta2UrlController = TextEditingController();
+  String? _locationAddress;
+  double? _locationLat;
+  double? _locationLng;
+  Timer? _locationAutocompleteDebounce;
+  List<GeoapifyAddress> _locationSuggestions = [];
   DateTime? _startDate;
   DateTime? _endDate;
   int? _selectedLayerId;
@@ -86,7 +91,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     if (event != null) {
       _titleController.text = event['title'] as String? ?? '';
       _descriptionController.text = event['description'] as String? ?? '';
-      _locationController.text = event['location'] as String? ?? '';
+      _locationAddress = event['locationAddress'] as String?;
+      _locationLat = (event['locationLat'] as num?)?.toDouble();
+      _locationLng = (event['locationLng'] as num?)?.toDouble();
       _selectedLayerId = (event['layerId'] as num?)?.toInt();
       _selectedTopicId = (event['topicId'] as num?)?.toInt();
       _cta1LabelController.text = event['cta1Label'] as String? ?? '';
@@ -214,11 +221,11 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _locationController.dispose();
     _cta1LabelController.dispose();
     _cta1UrlController.dispose();
     _cta2LabelController.dispose();
     _cta2UrlController.dispose();
+    _locationAutocompleteDebounce?.cancel();
     super.dispose();
   }
 
@@ -275,20 +282,14 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
         return;
       }
     }
-    final layerTree =
-        ref.read(layerTreeProvider).asData?.value ?? <LayerModel>[];
-    final layerNamesById = {
-      for (final layer in layerTree) layer.id: layer.name
-    };
-    final selectedLayerName = layerNamesById[_selectedLayerId];
     final payload = <String, dynamic>{
       'title': title,
       'description': _descriptionController.text.trim(),
       if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
       if (_endDate != null) 'endDate': _endDate!.toIso8601String(),
-      'location': _locationController.text.trim().isEmpty
-          ? selectedLayerName
-          : _locationController.text.trim(),
+      if (_locationAddress != null) 'locationAddress': _locationAddress,
+      if (_locationLat != null) 'locationLat': _locationLat,
+      if (_locationLng != null) 'locationLng': _locationLng,
       if (_selectedLayerId != null) 'layerId': _selectedLayerId,
       if (_selectedTopicId != null) 'topicId': _selectedTopicId,
       if (_showCta1 && _cta1LabelController.text.trim().isNotEmpty)
@@ -458,9 +459,74 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               : null,
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _locationController,
-                      decoration: const InputDecoration(labelText: 'Ort'),
+                    Autocomplete<String>(
+                      initialValue: TextEditingValue(text: _locationAddress ?? ''),
+                      optionsBuilder: (TextEditingValue textEditingValue) async {
+                        final query = textEditingValue.text.trim();
+                        if (query.length < 3) {
+                          _locationSuggestions = [];
+                          return const Iterable<String>.empty();
+                        }
+                        if (_locationAutocompleteDebounce?.isActive ?? false) {
+                          _locationAutocompleteDebounce!.cancel();
+                        }
+                        final completer = Completer<Iterable<String>>();
+                        _locationAutocompleteDebounce = Timer(
+                          const Duration(milliseconds: 500),
+                          () async {
+                            try {
+                              _locationSuggestions = await autocompleteAddress(query);
+                              completer.complete(
+                                _locationSuggestions.map((address) => address.formatted),
+                              );
+                            } catch (_) {
+                              _locationSuggestions = [];
+                              completer.complete(const Iterable<String>.empty());
+                            }
+                          },
+                        );
+                        return completer.future;
+                      },
+                      onSelected: (String selection) {
+                        final selected = _locationSuggestions.firstWhere(
+                          (address) => address.formatted == selection,
+                        );
+                        setState(() {
+                          _locationAddress = selected.formatted;
+                          _locationLat = selected.lat;
+                          _locationLng = selected.lon;
+                        });
+                      },
+                      fieldViewBuilder: (
+                        BuildContext context,
+                        TextEditingController textEditingController,
+                        FocusNode focusNode,
+                        VoidCallback onFieldSubmitted,
+                      ) {
+                        return TextFormField(
+                          controller: textEditingController,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: 'Ort',
+                            helperText:
+                                'Adresse aus der Vorschlagsliste auswählen, um den Ort zu speichern.',
+                            suffixIcon: _locationAddress != null
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    tooltip: 'Ort entfernen',
+                                    onPressed: () {
+                                      setState(() {
+                                        _locationAddress = null;
+                                        _locationLat = null;
+                                        _locationLng = null;
+                                        textEditingController.clear();
+                                      });
+                                    },
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     ListTile(
@@ -712,10 +778,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                                 if (_selectedTopicName != null)
                                   Chip(label: Text(_selectedTopicName!)),
                                 Chip(
-                                    label: Text(
-                                        _locationController.text.trim().isEmpty
-                                            ? 'Ort nicht gesetzt'
-                                            : _locationController.text.trim())),
+                                    label: Text(_locationAddress ??
+                                        'Ort nicht gesetzt')),
                               ],
                             ),
                             const SizedBox(height: 12),

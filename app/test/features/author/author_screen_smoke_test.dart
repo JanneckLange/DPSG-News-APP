@@ -76,7 +76,7 @@ void main() {
                 {
                   'id': 1,
                   'title': 'Sommerlager',
-                  'location': 'Zeltplatz',
+                  'locationAddress': 'Zeltplatz',
                   'dv': 'Köln',
                   'startDate': DateTime.now().toUtc().toIso8601String(),
                 },

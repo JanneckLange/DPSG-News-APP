@@ -173,7 +173,7 @@ void main() {
     final staleEvent = {
       'id': 1,
       'title': 'Vergessenes Event',
-      'location': 'Zeltplatz',
+      'locationAddress': 'Zeltplatz',
       'startDate': now.add(const Duration(days: 60)).toUtc().toIso8601String(),
       'lastUpdateAt':
           now.subtract(const Duration(days: 40)).toUtc().toIso8601String(),
@@ -194,7 +194,7 @@ void main() {
       'deleting a draft asks for confirmation and removes it from the list on confirm',
       (tester) async {
     final remote = _FakeRemoteEventSource(drafts: [
-      {'id': 7, 'title': 'Mein Entwurf', 'location': 'Zeltplatz'}
+      {'id': 7, 'title': 'Mein Entwurf', 'locationAddress': 'Zeltplatz'}
     ]);
     await pumpScreen(tester, remote: remote);
 

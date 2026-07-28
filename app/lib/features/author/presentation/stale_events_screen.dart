@@ -24,7 +24,7 @@ class StaleEventsScreen extends ConsumerWidget {
           final event = events[index];
           return EventListTile(
             title: event['title'] as String? ?? '',
-            location: event['location'] as String? ?? '',
+            location: event['locationAddress'] as String?,
             layerName: layerNamesById[(event['layerId'] as num?)?.toInt()] ??
                 'Kein DV',
             onTap: () {
