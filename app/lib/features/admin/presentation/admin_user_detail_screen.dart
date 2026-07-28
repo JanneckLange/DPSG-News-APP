@@ -617,7 +617,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
               ..._contributions.map(
                 (event) => EventListTile(
                   title: event['title'] as String? ?? '',
-                  location: event['location'] as String? ?? '',
+                  location: event['locationAddress'] as String?,
                   layerName: ref.watch(layerNamesByIdProvider)[
                           (event['layerId'] as num?)?.toInt()] ??
                       'Kein DV',

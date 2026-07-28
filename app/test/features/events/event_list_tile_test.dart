@@ -84,4 +84,36 @@ void main() {
 
     expect(find.text('16'), findsOneWidget);
   });
+
+  testWidgets('hides the location row when location is null (optional field)',
+      (tester) async {
+    await tester.pumpWidget(wrap(const EventListTile(
+      title: 'Titel',
+      location: null,
+      layerName: 'Köln',
+    )));
+
+    expect(find.byIcon(Icons.place), findsNothing);
+  });
+
+  testWidgets('hides the location row when location is empty', (tester) async {
+    await tester.pumpWidget(wrap(const EventListTile(
+      title: 'Titel',
+      location: '',
+      layerName: 'Köln',
+    )));
+
+    expect(find.byIcon(Icons.place), findsNothing);
+  });
+
+  testWidgets('shows the location row when location is set', (tester) async {
+    await tester.pumpWidget(wrap(const EventListTile(
+      title: 'Titel',
+      location: 'Ort',
+      layerName: 'Köln',
+    )));
+
+    expect(find.byIcon(Icons.place), findsOneWidget);
+    expect(find.text('Ort'), findsOneWidget);
+  });
 }

@@ -5,7 +5,9 @@ class EventModel {
     required this.description,
     required this.startDate,
     required this.endDate,
-    required this.location,
+    this.locationAddress,
+    this.locationLat,
+    this.locationLng,
     required this.layerId,
   });
 
@@ -14,7 +16,9 @@ class EventModel {
   final String description;
   final String startDate;
   final String endDate;
-  final String location;
+  final String? locationAddress;
+  final double? locationLat;
+  final double? locationLng;
   final int layerId;
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -24,7 +28,9 @@ class EventModel {
       description: json['description'] as String,
       startDate: json['startDate'] as String,
       endDate: json['endDate'] as String,
-      location: json['location'] as String,
+      locationAddress: json['locationAddress'] as String?,
+      locationLat: (json['locationLat'] as num?)?.toDouble(),
+      locationLng: (json['locationLng'] as num?)?.toDouble(),
       layerId: (json['layerId'] as num).toInt(),
     );
   }

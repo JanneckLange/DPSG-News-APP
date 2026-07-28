@@ -1,6 +1,6 @@
 import {
   MAX_LABEL_LENGTH,
-  MAX_LOCATION_LENGTH,
+  MAX_LOCATION_ADDRESS_LENGTH,
   MAX_LONG_TEXT_LENGTH,
   MAX_TITLE_LENGTH,
   MAX_URL_LENGTH,
@@ -13,7 +13,9 @@ describe('validateEventTextFields', () => {
     const result = validateEventTextFields({
       title: 'Sommerlager',
       description: 'Ein tolles Lager',
-      location: 'Zeltplatz',
+      locationAddress: 'Zeltplatz',
+      locationLat: 50.1,
+      locationLng: 8.7,
       topicId: undefined,
       cta1Label: 'Anmelden',
       cta1Url: 'https://example.org/anmeldung',
@@ -31,12 +33,32 @@ describe('validateEventTextFields', () => {
   });
 
   it('rejects a non-string field instead of crashing', () => {
-    const result = validateEventTextFields({ title: 'Test', location: 12345 as unknown as string });
-    expect(result).toEqual({ valid: false, error: expect.stringContaining('location') });
+    const result = validateEventTextFields({ title: 'Test', locationAddress: 12345 as unknown as string });
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('locationAddress') });
   });
 
-  it('rejects an oversized location', () => {
-    const result = validateEventTextFields({ title: 'Test', location: 'x'.repeat(MAX_LOCATION_LENGTH + 1) });
+  it('rejects an oversized location address', () => {
+    const result = validateEventTextFields({ title: 'Test', locationAddress: 'x'.repeat(MAX_LOCATION_ADDRESS_LENGTH + 1) });
+    expect(result.valid).toBe(false);
+  });
+
+  it('accepts locationLat/locationLng provided together', () => {
+    const result = validateEventTextFields({ title: 'Test', locationLat: 50.1, locationLng: 8.7 });
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects locationLat without locationLng', () => {
+    const result = validateEventTextFields({ title: 'Test', locationLat: 50.1 });
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('locationLat') });
+  });
+
+  it('rejects locationLng without locationLat', () => {
+    const result = validateEventTextFields({ title: 'Test', locationLng: 8.7 });
+    expect(result).toEqual({ valid: false, error: expect.stringContaining('locationLat') });
+  });
+
+  it('rejects an out-of-range locationLat', () => {
+    const result = validateEventTextFields({ title: 'Test', locationLat: 200, locationLng: 8.7 });
     expect(result.valid).toBe(false);
   });
 

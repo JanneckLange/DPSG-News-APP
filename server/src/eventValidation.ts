@@ -1,7 +1,7 @@
 export const MAX_TITLE_LENGTH = 100;
 export const MAX_LABEL_LENGTH = 20;
 export const MAX_URL_LENGTH = 300;
-export const MAX_LOCATION_LENGTH = 50;
+export const MAX_LOCATION_ADDRESS_LENGTH = 255;
 export const MAX_LONG_TEXT_LENGTH = 1000; // description, update message
 
 export type FieldValidation = { valid: true } | { valid: false; error: string };
@@ -76,6 +76,24 @@ function validateOptionalDate(fieldName: string, value: unknown): FieldValidatio
   return VALID_RESULT;
 }
 
+function validateOptionalLatLng(lat: unknown, lng: unknown): FieldValidation {
+  const latMissing = lat === undefined || lat === null;
+  const lngMissing = lng === undefined || lng === null;
+  if (latMissing !== lngMissing) {
+    return invalid("Fields 'locationLat' and 'locationLng' must be provided together");
+  }
+  if (latMissing) {
+    return VALID_RESULT;
+  }
+  if (typeof lat !== 'number' || Number.isNaN(lat) || lat < -90 || lat > 90) {
+    return invalid("Field 'locationLat' must be a number between -90 and 90");
+  }
+  if (typeof lng !== 'number' || Number.isNaN(lng) || lng < -180 || lng > 180) {
+    return invalid("Field 'locationLng' must be a number between -180 and 180");
+  }
+  return VALID_RESULT;
+}
+
 function validateTopic(validTopicIds: number[] | null | undefined, value: unknown): FieldValidation {
   if (value === undefined || value === null) {
     return VALID_RESULT;
@@ -93,7 +111,8 @@ export function validateEventTextFields(body: Record<string, unknown>, validTopi
   const checks: FieldValidation[] = [
     validateOptionalText('title', body.title, MAX_TITLE_LENGTH),
     validateOptionalText('description', body.description, MAX_LONG_TEXT_LENGTH),
-    validateOptionalText('location', body.location, MAX_LOCATION_LENGTH),
+    validateOptionalText('locationAddress', body.locationAddress, MAX_LOCATION_ADDRESS_LENGTH),
+    validateOptionalLatLng(body.locationLat, body.locationLng),
     validateTopic(validTopicIds, body.topicId),
     validateOptionalText('cta1Label', body.cta1Label, MAX_LABEL_LENGTH),
     validateOptionalCtaUrl('cta1Url', body.cta1Url),

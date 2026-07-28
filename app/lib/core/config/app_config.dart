@@ -63,6 +63,17 @@ class AppConfig {
     return Uri.parse('http://$trimmed');
   }
 
+  static String get geoapifyKey {
+    final dotenvValue = _readDotenv('GEOAPIFY_KEY');
+    if (dotenvValue != null && dotenvValue.isNotEmpty) {
+      return dotenvValue;
+    }
+
+    return const String.fromEnvironment('GEOAPIFY_KEY', defaultValue: '');
+  }
+
+  static bool get hasGeoapifyConfig => geoapifyKey.isNotEmpty;
+
   static bool get hasWiredashConfig => wiredashProjectId.isNotEmpty && wiredashSecret.isNotEmpty;
 
   static bool get hasPosthogConfig => posthogApiKey.isNotEmpty && posthogProjectId.isNotEmpty;

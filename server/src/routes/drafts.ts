@@ -41,7 +41,7 @@ draftsRouter.post('/api/author/drafts', async (req: Request, res: Response) => {
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as DraftInput;
+    const { title, description, startDate, endDate, locationAddress, locationLat, locationLng, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as DraftInput;
     const rawLayerId = (req.body as DraftInput).layerId;
     const layerId = rawLayerId != null ? parseLayerId(rawLayerId) : undefined;
     if (!title) {
@@ -61,7 +61,7 @@ draftsRouter.post('/api/author/drafts', async (req: Request, res: Response) => {
     }
 
     const author = res.locals.author as { id: number };
-    const draft = await createAuthorDraft({ title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline }, author.id);
+    const draft = await createAuthorDraft({ title, description, startDate, endDate, locationAddress, locationLat, locationLng, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline }, author.id);
     res.status(201).json({ draft });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -81,7 +81,7 @@ draftsRouter.put('/api/author/drafts/:id', async (req: Request, res: Response) =
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid draft id');
     }
-    const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as DraftInput;
+    const { title, description, startDate, endDate, locationAddress, locationLat, locationLng, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline } = req.body as DraftInput;
     const rawLayerId = (req.body as DraftInput).layerId;
     const layerId = rawLayerId != null ? parseLayerId(rawLayerId) : undefined;
     if (!title) {
@@ -101,7 +101,7 @@ draftsRouter.put('/api/author/drafts/:id', async (req: Request, res: Response) =
     }
 
     const author = res.locals.author as { id: number };
-    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline });
+    const draft = await updateAuthorDraftById(id, author.id, { title, description, startDate, endDate, locationAddress, locationLat, locationLng, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url, isPublic, publishAt, registrationDeadline });
     if (!draft) {
       return res.status(404).json({ error: 'Draft not found' });
     }

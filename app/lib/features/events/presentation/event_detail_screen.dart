@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +16,7 @@ import '../../settings/data/settings_repository.dart';
 import '../../../shared/utils/date_format_utils.dart';
 import '../../../shared/utils/url_utils.dart';
 import '../../../shared/widgets/labeled_chip.dart';
-import '../../../shared/widgets/location_placeholder.dart';
+import '../../../shared/widgets/location_map_view.dart';
 import '../../../shared/widgets/safe_markdown_body.dart';
 import '../../../shared/widgets/section_card.dart';
 import '../../admin/domain/topic_model.dart';
@@ -322,6 +323,48 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     }
   }
 
+  Future<void> _confirmAndOpenInMaps(double lat, double lng, String? label) async {
+    final uri = Platform.isIOS
+        ? Uri.parse('https://maps.apple.com/?ll=$lat,$lng'
+            '${label != null && label.isNotEmpty ? '&q=${Uri.encodeComponent(label)}' : ''}')
+        : Uri.parse('https://www.google.com/maps/search/?api=1'
+            '&query=$lat,$lng');
+    if (!isHttpOrHttpsUri(uri)) {
+      if (mounted) {
+        showErrorToast(ref, 'Ungültige URL');
+      }
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Navigation starten'),
+        content: const Text('Möchtest du diesen Ort in einer Karten-App öffnen?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Öffnen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    if (!mounted) return;
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        showErrorToast(ref, 'Karten-App konnte nicht geöffnet werden');
+      }
+    }
+  }
+
   Future<void> _editEvent() async {
     final analytics = ref.read(analyticsServiceProvider);
     unawaited(analytics.trackFeatureEvent(
@@ -382,7 +425,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final title = widget.event['title']?.toString() ?? 'Unbenannt';
-    final location = widget.event['location']?.toString() ?? 'Unbekannt';
+    final locationAddress = widget.event['locationAddress']?.toString();
+    final locationLat = (widget.event['locationLat'] as num?)?.toDouble();
+    final locationLng = (widget.event['locationLng'] as num?)?.toDouble();
     final eventLayerId = (widget.event['layerId'] as num?)?.toInt();
     final dv = ref.watch(layerNamesByIdProvider)[eventLayerId] ?? 'Unbekannt';
     final topic = _topicName;
@@ -450,8 +495,21 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
-          LocationPlaceholder(label: location),
+          if (locationLat != null && locationLng != null) ...[
+            const SizedBox(height: 12),
+            LocationMapView(
+              lat: locationLat,
+              lng: locationLng,
+              address: locationAddress,
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  _confirmAndOpenInMaps(locationLat, locationLng, locationAddress),
+              icon: const Icon(Icons.directions),
+              label: const Text('Navigation'),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [

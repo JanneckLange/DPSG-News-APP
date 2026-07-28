@@ -86,7 +86,9 @@ export async function connect(): Promise<void> {
       description TEXT,
       start_date TIMESTAMPTZ,
       end_date TIMESTAMPTZ,
-      location TEXT,
+      location_address TEXT,
+      location_lat DOUBLE PRECISION,
+      location_lng DOUBLE PRECISION,
       dv TEXT,
       topic TEXT,
       cta1_label TEXT,
@@ -103,6 +105,10 @@ export async function connect(): Promise<void> {
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta1_url TEXT;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_address TEXT;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION;`);
+  await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION;`);
+  await client.query(`ALTER TABLE events DROP COLUMN IF EXISTS location;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL;`);
   await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS modified_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`);
   await client.query(`UPDATE events SET modified_at = created_at WHERE modified_at IS NULL;`);
@@ -128,7 +134,9 @@ export async function connect(): Promise<void> {
       description TEXT,
       start_date TIMESTAMPTZ,
       end_date TIMESTAMPTZ,
-      location TEXT,
+      location_address TEXT,
+      location_lat DOUBLE PRECISION,
+      location_lng DOUBLE PRECISION,
       dv TEXT,
       topic TEXT,
       cta1_label TEXT,
@@ -144,6 +152,10 @@ export async function connect(): Promise<void> {
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta1_url TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_label TEXT;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS cta2_url TEXT;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS location_address TEXT;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS location_lat DOUBLE PRECISION;`);
+  await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS location_lng DOUBLE PRECISION;`);
+  await client.query(`ALTER TABLE drafts DROP COLUMN IF EXISTS location;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ;`);
   await client.query(`ALTER TABLE drafts ADD COLUMN IF NOT EXISTS registration_deadline TIMESTAMPTZ;`);

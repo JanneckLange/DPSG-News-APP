@@ -127,21 +127,21 @@ void main() {
         {
           'id': 1,
           'title': 'Gemerktes Event',
-          'location': 'Ort A',
+          'locationAddress': 'Ort A',
           'layerId': koelnLayerId,
           'startDate': '2026-12-01T10:00:00Z',
         },
         {
           'id': 2,
           'title': 'Event August',
-          'location': 'Ort B',
+          'locationAddress': 'Ort B',
           'layerId': hamburgLayerId,
           'startDate': '2026-08-05T10:00:00Z',
         },
         {
           'id': 3,
           'title': 'Event September',
-          'location': 'Ort C',
+          'locationAddress': 'Ort C',
           'layerId': hamburgLayerId,
           'startDate': '2026-09-10T10:00:00Z',
         },
@@ -171,7 +171,7 @@ void main() {
         {
           'id': 1,
           'title': 'Solo-DV-Event',
-          'location': 'Ort A',
+          'locationAddress': 'Ort A',
           'layerId': koelnLayerId,
           'startDate': '2026-08-05T10:00:00Z',
         },
@@ -191,7 +191,7 @@ void main() {
         {
           'id': 1,
           'title': 'Multi-DV-Event',
-          'location': 'Ort A',
+          'locationAddress': 'Ort A',
           'layerId': koelnLayerId,
           'startDate': '2026-08-05T10:00:00Z',
         },

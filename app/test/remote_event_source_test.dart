@@ -13,7 +13,7 @@ void main() {
   test('fetchEvents returns parsed events on HTTP 200', () async {
     final client = MockClient((request) async {
       return http.Response(
-        '{"events":[{"title":"Test Event","location":"Testort","layerId":3}]}',
+        '{"events":[{"title":"Test Event","locationAddress":"Testort","layerId":3}]}',
         200,
         headers: {'content-type': 'application/json'},
       );

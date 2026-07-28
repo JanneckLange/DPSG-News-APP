@@ -7,7 +7,9 @@ type EventRow = {
   description: string | null;
   start_date: string | null;
   end_date: string | null;
-  location: string | null;
+  location_address: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   layer_id: number | null;
   topic_id?: number | null;
   cta1_label: string | null;
@@ -29,7 +31,9 @@ export type Event = {
   description: string;
   startDate: string;
   endDate: string;
-  location: string;
+  locationAddress?: string;
+  locationLat?: number;
+  locationLng?: number;
   layerId: number | null;
   topicId?: number;
   cta1Label?: string;
@@ -50,7 +54,9 @@ export type EventInput = {
   description?: string;
   startDate?: string;
   endDate?: string;
-  location?: string;
+  locationAddress?: string;
+  locationLat?: number;
+  locationLng?: number;
   layerId?: number;
   topicId?: number;
   cta1Label?: string;
@@ -69,7 +75,6 @@ export function mapEventRow(row: EventRow): Event {
     description: row.description ?? '',
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? '',
-    location: row.location ?? '',
     layerId: row.layer_id,
     isPublic: row.is_public,
     authorId: row.author_id,
@@ -79,6 +84,9 @@ export function mapEventRow(row: EventRow): Event {
   if (row.topic_id != null) {
     out.topicId = row.topic_id;
   }
+  if (row.location_address != null) out.locationAddress = row.location_address;
+  if (row.location_lat != null) out.locationLat = row.location_lat;
+  if (row.location_lng != null) out.locationLng = row.location_lng;
   if (row.cta1_label != null) out.cta1Label = row.cta1_label;
   if (row.cta1_url != null) out.cta1Url = row.cta1_url;
   if (row.cta2_label != null) out.cta2Label = row.cta2_label;
@@ -122,14 +130,13 @@ export async function createAuthorEvent(event: EventInput, authorId: number | nu
   const description = event.description ?? '';
   const startDate = event.startDate ?? new Date().toISOString();
   const endDate = event.endDate ?? startDate;
-  const location = event.location ?? '';
   const layerId = event.layerId ?? null;
 
   const result = await ensureClient().query<EventRow>(
-    `INSERT INTO events (title, description, start_date, end_date, location, layer_id, topic_id, cta1_label, cta1_url, cta2_label, cta2_url, is_public, publish_at, registration_deadline, author_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    `INSERT INTO events (title, description, start_date, end_date, location_address, location_lat, location_lng, layer_id, topic_id, cta1_label, cta1_url, cta2_label, cta2_url, is_public, publish_at, registration_deadline, author_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      RETURNING *`,
-    [event.title, description, startDate, endDate, location, layerId, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, authorId]
+    [event.title, description, startDate, endDate, event.locationAddress ?? null, event.locationLat ?? null, event.locationLng ?? null, layerId, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, authorId]
   );
   return mapEventRow(result.rows[0]);
 }
@@ -155,20 +162,22 @@ export async function updateAuthorEventById(id: number, authorId: number, event:
          description = $2,
          start_date = $3,
          end_date = $4,
-         location = $5,
-         layer_id = $6,
-         topic_id = $7,
-         cta1_label = $8,
-         cta1_url = $9,
-         cta2_label = $10,
-         cta2_url = $11,
-         is_public = $12,
-         publish_at = $13,
-         registration_deadline = $14,
+         location_address = $5,
+         location_lat = $6,
+         location_lng = $7,
+         layer_id = $8,
+         topic_id = $9,
+         cta1_label = $10,
+         cta1_url = $11,
+         cta2_label = $12,
+         cta2_url = $13,
+         is_public = $14,
+         publish_at = $15,
+         registration_deadline = $16,
          modified_at = NOW()
-    WHERE id = $15 AND author_id = $16
+    WHERE id = $17 AND author_id = $18
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, id, authorId]
+    [event.title, event.description, event.startDate, endDate, event.locationAddress ?? null, event.locationLat ?? null, event.locationLng ?? null, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, id, authorId]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
@@ -181,20 +190,22 @@ export async function updateEventById(id: number, event: EventInput): Promise<Ev
          description = $2,
          start_date = $3,
          end_date = $4,
-         location = $5,
-         layer_id = $6,
-         topic_id = $7,
-         cta1_label = $8,
-         cta1_url = $9,
-         cta2_label = $10,
-         cta2_url = $11,
-         is_public = $12,
-         publish_at = $13,
-         registration_deadline = $14,
+         location_address = $5,
+         location_lat = $6,
+         location_lng = $7,
+         layer_id = $8,
+         topic_id = $9,
+         cta1_label = $10,
+         cta1_url = $11,
+         cta2_label = $12,
+         cta2_url = $13,
+         is_public = $14,
+         publish_at = $15,
+         registration_deadline = $16,
          modified_at = NOW()
-    WHERE id = $15
+    WHERE id = $17
      RETURNING *`,
-    [event.title, event.description, event.startDate, endDate, event.location, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, id]
+    [event.title, event.description, event.startDate, endDate, event.locationAddress ?? null, event.locationLat ?? null, event.locationLng ?? null, event.layerId ?? null, event.topicId ?? null, event.cta1Label ?? null, event.cta1Url ?? null, event.cta2Label ?? null, event.cta2Url ?? null, event.isPublic ?? false, event.publishAt ?? null, event.registrationDeadline ?? null, id]
   );
   return result.rows[0] ? mapEventRow(result.rows[0]) : null;
 }
