@@ -59,6 +59,43 @@ afterAll(async () => {
 });
 
 describe('Admin user management authorization e2e (#58)', () => {
+  it('rejects admin user management endpoints for non-admins and unauthenticated users (#114)', async () => {
+    await createAuthorForTesting({ username: 'author-nonadmin-users', password: 'secret-123' });
+    const token = await loginAuthor('author-nonadmin-users', 'secret-123');
+    const target = await createAuthorForTesting({ username: 'target-user-nonadmin', password: 'secret-456' });
+
+    const unauthenticatedList = await request(app).get('/api/admin/users');
+    expect(unauthenticatedList.status).toBe(401);
+
+    const nonAdminList = await request(app).get('/api/admin/users').set('authorization', `Bearer ${token}`);
+    expect(nonAdminList.status).toBe(403);
+
+    const unauthenticatedCreate = await request(app).post('/api/admin/users').send({ username: 'irrelevant' });
+    expect(unauthenticatedCreate.status).toBe(401);
+
+    const nonAdminCreate = await request(app)
+      .post('/api/admin/users')
+      .set('authorization', `Bearer ${token}`)
+      .send({ username: 'irrelevant' });
+    expect(nonAdminCreate.status).toBe(403);
+
+    const nonAdminPatch = await request(app)
+      .patch(`/api/admin/users/${target.id}`)
+      .set('authorization', `Bearer ${token}`)
+      .send({ isActive: false });
+    expect(nonAdminPatch.status).toBe(403);
+
+    const nonAdminDelete = await request(app)
+      .delete(`/api/admin/users/${target.id}`)
+      .set('authorization', `Bearer ${token}`);
+    expect(nonAdminDelete.status).toBe(403);
+
+    const nonAdminReset = await request(app)
+      .post(`/api/admin/users/${target.id}/reset-password`)
+      .set('authorization', `Bearer ${token}`);
+    expect(nonAdminReset.status).toBe(403);
+  });
+
   it('requires a valid layerId within the creator\'s own branch to create a new admin', async () => {
     await createAuthorForTesting({ username: 'admin-users-koeln', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const adminToken = await loginAuthor('admin-users-koeln', 'admin-123');

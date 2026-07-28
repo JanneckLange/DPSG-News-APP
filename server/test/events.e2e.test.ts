@@ -273,6 +273,23 @@ describe('Events API e2e', () => {
     expect(response.status).toBe(400);
   });
 
+  it('rejects a valid layerId the author has no grant for (#114)', async () => {
+    await createAuthorForTesting({ username: 'author-no-grant', password: 'secret-123' });
+    const token = await loginAuthor('author-no-grant', 'secret-123');
+
+    const response = await request(app)
+      .post('/api/author/events')
+      .set('authorization', `Bearer ${token}`)
+      .send({
+        title: 'Event',
+        description: 'Beschreibung',
+        startDate: '2026-05-01T10:00:00Z',
+        location: 'Ort',
+        layerId: koelnLayerId,
+      });
+    expect(response.status).toBe(403);
+  });
+
   it('rejects a topicId that does not belong to the selected layer', async () => {
     await createAuthorForTesting({
       username: 'author-bad-topic',
