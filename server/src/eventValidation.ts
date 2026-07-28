@@ -1,5 +1,4 @@
 export const MAX_TITLE_LENGTH = 100;
-export const MAX_LABEL_LENGTH = 20;
 export const MAX_URL_LENGTH = 300;
 export const MAX_LOCATION_ADDRESS_LENGTH = 255;
 export const MAX_LONG_TEXT_LENGTH = 1000; // description, update message
@@ -37,7 +36,22 @@ function isHttpOrHttpsUrl(raw: string): boolean {
   }
 }
 
-function validateOptionalCtaUrl(fieldName: string, value: unknown): FieldValidation {
+const SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isMailtoCandidate(raw: string): boolean {
+  return raw.startsWith('mailto:') || (raw.includes('@') && !/^https?:\/\//i.test(raw));
+}
+
+function extractMailtoAddress(raw: string): string {
+  const withoutScheme = raw.startsWith('mailto:') ? raw.slice('mailto:'.length) : raw;
+  return withoutScheme.split('?')[0];
+}
+
+function isValidMailto(raw: string): boolean {
+  return SIMPLE_EMAIL_REGEX.test(extractMailtoAddress(raw).trim());
+}
+
+function validateOptionalCtaUrl(fieldName: string, value: unknown, options: { allowMailto?: boolean } = {}): FieldValidation {
   if (value === undefined || value === null) {
     return VALID_RESULT;
   }
@@ -49,6 +63,12 @@ function validateOptionalCtaUrl(fieldName: string, value: unknown): FieldValidat
   }
   if (value.length > MAX_URL_LENGTH) {
     return invalid(`Field '${fieldName}' must not exceed ${MAX_URL_LENGTH} characters`);
+  }
+  if (isMailtoCandidate(value)) {
+    if (!options.allowMailto) {
+      return invalid(`Field '${fieldName}' must be a valid http or https URL`);
+    }
+    return isValidMailto(value) ? VALID_RESULT : invalid(`Field '${fieldName}' must be a valid mailto address`);
   }
   if (!isHttpOrHttpsUrl(value)) {
     return invalid(`Field '${fieldName}' must be a valid http or https URL`);
@@ -114,9 +134,7 @@ export function validateEventTextFields(body: Record<string, unknown>, validTopi
     validateOptionalText('locationAddress', body.locationAddress, MAX_LOCATION_ADDRESS_LENGTH),
     validateOptionalLatLng(body.locationLat, body.locationLng),
     validateTopic(validTopicIds, body.topicId),
-    validateOptionalText('cta1Label', body.cta1Label, MAX_LABEL_LENGTH),
-    validateOptionalCtaUrl('cta1Url', body.cta1Url),
-    validateOptionalText('cta2Label', body.cta2Label, MAX_LABEL_LENGTH),
+    validateOptionalCtaUrl('cta1Url', body.cta1Url, { allowMailto: true }),
     validateOptionalCtaUrl('cta2Url', body.cta2Url),
     validateOptionalBoolean('isPublic', body.isPublic),
     validateOptionalDate('publishAt', body.publishAt),
