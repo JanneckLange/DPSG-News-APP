@@ -72,6 +72,13 @@ export async function getLayerById(id: number): Promise<Layer | null> {
   return result.rows[0] ? mapLayerRow(result.rows[0]) : null;
 }
 
+export async function getRootLayerId(): Promise<number | null> {
+  const result = await ensureClient().query<{ id: number }>(
+    `SELECT id FROM layers WHERE parent_id IS NULL LIMIT 1`
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 export async function isLayerInAdminScope(adminLayerIds: number[], targetLayerId: number): Promise<boolean> {
   if (adminLayerIds.length === 0) {
     return false;

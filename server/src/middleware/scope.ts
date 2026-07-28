@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthorIdentity, getLayerById, getTopicById, isLayerInAdminScope } from '../db';
+import { AuthorIdentity, AuthorRecord, getLayerById, getTopicById, isLayerInAdminScope } from '../db';
 
 export async function requireLayerScope(res: Response, targetLayerId: number | null | undefined): Promise<boolean> {
   const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
@@ -34,24 +34,89 @@ export async function requireLayerScopeForAll(res: Response, targetLayerIds: num
   return true;
 }
 
-// Fuer Kontoverwaltung eines beliebigen Zielnutzers (activate/deactivate, delete,
-// reset-password): Admin und Autor sind technisch dasselbe Konto, daher gilt
-// einheitlich "layer and below" ueber die Vereinigung aller Rechte des Ziels
-// (Admin-Layer, Layer-Grants, Layer der Topic-Grants) - analog zu requireLayerScopeForAll
-// fuer Admin-Ziele, nur erweitert um Autoren-Grants.
-export async function requireManageableAccountScope(
-  res: Response,
-  target: { adminLayerIds: number[]; layerGrantIds: number[]; topicGrantIds: number[] }
-): Promise<boolean> {
+type AccountScopeTarget = { adminLayerIds: number[]; layerGrantIds: number[]; topicGrantIds: number[] };
+
+// Vereinigung aller Rechte eines Kontos (Admin-Layer, Layer-Grants, Layer der
+// Topic-Grants) als flache Layer-Id-Liste - Grundlage sowohl fuer die Verwaltungs-
+// Scope-Pruefung als auch fuer die Sichtbarkeitsregel in der Nutzerliste.
+async function getAccountScopeLayerIds(target: AccountScopeTarget): Promise<number[]> {
   const topicLayerIds = await Promise.all(
     target.topicGrantIds.map(async (topicId) => (await getTopicById(topicId))?.layerId)
   );
-  const targetLayerIds = [
+  return [
     ...target.adminLayerIds,
     ...target.layerGrantIds,
     ...topicLayerIds.filter((layerId): layerId is number => layerId != null),
   ];
+}
+
+// Fuer Kontoverwaltung eines beliebigen Zielnutzers (activate/deactivate, delete,
+// reset-password): Admin und Autor sind technisch dasselbe Konto, daher gilt
+// einheitlich "layer and below" ueber die Vereinigung aller Rechte des Ziels -
+// analog zu requireLayerScopeForAll fuer Admin-Ziele, nur erweitert um Autoren-Grants.
+export async function requireManageableAccountScope(res: Response, target: AccountScopeTarget): Promise<boolean> {
+  const targetLayerIds = await getAccountScopeLayerIds(target);
   return requireLayerScopeForAll(res, targetLayerIds);
+}
+
+// Sichtbarkeit in der Admin-Nutzerliste (#112): sichtbar, wenn mindestens ein Recht
+// im eigenen Layer-Zweig liegt. Ein Konto ganz ohne Rechte (frisch angelegt) ist nur
+// fuer seinen Ersteller und fuer Admins des Wurzel-Layers sichtbar - sonst koennte
+// niemand einem neuen Autor je den ersten Grant zuweisen, ohne dass er fuer alle
+// Admins systemweit sichtbar waere.
+export async function isAccountVisibleToAdmin(
+  admin: { id: number; adminLayerIds: number[] },
+  target: AccountScopeTarget & { createdByAuthorId: number | null },
+  rootLayerId: number | null
+): Promise<boolean> {
+  const targetLayerIds = await getAccountScopeLayerIds(target);
+  if (targetLayerIds.length === 0) {
+    return target.createdByAuthorId === admin.id || (rootLayerId != null && admin.adminLayerIds.includes(rootLayerId));
+  }
+  for (const targetLayerId of targetLayerIds) {
+    if (await isLayerInAdminScope(admin.adminLayerIds, targetLayerId)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Redaktion der Grant-Felder auf den eigenen Layer-Zweig (#18/#112): ein Admin sieht
+// bei einem sichtbaren Nutzer nur die Rechte innerhalb des eigenen Zweigs, nicht das
+// vollstaendige Bild ueber fremde Layer hinweg.
+async function redactToOwnScope(admin: { adminLayerIds: number[] }, layerIds: number[]): Promise<number[]> {
+  const flags = await Promise.all(layerIds.map((layerId) => isLayerInAdminScope(admin.adminLayerIds, layerId)));
+  return layerIds.filter((_, index) => flags[index]);
+}
+
+export async function filterAuthorsForAdmin(
+  admin: { id: number; adminLayerIds: number[] },
+  authors: AuthorRecord[],
+  rootLayerId: number | null
+): Promise<AuthorRecord[]> {
+  const visible: AuthorRecord[] = [];
+  for (const author of authors) {
+    if (!await isAccountVisibleToAdmin(admin, author, rootLayerId)) {
+      continue;
+    }
+    const topicLayerPairs = await Promise.all(
+      author.topicGrantIds.map(async (topicId) => ({ topicId, layerId: (await getTopicById(topicId))?.layerId }))
+    );
+    const visibleTopicGrantIds = (
+      await Promise.all(
+        topicLayerPairs.map(async (pair) =>
+          pair.layerId != null && (await isLayerInAdminScope(admin.adminLayerIds, pair.layerId)) ? pair.topicId : null
+        )
+      )
+    ).filter((topicId): topicId is number => topicId != null);
+    visible.push({
+      ...author,
+      adminLayerIds: await redactToOwnScope(admin, author.adminLayerIds),
+      layerGrantIds: await redactToOwnScope(admin, author.layerGrantIds),
+      topicGrantIds: visibleTopicGrantIds,
+    });
+  }
+  return visible;
 }
 
 // Autoren duerfen Events nur auf explizit zugewiesenen Layern/Topics erstellen

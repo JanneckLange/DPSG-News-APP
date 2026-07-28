@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import {
+  AuthorIdentity,
   addAdminLayer,
   addAuthorLayerGrant,
   addAuthorTopicGrant,
@@ -9,6 +10,7 @@ import {
   getAuthorById,
   getAuthorLayerGrantIds,
   getAuthorTopicGrantIds,
+  getRootLayerId,
   getTopicById,
   listAuthors,
   removeAdminLayer,
@@ -19,7 +21,13 @@ import {
 } from '../db';
 import { logRequestError } from '../logger';
 import { requireAdminSession, requireAuthorAuth, requirePasswordChangeCompleted } from '../middleware/auth';
-import { isKnownLayerId, requireLayerScope, requireLayerScopeForAll, requireManageableAccountScope } from '../middleware/scope';
+import {
+  filterAuthorsForAdmin,
+  isKnownLayerId,
+  requireLayerScope,
+  requireLayerScopeForAll,
+  requireManageableAccountScope,
+} from '../middleware/scope';
 import { parseLayerId, respondBadRequest } from '../middleware/validation';
 
 export const adminUsersRouter = Router();
@@ -35,7 +43,9 @@ adminUsersRouter.get('/api/admin/users', async (req: Request, res: Response) => 
     if (!requirePasswordChangeCompleted(res)) {
       return;
     }
-    res.json({ users: await listAuthors() });
+    const admin = res.locals.author as AuthorIdentity;
+    const [allAuthors, rootLayerId] = await Promise.all([listAuthors(), getRootLayerId()]);
+    res.json({ users: await filterAuthorsForAdmin(admin, allAuthors, rootLayerId) });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load users' });
@@ -74,7 +84,8 @@ adminUsersRouter.post('/api/admin/users', async (req: Request, res: Response) =>
         return;
       }
     }
-    const result = await createAuthor({ username, isAdmin, adminLayerIds });
+    const creator = res.locals.author as AuthorIdentity;
+    const result = await createAuthor({ username, isAdmin, adminLayerIds, createdByAuthorId: creator.id });
     res.status(201).json(result);
   } catch (error) {
     logRequestError(error, res.locals.requestId);

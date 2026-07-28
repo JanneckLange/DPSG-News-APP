@@ -95,14 +95,9 @@ describe('Admin user management authorization e2e (#58)', () => {
   });
 
   it('rejects deactivating, deleting or resetting the password of an admin outside the own layer branch', async () => {
-    await createAuthorForTesting({ username: 'admin-hamburg', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    const hamburgAdmin = await createAuthorForTesting({ username: 'admin-hamburg', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
     await createAuthorForTesting({ username: 'admin-koeln', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const koelnAdminToken = await loginAuthor('admin-koeln', 'admin-123');
-
-    const usersResponse = await request(app)
-      .get('/api/admin/users')
-      .set('authorization', `Bearer ${koelnAdminToken}`);
-    const hamburgAdmin = usersResponse.body.users.find((u: { username: string }) => u.username === 'admin-hamburg');
 
     const resetOutsideScope = await request(app)
       .post(`/api/admin/users/${hamburgAdmin.id}/reset-password`)
@@ -227,6 +222,86 @@ describe('Admin user management authorization e2e (#58)', () => {
       .delete(`/api/admin/users/${inScopeAuthor.id}`)
       .set('authorization', `Bearer ${adminToken}`);
     expect(deleteInScope.status).toBe(204);
+  });
+});
+
+describe('GET /api/admin/users visibility (#112)', () => {
+  it('hides an admin outside the own layer branch entirely from the users list', async () => {
+    await createAuthorForTesting({ username: 'visibility-admin-hamburg', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    await createAuthorForTesting({ username: 'visibility-admin-koeln', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const koelnAdminToken = await loginAuthor('visibility-admin-koeln', 'admin-123');
+
+    const response = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', `Bearer ${koelnAdminToken}`);
+    expect(response.status).toBe(200);
+    const usernames = (response.body.users as Array<{ username: string }>).map((u) => u.username);
+    expect(usernames).toContain('visibility-admin-koeln');
+    expect(usernames).not.toContain('visibility-admin-hamburg');
+  });
+
+  it('redacts an in-scope admin\'s layers outside the own branch instead of hiding them entirely', async () => {
+    await createAuthorForTesting({
+      username: 'visibility-admin-multi',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerIds: [koelnLayerId, hamburgLayerId],
+    });
+    await createAuthorForTesting({ username: 'visibility-admin-koeln-2', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const koelnAdminToken = await loginAuthor('visibility-admin-koeln-2', 'admin-123');
+
+    const response = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', `Bearer ${koelnAdminToken}`);
+    expect(response.status).toBe(200);
+    const multiAdmin = (response.body.users as Array<{ username: string; adminLayerIds: number[] }>).find(
+      (u) => u.username === 'visibility-admin-multi'
+    );
+    expect(multiAdmin).toBeDefined();
+    expect(multiAdmin?.adminLayerIds).toEqual([koelnLayerId]);
+  });
+
+  it('hides a plain author with an out-of-branch grant from an unrelated admin', async () => {
+    await createAuthorForTesting({ username: 'visibility-admin-unrelated', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const adminToken = await loginAuthor('visibility-admin-unrelated', 'admin-123');
+    await createAuthorForTesting({ username: 'visibility-author-hamburg', password: 'author-123', layerGrantIds: [hamburgLayerId] });
+
+    const response = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(response.status).toBe(200);
+    const usernames = (response.body.users as Array<{ username: string }>).map((u) => u.username);
+    expect(usernames).not.toContain('visibility-author-hamburg');
+  });
+
+  it('shows a grant-less author to their creator but not to an unrelated non-root admin', async () => {
+    const creator = await createAuthorForTesting({ username: 'visibility-creator', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'visibility-other-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    await createAuthorForTesting({ username: 'visibility-fresh-author', password: 'author-123', createdByAuthorId: creator.id });
+    const creatorToken = await loginAuthor('visibility-creator', 'admin-123');
+    const otherToken = await loginAuthor('visibility-other-admin', 'admin-123');
+
+    const creatorView = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', `Bearer ${creatorToken}`);
+    expect((creatorView.body.users as Array<{ username: string }>).map((u) => u.username)).toContain('visibility-fresh-author');
+
+    const otherView = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', `Bearer ${otherToken}`);
+    expect((otherView.body.users as Array<{ username: string }>).map((u) => u.username)).not.toContain('visibility-fresh-author');
+  });
+
+  it('shows a grant-less author to a root-layer admin regardless of who created them', async () => {
+    await createAuthorForTesting({ username: 'visibility-someone', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'visibility-root-admin', password: 'admin-123', isAdmin: true });
+    await createAuthorForTesting({ username: 'visibility-fresh-author-2', password: 'author-123' });
+    const rootAdminToken = await loginAuthor('visibility-root-admin', 'admin-123');
+
+    const response = await request(app)
+      .get('/api/admin/users')
+      .set('authorization', `Bearer ${rootAdminToken}`);
+    expect((response.body.users as Array<{ username: string }>).map((u) => u.username)).toContain('visibility-fresh-author-2');
   });
 });
 
@@ -419,9 +494,9 @@ async function getUserById(adminToken: string, userId: number): Promise<{ isAdmi
 
 describe('Admin/Autor role fluidity (#81)', () => {
   it('promotes a non-admin author to admin by granting their first admin layer', async () => {
-    await createAuthorForTesting({ username: 'admin-promoter', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const promoter = await createAuthorForTesting({ username: 'admin-promoter', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const adminToken = await loginAuthor('admin-promoter', 'admin-123');
-    const author = await createAuthorForTesting({ username: 'author-to-promote', password: 'author-123', isAdmin: false });
+    const author = await createAuthorForTesting({ username: 'author-to-promote', password: 'author-123', isAdmin: false, createdByAuthorId: promoter.id });
 
     const before = await getUserById(adminToken, author.id);
     expect(before.isAdmin).toBe(false);
@@ -460,9 +535,9 @@ describe('Admin/Autor role fluidity (#81)', () => {
   });
 
   it('auto-disables a non-admin author once their last author right is removed', async () => {
-    await createAuthorForTesting({ username: 'admin-disabler', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const disabler = await createAuthorForTesting({ username: 'admin-disabler', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const adminToken = await loginAuthor('admin-disabler', 'admin-123');
-    const author = await createAuthorForTesting({ username: 'author-to-disable', password: 'author-123', isAdmin: false });
+    const author = await createAuthorForTesting({ username: 'author-to-disable', password: 'author-123', isAdmin: false, createdByAuthorId: disabler.id });
 
     const add = await request(app)
       .post(`/api/admin/users/${author.id}/layer-grants`)
