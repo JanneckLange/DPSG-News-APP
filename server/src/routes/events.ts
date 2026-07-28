@@ -25,6 +25,7 @@ import { getViewerSession, requireAdminSession, requireAuthorAuth, requirePasswo
 import {
   canManageWithinLayerScope,
   requireEventGrant,
+  requireLayerScope,
   requireManageableWithinLayerScope,
   requireOwnEvent,
 } from '../middleware/scope';
@@ -184,6 +185,18 @@ eventsRouter.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!layer) {
       return respondBadRequest(req, res, 'Invalid layerId');
     }
+    // Rechtematrix aus #1: das ZIEL-Layer/Topic muss erneut geprueft werden, nicht nur
+    // das bisherige - sonst liesse sich die Grant-Pflicht aus "create post" per Edit
+    // umgehen (#111). Eigentuemer bleiben an ihren Autoren-Grant gebunden, ein fremder
+    // Admin an seinen Layer-Scope.
+    const editor = res.locals.author as AuthorIdentity;
+    if (current.authorId === editor.id) {
+      if (!requireEventGrant(res, layerId, topicId)) {
+        return;
+      }
+    } else if (!await requireLayerScope(res, layerId)) {
+      return;
+    }
     const topicIds = (await getTopics(layer.id)).map((t) => t.id);
     const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, topicIds);
     if (!fieldsCheck.valid) {
@@ -224,6 +237,12 @@ eventsRouter.put('/api/author/events/:id', async (req: Request, res: Response) =
     if (Number.isNaN(id) || id <= 0) {
       return respondBadRequest(req, res, 'Invalid event id');
     }
+    const author = res.locals.author as { id: number };
+    const events = await getEvents();
+    const current = events.find((event) => event.id === id);
+    if (!current || current.authorId !== author.id) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
 
     const { title, description, startDate, endDate, location, topicId, cta1Label, cta1Url, cta2Label, cta2Url } = req.body as EventInput;
     const layerId = parseLayerId((req.body as EventInput).layerId);
@@ -234,13 +253,18 @@ eventsRouter.put('/api/author/events/:id', async (req: Request, res: Response) =
     if (!layer) {
       return respondBadRequest(req, res, 'Invalid layerId');
     }
+    // Rechtematrix aus #1: das ZIEL-Layer/Topic muss gegen den Autoren-Grant geprueft
+    // werden, sonst liesse sich die Grant-Pflicht aus "create post" per Edit umgehen (#111).
+    // Erst NACH der Ownership-Pruefung, damit fremde Events weiterhin als 404 erscheinen.
+    if (!requireEventGrant(res, layerId, topicId)) {
+      return;
+    }
     const topicIds = (await getTopics(layer.id)).map((t) => t.id);
     const fieldsCheck = validateEventTextFields(req.body as Record<string, unknown>, topicIds);
     if (!fieldsCheck.valid) {
       return respondBadRequest(req, res, fieldsCheck.error);
     }
 
-    const author = res.locals.author as { id: number };
     const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, location, layerId, topicId, cta1Label, cta1Url, cta2Label, cta2Url });
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
