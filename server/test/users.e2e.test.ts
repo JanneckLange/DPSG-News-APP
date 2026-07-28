@@ -94,7 +94,7 @@ describe('Admin user management authorization e2e (#58)', () => {
     expect(response.status).toBe(201);
   });
 
-  it('rejects deleting or resetting the password of an admin outside the own layer branch', async () => {
+  it('rejects deactivating, deleting or resetting the password of an admin outside the own layer branch', async () => {
     await createAuthorForTesting({ username: 'admin-hamburg', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
     await createAuthorForTesting({ username: 'admin-koeln', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const koelnAdminToken = await loginAuthor('admin-koeln', 'admin-123');
@@ -113,7 +113,7 @@ describe('Admin user management authorization e2e (#58)', () => {
       .patch(`/api/admin/users/${hamburgAdmin.id}`)
       .set('authorization', `Bearer ${koelnAdminToken}`)
       .send({ isActive: false });
-    expect(deactivateHamburgAdmin.status).toBe(204);
+    expect(deactivateHamburgAdmin.status).toBe(403);
 
     const deleteOutsideScope = await request(app)
       .delete(`/api/admin/users/${hamburgAdmin.id}`)
@@ -149,7 +149,7 @@ describe('Admin user management authorization e2e (#58)', () => {
     expect(deleteInScope.status).toBe(204);
   });
 
-  it('does not restrict deleting or resetting the password of a plain (non-admin) author by layer', async () => {
+  it('does not restrict deleting or resetting the password of a plain (non-admin) author without any grants', async () => {
     await createAuthorForTesting({ username: 'admin-koeln-authors', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
     const adminToken = await loginAuthor('admin-koeln-authors', 'admin-123');
 
@@ -175,6 +175,58 @@ describe('Admin user management authorization e2e (#58)', () => {
       .delete(`/api/admin/users/${authorId}`)
       .set('authorization', `Bearer ${adminToken}`);
     expect(deleteResponse.status).toBe(204);
+  });
+
+  it('rejects deactivating, deleting or resetting the password of a plain author with a layer grant outside the own layer branch', async () => {
+    await createAuthorForTesting({ username: 'admin-koeln-scope', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const adminToken = await loginAuthor('admin-koeln-scope', 'admin-123');
+    const outsideAuthor = await createAuthorForTesting({
+      username: 'author-hamburg-only',
+      password: 'author-123',
+      layerGrantIds: [hamburgLayerId],
+    });
+
+    const resetOutsideScope = await request(app)
+      .post(`/api/admin/users/${outsideAuthor.id}/reset-password`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(resetOutsideScope.status).toBe(403);
+
+    const deactivateOutsideScope = await request(app)
+      .patch(`/api/admin/users/${outsideAuthor.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false });
+    expect(deactivateOutsideScope.status).toBe(403);
+
+    const deleteOutsideScope = await request(app)
+      .delete(`/api/admin/users/${outsideAuthor.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteOutsideScope.status).toBe(403);
+  });
+
+  it('allows deactivating, deleting or resetting the password of a plain author whose grants are all within the own layer branch', async () => {
+    await createAuthorForTesting({ username: 'admin-koeln-inscope', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const adminToken = await loginAuthor('admin-koeln-inscope', 'admin-123');
+    const inScopeAuthor = await createAuthorForTesting({
+      username: 'author-koeln-only',
+      password: 'author-123',
+      layerGrantIds: [koelnLayerId],
+    });
+
+    const resetInScope = await request(app)
+      .post(`/api/admin/users/${inScopeAuthor.id}/reset-password`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(resetInScope.status).toBe(200);
+
+    const deactivateInScope = await request(app)
+      .patch(`/api/admin/users/${inScopeAuthor.id}`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ isActive: false });
+    expect(deactivateInScope.status).toBe(204);
+
+    const deleteInScope = await request(app)
+      .delete(`/api/admin/users/${inScopeAuthor.id}`)
+      .set('authorization', `Bearer ${adminToken}`);
+    expect(deleteInScope.status).toBe(204);
   });
 });
 

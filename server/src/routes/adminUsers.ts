@@ -19,7 +19,7 @@ import {
 } from '../db';
 import { logRequestError } from '../logger';
 import { requireAdminSession, requireAuthorAuth, requirePasswordChangeCompleted } from '../middleware/auth';
-import { isKnownLayerId, requireLayerScope, requireLayerScopeForAll } from '../middleware/scope';
+import { isKnownLayerId, requireLayerScope, requireLayerScopeForAll, requireManageableAccountScope } from '../middleware/scope';
 import { parseLayerId, respondBadRequest } from '../middleware/validation';
 
 export const adminUsersRouter = Router();
@@ -100,6 +100,10 @@ adminUsersRouter.patch('/api/admin/users/:id', async (req: Request, res: Respons
     if (typeof req.body.isActive !== 'boolean') {
       return respondBadRequest(req, res, 'isActive is required');
     }
+    const target = await getAuthorById(id);
+    if (target && !await requireManageableAccountScope(res, target)) {
+      return;
+    }
     const updated = await setAuthorActive(id, req.body.isActive);
     if (!updated) {
       return res.status(404).json({ error: 'User not found' });
@@ -127,7 +131,7 @@ adminUsersRouter.delete('/api/admin/users/:id', async (req: Request, res: Respon
       return respondBadRequest(req, res, 'Invalid user id');
     }
     const target = await getAuthorById(id);
-    if (target?.isAdmin && !await requireLayerScopeForAll(res, target.adminLayerIds)) {
+    if (target && !await requireManageableAccountScope(res, target)) {
       return;
     }
     const deleted = await deleteAuthorById(id);
@@ -154,7 +158,7 @@ adminUsersRouter.post('/api/admin/users/:id/reset-password', async (req: Request
       return respondBadRequest(req, res, 'Invalid user id');
     }
     const target = await getAuthorById(id);
-    if (target?.isAdmin && !await requireLayerScopeForAll(res, target.adminLayerIds)) {
+    if (target && !await requireManageableAccountScope(res, target)) {
       return;
     }
     const oneTimePassword = await resetAuthorPassword(id);

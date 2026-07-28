@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthorIdentity, getLayerById, isLayerInAdminScope } from '../db';
+import { AuthorIdentity, getLayerById, getTopicById, isLayerInAdminScope } from '../db';
 
 export async function requireLayerScope(res: Response, targetLayerId: number | null | undefined): Promise<boolean> {
   const author = res.locals.author as { adminLayerIds?: number[] } | undefined;
@@ -32,6 +32,26 @@ export async function requireLayerScopeForAll(res: Response, targetLayerIds: num
     }
   }
   return true;
+}
+
+// Fuer Kontoverwaltung eines beliebigen Zielnutzers (activate/deactivate, delete,
+// reset-password): Admin und Autor sind technisch dasselbe Konto, daher gilt
+// einheitlich "layer and below" ueber die Vereinigung aller Rechte des Ziels
+// (Admin-Layer, Layer-Grants, Layer der Topic-Grants) - analog zu requireLayerScopeForAll
+// fuer Admin-Ziele, nur erweitert um Autoren-Grants.
+export async function requireManageableAccountScope(
+  res: Response,
+  target: { adminLayerIds: number[]; layerGrantIds: number[]; topicGrantIds: number[] }
+): Promise<boolean> {
+  const topicLayerIds = await Promise.all(
+    target.topicGrantIds.map(async (topicId) => (await getTopicById(topicId))?.layerId)
+  );
+  const targetLayerIds = [
+    ...target.adminLayerIds,
+    ...target.layerGrantIds,
+    ...topicLayerIds.filter((layerId): layerId is number => layerId != null),
+  ];
+  return requireLayerScopeForAll(res, targetLayerIds);
 }
 
 // Autoren duerfen Events nur auf explizit zugewiesenen Layern/Topics erstellen
