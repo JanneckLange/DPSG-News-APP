@@ -71,7 +71,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: () {
                   unawaited(ref.read(analyticsServiceProvider).trackUiClick('app_settings_entry', screen: 'settings', action: 'open', target: 'app_settings'));
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const AppSettingsScreen()),
+                    MaterialPageRoute(
+                      settings: const RouteSettings(name: 'AppSettingsScreen'),
+                      builder: (context) => const AppSettingsScreen(),
+                    ),
                   );
                 },
               ),
@@ -83,7 +86,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: () {
                   unawaited(ref.read(analyticsServiceProvider).trackUiClick('notifications_entry', screen: 'settings', action: 'open', target: 'notifications'));
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()),
+                    MaterialPageRoute(
+                      settings: const RouteSettings(
+                          name: 'NotificationSettingsScreen'),
+                      builder: (context) =>
+                          const NotificationSettingsScreen(),
+                    ),
                   );
                 },
               ),
@@ -95,7 +103,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: () {
                   unawaited(ref.read(analyticsServiceProvider).trackUiClick('dv_selection_entry', screen: 'settings', action: 'open', target: 'dv_selection'));
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const DvSelectionScreen()),
+                    MaterialPageRoute(
+                      settings: const RouteSettings(name: 'DvSelectionScreen'),
+                      builder: (context) => const DvSelectionScreen(),
+                    ),
                   );
                 },
               ),
@@ -122,7 +133,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: () {
                   unawaited(ref.read(analyticsServiceProvider).trackUiClick('debug_tools_entry', screen: 'settings', action: 'open', target: 'debug_tools'));
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const DebugToolsScreen()),
+                    MaterialPageRoute(
+                      settings: const RouteSettings(name: 'DebugToolsScreen'),
+                      builder: (context) => const DebugToolsScreen(),
+                    ),
                   );
                 },
               ),
@@ -186,7 +200,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           );
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            MaterialPageRoute(
+              settings: const RouteSettings(name: 'ProfileScreen'),
+              builder: (context) => const ProfileScreen(),
+            ),
           );
         },
         child: Padding(

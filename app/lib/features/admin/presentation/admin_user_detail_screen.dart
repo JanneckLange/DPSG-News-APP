@@ -503,6 +503,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
   Future<void> _openContribution(Map<String, dynamic> event) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'EventDetailScreen'),
         builder: (context) => EventDetailScreen(event: event),
       ),
     );

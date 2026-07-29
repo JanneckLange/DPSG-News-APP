@@ -15,7 +15,10 @@ class AdminScreen extends ConsumerStatefulWidget {
 class _AdminScreenState extends ConsumerState<AdminScreen> {
   void _openUserList() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const AdminUserListScreen()),
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'AdminUserListScreen'),
+        builder: (context) => const AdminUserListScreen(),
+      ),
     );
   }
 

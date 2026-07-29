@@ -237,6 +237,8 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
+                          settings:
+                              const RouteSettings(name: 'EventDetailScreen'),
                           builder: (context) => EventDetailScreen(event: event),
                         ),
                       );
@@ -321,7 +323,9 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                    builder: (context) => const DvSelectionScreen()),
+                  settings: const RouteSettings(name: 'DvSelectionScreen'),
+                  builder: (context) => const DvSelectionScreen(),
+                ),
               );
             },
           ),

@@ -437,6 +437,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     ));
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'EventEditorPage'),
         builder: (context) => EventEditorPage(existingEvent: widget.event),
       ),
     );

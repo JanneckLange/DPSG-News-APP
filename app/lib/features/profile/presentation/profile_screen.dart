@@ -104,6 +104,8 @@ class ProfileScreen extends ConsumerWidget {
                       onTap: () async {
                         await Navigator.of(context).push(
                           MaterialPageRoute(
+                            settings: const RouteSettings(
+                                name: 'AuthorChangePasswordScreen'),
                             builder: (context) =>
                                 const AuthorChangePasswordScreen(),
                           ),
@@ -121,7 +123,10 @@ class ProfileScreen extends ConsumerWidget {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                                builder: (context) => const AdminScreen()),
+                              settings:
+                                  const RouteSettings(name: 'AdminScreen'),
+                              builder: (context) => const AdminScreen(),
+                            ),
                           );
                         },
                       ),
@@ -165,7 +170,10 @@ class ProfileScreen extends ConsumerWidget {
                   : () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (context) => const AuthorLoginScreen()),
+                          settings:
+                              const RouteSettings(name: 'AuthorLoginScreen'),
+                          builder: (context) => const AuthorLoginScreen(),
+                        ),
                       );
                     },
               icon: Icon(authorAuth.isLoggedIn ? Icons.logout : Icons.login),

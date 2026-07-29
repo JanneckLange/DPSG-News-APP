@@ -108,6 +108,7 @@ class _LayerAdminTreeState extends ConsumerState<LayerAdminTree> {
   void _openLayerDetail(LayerModel layer) {
     Navigator.of(context).push(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'LayerDetailScreen'),
         builder: (context) =>
             LayerDetailScreen(layer: layer, allLayers: _layers),
       ),

@@ -204,7 +204,9 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (context) => const ChangelogScreen()),
+                    settings: const RouteSettings(name: 'ChangelogScreen'),
+                    builder: (context) => const ChangelogScreen(),
+                  ),
                 );
               },
             ),
@@ -216,6 +218,8 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
+                    settings: const RouteSettings(
+                        name: 'ExternalNotificationsPlaceholderScreen'),
                     builder: (context) =>
                         const ExternalNotificationsPlaceholderScreen(),
                   ),

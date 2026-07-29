@@ -67,6 +67,7 @@ class _AdminUserListScreenState extends ConsumerState<AdminUserListScreen> {
   Future<void> _openDetails(Map<String, dynamic> user) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'AdminUserDetailScreen'),
         builder: (context) => AdminUserDetailScreen(user: user),
       ),
     );
