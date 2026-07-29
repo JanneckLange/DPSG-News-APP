@@ -99,7 +99,12 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   final RemoteEventSource _remote;
   final SecureStorageService _secureStorage;
   final Ref _ref;
+  Future<String?>? _refreshInFlight;
 
+  /// Stellt eine gespeicherte Session beim App-Start wieder her und prueft
+  /// den Token direkt danach proaktiv (Erneuerung falls noetig) -- damit
+  /// eine abgelaufene Session schon beim Oeffnen der App erkannt wird und
+  /// nicht erst beim naechsten Klick ins Autorenmenue.
   Future<void> _restoreSession() async {
     final storedTokens = await _secureStorage.readAuthorTokens();
     if (storedTokens == null) {
@@ -122,6 +127,10 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       layerGrantIds: _repository.getAuthorLayerGrantIds(),
       topicGrantIds: _repository.getAuthorTopicGrantIds(),
     );
+    final token = await getValidAccessToken();
+    if (token == null) {
+      _notifySessionExpired();
+    }
   }
 
   Future<void> _persistSession(AuthorLoginSession session) async {
@@ -229,7 +238,19 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   /// Erneuert den Access-Token unabhaengig von der lokal gespeicherten
   /// Ablaufzeit -- wird sowohl vom proaktiven [getValidAccessToken] als auch
   /// reaktiv von [callAuthenticated] nach einem Live-401 genutzt.
-  Future<String?> _forceRefresh() async {
+  ///
+  /// Der Server rotiert Refresh-Tokens bei jeder Nutzung und widerruft bei
+  /// einem zweiten Versuch mit einem bereits verbrauchten Token gleich die
+  /// gesamte Token-Familie (siehe refreshAuthorSession im Backend). Ohne
+  /// diesen Single-Flight-Schutz wuerden mehrere gleichzeitig aufgerufene
+  /// Provider (Events, Drafts, Sync) mit demselben Refresh-Token
+  /// konkurrieren und sich so gegenseitig ausloggen.
+  Future<String?> _forceRefresh() {
+    return _refreshInFlight ??=
+        _doForceRefresh().whenComplete(() => _refreshInFlight = null);
+  }
+
+  Future<String?> _doForceRefresh() async {
     final refreshToken = state.refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
       await logout();
@@ -256,8 +277,12 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   /// ausgeloggt und zur Root-Route zurueckgeschickt.
   Future<T> callAuthenticated<T>(
       Future<T> Function(String token) request) async {
+    final wasLoggedIn = state.isLoggedIn;
     final token = await getValidAccessToken();
     if (token == null) {
+      if (wasLoggedIn) {
+        _notifySessionExpired();
+      }
       throw StateError('Not logged in');
     }
     try {
@@ -297,10 +322,19 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     await _repository.setAuthorLastBackgroundedAt(DateTime.now().toUtc());
   }
 
+  /// Prueft/erneuert den Access-Token proaktiv, sobald die App wieder in
+  /// den Vordergrund kommt (Kaltstart oder Rueckkehr aus dem Hintergrund) --
+  /// nicht erst beim naechsten Klick ins Autorenmenue. Schlaegt die
+  /// Erneuerung fehl, wird der Nutzer sofort informiert statt dass der
+  /// Autorenbereich kommentarlos verschwindet.
   Future<void> onAppResumed() async {
     if (!state.isLoggedIn) {
       return;
     }
     await _repository.setAuthorLastBackgroundedAt(null);
+    final token = await getValidAccessToken();
+    if (token == null) {
+      _notifySessionExpired();
+    }
   }
 }
