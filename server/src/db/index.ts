@@ -95,4 +95,12 @@ export {
   deleteTopic,
 } from './topics';
 
+export type { EventHistoryEntry, FieldChange } from './eventHistory';
+export {
+  mapEventHistoryRow,
+  diffEventFields,
+  recordEventHistory,
+  getEventHistory,
+} from './eventHistory';
+
 export type { AuthorRecord } from './types';

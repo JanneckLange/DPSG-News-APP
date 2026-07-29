@@ -9,11 +9,13 @@ import {
   deleteEventById,
   deleteEventUpdateById,
   getAuthorEvents,
+  getEventHistory,
   getEventUpdateById,
   getEventUpdates,
   getEvents,
   getLayerById,
   getTopics,
+  recordEventHistory,
   updateAuthorEventById,
   updateEventById,
   updateEventUpdateById,
@@ -221,6 +223,11 @@ eventsRouter.put('/api/events/:id', async (req: Request, res: Response) => {
     if (!updated) {
       return res.status(404).json({ error: 'Event not found' });
     }
+    try {
+      await recordEventHistory(id, editor.id, current, updated);
+    } catch (historyError) {
+      logRequestError(historyError, res.locals.requestId);
+    }
     res.json({ event: updated });
   } catch (error) {
     logRequestError(error, res.locals.requestId);
@@ -271,6 +278,11 @@ eventsRouter.put('/api/author/events/:id', async (req: Request, res: Response) =
     const event = await updateAuthorEventById(id, author.id, { title, description, startDate, endDate, locationAddress, locationLat, locationLng, layerId, topicId, cta1Url, cta2Url, isPublic, publishAt, registrationDeadline });
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
+    }
+    try {
+      await recordEventHistory(id, author.id, current, event);
+    } catch (historyError) {
+      logRequestError(historyError, res.locals.requestId);
     }
     res.json({ event });
   } catch (error) {
@@ -365,6 +377,34 @@ eventsRouter.get('/api/events/:id/updates', async (req: Request, res: Response) 
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load event updates' });
+  }
+});
+
+eventsRouter.get('/api/events/:id/history', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid event id');
+    }
+    const events = await getEvents(undefined, { includeUnpublished: true });
+    const current = events.find((event) => event.id === id);
+    if (!current) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (!await requireManageableWithinLayerScope(res, current.authorId, current.layerId)) {
+      return;
+    }
+    const history = await getEventHistory(id);
+    res.json({ history });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load event history' });
   }
 });
 
