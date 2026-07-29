@@ -27,49 +27,6 @@ type ErrorLogFields = {
   stack?: string;
 };
 
-type HourBucket = {
-  hourStartUtc: string;
-  count: number;
-};
-
-const KNOWN_ENDPOINTS: Array<{ method: string; path: RegExp }> = [
-  { method: 'GET', path: /^\/health\/?$/ },
-  { method: 'GET', path: /^\/api\/layers\/?$/ },
-  { method: 'GET', path: /^\/api\/topics\/?$/ },
-  { method: 'GET', path: /^\/api\/events\/?$/ },
-  { method: 'POST', path: /^\/api\/events\/?$/ },
-  { method: 'PUT', path: /^\/api\/events\/\d+\/?$/ },
-  { method: 'DELETE', path: /^\/api\/events\/\d+\/?$/ },
-  { method: 'DELETE', path: /^\/api\/events\/?$/ },
-  { method: 'GET', path: /^\/api\/events\/\d+\/updates\/?$/ },
-  { method: 'POST', path: /^\/api\/events\/\d+\/updates\/?$/ },
-  { method: 'POST', path: /^\/api\/auth\/login\/?$/ },
-  { method: 'POST', path: /^\/api\/auth\/refresh\/?$/ },
-  { method: 'POST', path: /^\/api\/auth\/logout\/?$/ },
-  { method: 'GET', path: /^\/api\/auth\/me\/?$/ },
-  { method: 'POST', path: /^\/api\/auth\/change-password\/?$/ },
-  { method: 'GET', path: /^\/api\/author\/events\/?$/ },
-  { method: 'POST', path: /^\/api\/author\/events\/?$/ },
-  { method: 'PUT', path: /^\/api\/author\/events\/\d+\/?$/ },
-  { method: 'DELETE', path: /^\/api\/author\/events\/\d+\/?$/ },
-  { method: 'GET', path: /^\/api\/admin\/users\/?$/ },
-  { method: 'POST', path: /^\/api\/admin\/users\/?$/ },
-  { method: 'PATCH', path: /^\/api\/admin\/users\/\d+\/?$/ },
-  { method: 'DELETE', path: /^\/api\/admin\/users\/\d+\/?$/ },
-  { method: 'POST', path: /^\/api\/admin\/users\/\d+\/reset-password\/?$/ },
-  { method: 'POST', path: /^\/api\/admin\/layers\/?$/ },
-  { method: 'PATCH', path: /^\/api\/admin\/layers\/\d+\/?$/ },
-  { method: 'DELETE', path: /^\/api\/admin\/layers\/\d+\/?$/ },
-  { method: 'POST', path: /^\/api\/admin\/topics\/?$/ },
-  { method: 'PATCH', path: /^\/api\/admin\/topics\/\d+\/?$/ },
-  { method: 'DELETE', path: /^\/api\/admin\/topics\/\d+\/?$/ },
-];
-
-let unknownEndpointBucket: HourBucket = {
-  hourStartUtc: currentHourStartUtc(),
-  count: 0,
-};
-
 function environment(): string {
   return (process.env.NODE_ENV || 'development').trim() || 'development';
 }
@@ -106,12 +63,6 @@ function emit(level: LogLevel, message: string, fields: Record<string, unknown> 
     return;
   }
   console.log(line);
-}
-
-function currentHourStartUtc(now: Date = new Date()): string {
-  const bucketStart = new Date(now);
-  bucketStart.setUTCMinutes(0, 0, 0);
-  return bucketStart.toISOString();
 }
 
 export function logInfo(message: string, fields: Record<string, unknown> = {}): void {
@@ -153,22 +104,4 @@ export function logRequestError(error: unknown, requestId?: string): void {
   }
 
   emit('error', 'Unhandled request error', errorFields);
-}
-
-export function isKnownEndpoint(method: string, path: string): boolean {
-  return KNOWN_ENDPOINTS.some((endpoint) => endpoint.method === method && endpoint.path.test(path));
-}
-
-export function incrementUnknownEndpointCounter(): void {
-  const hourStartUtc = currentHourStartUtc();
-  if (unknownEndpointBucket.hourStartUtc !== hourStartUtc) {
-    if (unknownEndpointBucket.count > 0) {
-      logWarn('Unknown endpoint requests aggregated', {
-        hourStartUtc: unknownEndpointBucket.hourStartUtc,
-        count: unknownEndpointBucket.count,
-      });
-    }
-    unknownEndpointBucket = { hourStartUtc, count: 0 };
-  }
-  unknownEndpointBucket.count += 1;
 }

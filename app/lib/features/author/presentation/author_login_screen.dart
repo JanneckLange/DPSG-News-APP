@@ -84,7 +84,9 @@ class _AuthorLoginScreenState extends ConsumerState<AuthorLoginScreen> {
       if (auth.requiresPasswordChange) {
         await Navigator.of(context).push(
           MaterialPageRoute(
-              builder: (context) => const AuthorChangePasswordScreen()),
+            settings: const RouteSettings(name: 'AuthorChangePasswordScreen'),
+            builder: (context) => const AuthorChangePasswordScreen(),
+          ),
         );
       }
       if (!mounted) {

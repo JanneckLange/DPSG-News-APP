@@ -60,7 +60,6 @@ void main() {
               ref: ref,
               initialState: AuthorAuthState(
                 isLoggedIn: true,
-                isLocked: false,
                 token: 'test-token',
                 refreshToken: 'test-refresh-token',
                 authorId: 1,

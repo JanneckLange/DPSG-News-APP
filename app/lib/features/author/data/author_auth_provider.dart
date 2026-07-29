@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_auth/local_auth.dart';
 
 import '../../../core/services/app_navigation_service.dart';
 import '../../../core/services/error_toast_service.dart';
@@ -10,12 +9,9 @@ import '../../../core/services/sync_service.dart' as sync_service;
 import '../../events/data/remote_event_source.dart';
 import '../../settings/data/settings_repository.dart';
 
-const Duration authorLockTimeout = Duration(seconds: 60);
-
 class AuthorAuthState {
   const AuthorAuthState({
     required this.isLoggedIn,
-    required this.isLocked,
     this.token,
     this.refreshToken,
     this.authorId,
@@ -29,7 +25,6 @@ class AuthorAuthState {
   });
 
   final bool isLoggedIn;
-  final bool isLocked;
   final String? token;
   final String? refreshToken;
   final int? authorId;
@@ -43,7 +38,6 @@ class AuthorAuthState {
 
   AuthorAuthState copyWith({
     bool? isLoggedIn,
-    bool? isLocked,
     String? token,
     String? refreshToken,
     int? authorId,
@@ -57,7 +51,6 @@ class AuthorAuthState {
   }) {
     return AuthorAuthState(
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
-      isLocked: isLocked ?? this.isLocked,
       token: token ?? this.token,
       refreshToken: refreshToken ?? this.refreshToken,
       authorId: authorId ?? this.authorId,
@@ -73,7 +66,7 @@ class AuthorAuthState {
   }
 
   static AuthorAuthState signedOut() =>
-      const AuthorAuthState(isLoggedIn: false, isLocked: false, isAdmin: false);
+      const AuthorAuthState(isLoggedIn: false, isAdmin: false);
 }
 
 final authorAuthProvider =
@@ -91,13 +84,11 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     required RemoteEventSource remote,
     required SecureStorageService secureStorage,
     required Ref ref,
-    LocalAuthentication? localAuthentication,
     bool restoreSessionOnInit = true,
   })  : _repository = repository,
         _remote = remote,
         _secureStorage = secureStorage,
         _ref = ref,
-        _localAuth = localAuthentication ?? LocalAuthentication(),
         super(AuthorAuthState.signedOut()) {
     if (restoreSessionOnInit) {
       unawaited(_restoreSession());
@@ -108,8 +99,12 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   final RemoteEventSource _remote;
   final SecureStorageService _secureStorage;
   final Ref _ref;
-  final LocalAuthentication _localAuth;
+  Future<String?>? _refreshInFlight;
 
+  /// Stellt eine gespeicherte Session beim App-Start wieder her und prueft
+  /// den Token direkt danach proaktiv (Erneuerung falls noetig) -- damit
+  /// eine abgelaufene Session schon beim Oeffnen der App erkannt wird und
+  /// nicht erst beim naechsten Klick ins Autorenmenue.
   Future<void> _restoreSession() async {
     final storedTokens = await _secureStorage.readAuthorTokens();
     if (storedTokens == null) {
@@ -121,7 +116,6 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     }
     state = AuthorAuthState(
       isLoggedIn: true,
-      isLocked: false,
       token: storedTokens.accessToken,
       refreshToken: storedTokens.refreshToken,
       authorId: _repository.getAuthorId(),
@@ -133,6 +127,10 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       layerGrantIds: _repository.getAuthorLayerGrantIds(),
       topicGrantIds: _repository.getAuthorTopicGrantIds(),
     );
+    final token = await getValidAccessToken();
+    if (token == null) {
+      _notifySessionExpired();
+    }
   }
 
   Future<void> _persistSession(AuthorLoginSession session) async {
@@ -153,7 +151,6 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     await _repository.clearLegacyAuthorAuthToken();
     state = AuthorAuthState(
       isLoggedIn: true,
-      isLocked: false,
       token: session.accessToken,
       refreshToken: session.refreshToken,
       authorId: session.authorId,
@@ -241,7 +238,19 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   /// Erneuert den Access-Token unabhaengig von der lokal gespeicherten
   /// Ablaufzeit -- wird sowohl vom proaktiven [getValidAccessToken] als auch
   /// reaktiv von [callAuthenticated] nach einem Live-401 genutzt.
-  Future<String?> _forceRefresh() async {
+  ///
+  /// Der Server rotiert Refresh-Tokens bei jeder Nutzung und widerruft bei
+  /// einem zweiten Versuch mit einem bereits verbrauchten Token gleich die
+  /// gesamte Token-Familie (siehe refreshAuthorSession im Backend). Ohne
+  /// diesen Single-Flight-Schutz wuerden mehrere gleichzeitig aufgerufene
+  /// Provider (Events, Drafts, Sync) mit demselben Refresh-Token
+  /// konkurrieren und sich so gegenseitig ausloggen.
+  Future<String?> _forceRefresh() {
+    return _refreshInFlight ??=
+        _doForceRefresh().whenComplete(() => _refreshInFlight = null);
+  }
+
+  Future<String?> _doForceRefresh() async {
     final refreshToken = state.refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
       await logout();
@@ -268,8 +277,12 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   /// ausgeloggt und zur Root-Route zurueckgeschickt.
   Future<T> callAuthenticated<T>(
       Future<T> Function(String token) request) async {
+    final wasLoggedIn = state.isLoggedIn;
     final token = await getValidAccessToken();
     if (token == null) {
+      if (wasLoggedIn) {
+        _notifySessionExpired();
+      }
       throw StateError('Not logged in');
     }
     try {
@@ -309,44 +322,19 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     await _repository.setAuthorLastBackgroundedAt(DateTime.now().toUtc());
   }
 
+  /// Prueft/erneuert den Access-Token proaktiv, sobald die App wieder in
+  /// den Vordergrund kommt (Kaltstart oder Rueckkehr aus dem Hintergrund) --
+  /// nicht erst beim naechsten Klick ins Autorenmenue. Schlaegt die
+  /// Erneuerung fehl, wird der Nutzer sofort informiert statt dass der
+  /// Autorenbereich kommentarlos verschwindet.
   Future<void> onAppResumed() async {
     if (!state.isLoggedIn) {
       return;
     }
-    final lastBackgroundedAt = _repository.getAuthorLastBackgroundedAt();
     await _repository.setAuthorLastBackgroundedAt(null);
-    if (lastBackgroundedAt == null) {
-      return;
+    final token = await getValidAccessToken();
+    if (token == null) {
+      _notifySessionExpired();
     }
-    final inactiveFor = DateTime.now().toUtc().difference(lastBackgroundedAt);
-    if (inactiveFor >= authorLockTimeout) {
-      state = state.copyWith(isLocked: true);
-    }
-  }
-
-  Future<void> unlock() async {
-    if (!state.isLoggedIn || !state.isLocked) {
-      return;
-    }
-
-    final canCheck = await _localAuth.canCheckBiometrics;
-    final supported = await _localAuth.isDeviceSupported();
-    if (!canCheck && !supported) {
-      state = state.copyWith(isLocked: false);
-      return;
-    }
-
-    final authenticated = await _localAuth.authenticate(
-      localizedReason: 'Bitte entsperre den Autorenbereich.',
-      options: const AuthenticationOptions(
-        biometricOnly: false,
-        sensitiveTransaction: true,
-        stickyAuth: true,
-      ),
-    );
-    if (!authenticated) {
-      throw StateError('Biometrische Entsperrung abgebrochen.');
-    }
-    state = state.copyWith(isLocked: false);
   }
 }

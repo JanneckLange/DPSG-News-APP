@@ -42,7 +42,6 @@ const HAS_AUTHORS_SUBQUERY = `EXISTS (SELECT 1 FROM author_layer_grants alg WHER
 const LAYER_AUTHOR_COUNT_SUBQUERY = `(
   SELECT COUNT(*)::int FROM author_layer_grants alg
   WHERE alg.layer_id = descendants.id
-    AND alg.author_id IN (SELECT id FROM authors WHERE is_admin = FALSE)
 ) AS author_count`;
 
 export function mapLayerRow(row: LayerRow): Layer {

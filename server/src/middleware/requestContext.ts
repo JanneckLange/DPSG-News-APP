@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { NextFunction, Request, Response } from 'express';
-import { incrementUnknownEndpointCounter, isKnownEndpoint, logRequest } from '../logger';
+import { logRequest } from '../logger';
 
 export function requestContextMiddleware(req: Request, res: Response, next: NextFunction): void {
   const startedAt = Date.now();
@@ -10,20 +10,15 @@ export function requestContextMiddleware(req: Request, res: Response, next: Next
   res.setHeader('x-request-id', requestId);
 
   res.on('finish', () => {
-    if (isKnownEndpoint(req.method, req.path)) {
-      logRequest({
-        requestId,
-        method: req.method,
-        path: req.originalUrl,
-        statusCode: res.statusCode,
-        durationMs: Date.now() - startedAt,
-        ip: req.ip,
-        userAgent: req.get('user-agent'),
-      });
-      return;
-    }
-
-    incrementUnknownEndpointCounter();
+    logRequest({
+      requestId,
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - startedAt,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
   });
 
   next();

@@ -30,6 +30,7 @@ class StaleEventsScreen extends ConsumerWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
+                  settings: const RouteSettings(name: 'EventDetailScreen'),
                   builder: (context) => EventDetailScreen(event: event),
                 ),
               );

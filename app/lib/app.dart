@@ -17,7 +17,6 @@ import 'core/services/usage_tracking_service.dart';
 import 'core/services/wiredash_metadata_service.dart';
 import 'features/author/presentation/author_screen.dart';
 import 'features/author/data/author_auth_provider.dart';
-import 'features/calendar/presentation/calendar_screen.dart';
 import 'features/events/presentation/events_screen.dart';
 import 'features/onboarding/presentation/welcome_screen.dart';
 import 'features/settings/data/dv_tree_provider.dart';
@@ -115,15 +114,12 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
 
     final pages = <Widget>[
       const EventsScreen(),
-      const CalendarScreen(),
       if (authorAuth.isLoggedIn) const AuthorScreen(),
       const SettingsScreen(),
     ];
 
     final destinations = <NavigationDestination>[
       const NavigationDestination(icon: Icon(Icons.event), label: 'Events'),
-      const NavigationDestination(
-          icon: Icon(Icons.calendar_month), label: 'Kalender'),
       if (authorAuth.isLoggedIn)
         const NavigationDestination(icon: Icon(Icons.edit), label: 'Autor'),
       const NavigationDestination(

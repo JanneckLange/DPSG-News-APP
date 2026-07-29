@@ -74,7 +74,7 @@ describe('Layers API e2e', () => {
     expect(otherDv!.hasAuthors).toBe(false);
   });
 
-  it('reports authorCount on GET /api/admin/layers, excluding admins', async () => {
+  it('reports authorCount on GET /api/admin/layers as the number of users with an author grant for that layer', async () => {
     const layersResponse = await request(app).get('/api/layers');
     const layers = layersResponse.body.layers as Array<{ id: number; name: string; parentId: number | null }>;
     const bundesverband = layers.find((l) => l.parentId === null)!;
@@ -103,7 +103,8 @@ describe('Layers API e2e', () => {
       password: 'secret-123',
       layerGrantIds: [koelnLayer.id],
     });
-    // Ein Admin mit direktem Layer-Grant auf demselben Layer darf nicht mitgezaehlt werden.
+    // Ein Admin mit einem eigenen Autoren-Grant fuer denselben Layer hat dort
+    // echte Autoren-Rechte und zaehlt daher mit.
     await createAuthorForTesting({
       username: 'admin-authorcount-grant',
       password: 'admin-123',
@@ -112,9 +113,26 @@ describe('Layers API e2e', () => {
       layerGrantIds: [koelnLayer.id],
     });
 
-    const after = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${adminToken}`);
-    const koelnAfter = (after.body.layers as Array<{ id: number; authorCount: number }>).find((l) => l.id === koelnLayer.id);
-    expect(koelnAfter!.authorCount).toBe(2);
+    const afterAuthors = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${adminToken}`);
+    const koelnAfterAuthors = (afterAuthors.body.layers as Array<{ id: number; authorCount: number }>).find(
+      (l) => l.id === koelnLayer.id,
+    );
+    expect(koelnAfterAuthors!.authorCount).toBe(3);
+
+    // Ein Admin ohne eigenen Autoren-Grant fuer den Layer verwaltet ihn nur
+    // und zaehlt nicht als Autor mit.
+    await createAuthorForTesting({
+      username: 'admin-authorcount-noauthor',
+      password: 'admin-123',
+      isAdmin: true,
+      adminLayerIds: [koelnLayer.id],
+    });
+
+    const afterAdminOnly = await request(app).get('/api/admin/layers').set('authorization', `Bearer ${adminToken}`);
+    const koelnAfterAdminOnly = (afterAdminOnly.body.layers as Array<{ id: number; authorCount: number }>).find(
+      (l) => l.id === koelnLayer.id,
+    );
+    expect(koelnAfterAdminOnly!.authorCount).toBe(3);
   });
 
   it('rejects layer creation and mutation for non-admins and unauthenticated users', async () => {

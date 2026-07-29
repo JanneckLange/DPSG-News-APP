@@ -29,6 +29,7 @@ class AuthorScreen extends ConsumerWidget {
   }) async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'EventEditorPage'),
         builder: (context) => EventEditorPage(
           existingEvent: existingEvent,
           existingDraft: existingDraft,
@@ -88,6 +89,7 @@ class AuthorScreen extends ConsumerWidget {
             ? null
             : () => Navigator.of(context).push(
                   MaterialPageRoute(
+                    settings: const RouteSettings(name: 'StaleEventsScreen'),
                     builder: (context) =>
                         StaleEventsScreen(events: stats.staleEvents),
                   ),
@@ -108,24 +110,13 @@ class AuthorScreen extends ConsumerWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                    builder: (context) => const AuthorLoginScreen()),
+                  settings: const RouteSettings(name: 'AuthorLoginScreen'),
+                  builder: (context) => const AuthorLoginScreen(),
+                ),
               );
             },
             icon: const Icon(Icons.login),
             label: const Text('Autoren-Login'),
-          ),
-        ),
-      );
-    }
-
-    if (auth.isLocked) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Autor')),
-        body: Center(
-          child: FilledButton.icon(
-            onPressed: () => ref.read(authorAuthProvider.notifier).unlock(),
-            icon: const Icon(Icons.lock_open),
-            label: const Text('Mit Biometrie entsperren'),
           ),
         ),
       );
@@ -139,7 +130,10 @@ class AuthorScreen extends ConsumerWidget {
             onPressed: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                    builder: (context) => const AuthorChangePasswordScreen()),
+                  settings:
+                      const RouteSettings(name: 'AuthorChangePasswordScreen'),
+                  builder: (context) => const AuthorChangePasswordScreen(),
+                ),
               );
               await ref.read(authorAuthProvider.notifier).refreshSession();
             },
@@ -199,6 +193,8 @@ class AuthorScreen extends ConsumerWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
+                            settings:
+                                const RouteSettings(name: 'EventDetailScreen'),
                             builder: (context) =>
                                 EventDetailScreen(event: event),
                           ),

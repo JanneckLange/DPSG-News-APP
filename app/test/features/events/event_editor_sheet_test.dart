@@ -72,7 +72,8 @@ class _FakeRemoteEventSource extends RemoteEventSource {
   // gespiegelt, damit der fire-and-forget-Refresh die Test-Fixture nicht
   // stillschweigend mit leeren Grants ueberschreibt.
   @override
-  Future<AuthorSessionState> fetchAuthorSession({required String token}) async =>
+  Future<AuthorSessionState> fetchAuthorSession(
+          {required String token}) async =>
       AuthorSessionState(
         requiresPasswordChange: false,
         isAdmin: false,
@@ -82,7 +83,8 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 }
 
 Future<void> _pumpUntilFound(WidgetTester tester, Finder finder,
-    {int maxAttempts = 20, Duration step = const Duration(milliseconds: 100)}) async {
+    {int maxAttempts = 20,
+    Duration step = const Duration(milliseconds: 100)}) async {
   for (var i = 0; i < maxAttempts; i++) {
     if (tester.any(finder)) return;
     await Future<void>.delayed(step);
@@ -116,7 +118,6 @@ Future<void> _pumpEditor(
             ref: ref,
             initialState: AuthorAuthState(
               isLoggedIn: true,
-              isLocked: false,
               token: 'test-token',
               authorId: 1,
               username: 'author',
@@ -202,15 +203,18 @@ void main() {
   testWidgets('shows a hint instead of a dropdown when no layer is authorized',
       (tester) async {
     await tester.runAsync(() async {
-      await _pumpEditor(tester, grantedLayerIds: const [], grantedTopicIds: const []);
+      await _pumpEditor(tester,
+          grantedLayerIds: const [], grantedTopicIds: const []);
       await _pumpUntilFound(
         tester,
-        find.text('Keine berechtigten Layer vorhanden. Bitte an einen Admin wenden.'),
+        find.text(
+            'Keine berechtigten Layer vorhanden. Bitte an einen Admin wenden.'),
       );
     });
 
     expect(
-      find.text('Keine berechtigten Layer vorhanden. Bitte an einen Admin wenden.'),
+      find.text(
+          'Keine berechtigten Layer vorhanden. Bitte an einen Admin wenden.'),
       findsOneWidget,
     );
     expect(find.byType(DropdownButtonFormField<int>), findsNothing);

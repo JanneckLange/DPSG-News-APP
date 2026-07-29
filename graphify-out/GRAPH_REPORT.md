@@ -1,16 +1,16 @@
-# Graph Report - feat-37  (2026-07-29)
+# Graph Report - fix+admin-logging-map-cta-login-calendar-lock  (2026-07-29)
 
 ## Corpus Check
-- 243 files · ~117,138 words
+- 242 files · ~116,818 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2454 nodes · 3943 edges · 180 communities (144 shown, 36 thin omitted)
+- 2436 nodes · 3917 edges · 179 communities (142 shown, 37 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 44 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ce5dfc39`
+- Built from commit: `664fe69c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -172,7 +172,6 @@
 - author_login_screen_test.dart
 - location_map_view.dart
 - logging_service_test.dart
-- dv_tree_provider.dart
 - empty_state.dart
 - analytics_service_test.dart
 - AppSettingsScreen
@@ -220,7 +219,7 @@
 - **PostHog Analytics Rollout Plan Phases** — doc_planning_posthog_analytics_plan_phase1_infrastruktur, doc_planning_posthog_analytics_plan_phase2_lifecycle_sessions, doc_planning_posthog_analytics_plan_phase3_navigation_ui, doc_planning_posthog_analytics_plan_phase4_einstellungen, doc_planning_posthog_analytics_plan_phase5_fehler_qualitaet, doc_planning_posthog_analytics_plan_phase6_dashboard [EXTRACTED 1.00]
 - **Settings Relaunch Main Categories (NamiApp-Vorbild)** — doc_planning_settings_relaunch_plan_profilbereich, doc_planning_settings_relaunch_plan_app_einstellungen, doc_planning_settings_relaunch_plan_benachrichtigungseinstellungen, doc_planning_settings_relaunch_plan_debug_tools, doc_planning_settings_relaunch_plan_rechtliches_footer [EXTRACTED 1.00]
 
-## Communities (180 total, 36 thin omitted)
+## Communities (179 total, 37 thin omitted)
 
 ### Community 0 - "Settings Repository & Keys"
 Cohesion: 0.02
@@ -228,19 +227,19 @@ Nodes (89): defaultDeadlineReminderDaysBefore, defaultSubscribedEventsReminderDa
 
 ### Community 1 - "Logging Service Core"
 Cohesion: 0.03
-Nodes (60): _addRecent, allLogsSelectionId, _analytics, AppNavigationLoggingObserver, _cleanupFuture, _cleanupLogs, clearAllAppLogs, clearAllLogs (+52 more)
+Nodes (58): _addRecent, allLogsSelectionId, _analytics, _cleanupFuture, _cleanupLogs, clearAllAppLogs, clearAllLogs, _composeMessage (+50 more)
 
 ### Community 2 - "Remote Event Source & Auth"
 Cohesion: 0.03
 Nodes (57): with, class RemoteEventSource extends _RemoteEventSourceBase, Client, remote_event_source/api_health_status.dart, remote_event_source/author_session.dart, remote_event_source/remote_event_source_exception.dart, Uri, addAdminLayer (+49 more)
 
 ### Community 3 - "App Root & Providers"
-Cohesion: 0.08
-Nodes (27): ../../admin/domain/topic_model.dart, initState, layerTreeProvider, autosave, _autosaveDebounce, build, childrenByParentId, createState (+19 more)
+Cohesion: 0.06
+Nodes (30): ../../admin/domain/topic_model.dart, layers, LayerTreeNotifier, _loadTree, refresh, _remoteSource, _repository, autosave (+22 more)
 
 ### Community 4 - "Server DB & Auth Sessions"
-Cohesion: 0.07
-Nodes (31): loggingServiceProvider, LogSource, build, _animateToBottom, build, content, createState, dispose (+23 more)
+Cohesion: 0.08
+Nodes (24): LogSource, _animateToBottom, content, createState, dispose, initialSource, initState, _jumpToBottom (+16 more)
 
 ### Community 5 - "Topic Model & App Settings Screen"
 Cohesion: 0.12
@@ -248,11 +247,11 @@ Nodes (16): _buildCard, _buildNavigationTile, _buildSectionHeader, createState, 
 
 ### Community 6 - "Navigation & Author/Events Screens"
 Cohesion: 0.07
-Nodes (34): build, auth, ownDraftsProvider, ownEventsProvider, read, AuthorScreen, build, _buildStatTiles (+26 more)
+Nodes (35): build, auth, ownDraftsProvider, ownEventsProvider, read, AuthorScreen, build, _buildStatTiles (+27 more)
 
 ### Community 7 - "Server Build Info & Utils"
-Cohesion: 0.16
-Nodes (20): port, start(), BaseLogFields, currentHourStartUtc(), emit(), environment(), ErrorLogFields, formatPrettyLine() (+12 more)
+Cohesion: 0.07
+Nodes (28): admin_otp_dialog.dart, _adminLayerIds, AdminUserDetailScreen, _AdminUserDetailScreenState, _availableLayers, _availableTopics, _buildAuthorGrantsSection, _buildGrantsCard (+20 more)
 
 ### Community 8 - "App Theme & Spacing"
 Cohesion: 0.05
@@ -260,11 +259,11 @@ Nodes (36): AppSpacing, AppTheme, _build, dark, l, light, m, primary (+28 more)
 
 ### Community 9 - "Debug Tools Screen"
 Cohesion: 0.12
-Nodes (19): apnsTokenProvider, apiHealthProvider, build, createState, _debugNavTile, DebugToolsBody, _DebugToolsBodyState, DebugToolsScreen (+11 more)
+Nodes (17): createState, _debugNavTile, DebugToolsScreen, _DebugToolsScreenState, dispose, inline, _scrollController, _showApiUrlDialog (+9 more)
 
 ### Community 10 - "Event Editor Sheet"
 Cohesion: 0.05
-Nodes (41): _buildTopicDropdown, _cancel, _continue, createState, _cta1UrlController, _cta2UrlController, _currentStep, _descriptionController (+33 more)
+Nodes (39): _buildTopicDropdown, _cancel, _continue, createState, _cta1UrlController, _cta2UrlController, _currentStep, _descriptionController (+31 more)
 
 ### Community 11 - "Widget Test Fakes"
 Cohesion: 0.06
@@ -272,31 +271,31 @@ Nodes (35): _authorId, clearAuthorSession, clearAuthorTokens, createAdminUser, e
 
 ### Community 12 - "Test App Bootstrap"
 Cohesion: 0.09
-Nodes (18): app, trustProxyHops, clearAuthorData(), createAuthorForTesting(), close(), clearDrafts(), clearEvents(), EventNotificationPayload (+10 more)
+Nodes (13): app, clearAuthorData(), createAuthorForTesting(), close(), clearDrafts(), clearEvents(), addAuthorTopicGrant(), EventNotificationPayload (+5 more)
 
 ### Community 13 - "Server Auth Rate Limiting"
 Cohesion: 0.12
 Nodes (11): main, main, wrap, main, main, main, package:dpsg_news_app/features/author/presentation/author_dashboard_stats.dart, package:dpsg_news_app/features/events/presentation/event_list_tile.dart (+3 more)
 
 ### Community 14 - "Admin User Detail Screen"
-Cohesion: 0.04
-Nodes (59): admin_otp_dialog.dart, _addAdminLayers, _adminLayerIds, AdminUserDetailScreen, _AdminUserDetailScreenState, _availableLayers, _availableTopics, _buildAuthorGrantsSection (+51 more)
+Cohesion: 0.08
+Nodes (31): _addAdminLayers, _deleteUser, _editAuthorGrants, _loadLayerContext, _reloadUser, _removeTopicGrant, _resetPassword, _createChildLayer (+23 more)
 
 ### Community 15 - "Author Auth Provider"
-Cohesion: 0.05
-Nodes (37): authorId, authorLockTimeout, changePassword, copyWith, expiresAt, _forceRefresh, getValidAccessToken, isAdmin (+29 more)
+Cohesion: 0.06
+Nodes (33): authorId, changePassword, copyWith, _doForceRefresh, expiresAt, _forceRefresh, getValidAccessToken, isAdmin (+25 more)
 
 ### Community 16 - "Confetti Overlay"
-Cohesion: 0.04
-Nodes (46): Alignment, Animation, AnimationController, bottomSpawnHeight, build, color, ConfettiOverlay, _ConfettiOverlayState (+38 more)
+Cohesion: 0.06
+Nodes (32): Alignment, bottomSpawnHeight, build, color, _ConfettiPainter, _controller, createState, dispose (+24 more)
 
 ### Community 17 - "Admin Screen & OTP Dialog"
-Cohesion: 0.12
-Nodes (15): ../../admin/presentation/admin_screen.dart, admin_user_detail_screen.dart, build, createState, _error, initState, _loading, _loadUsers (+7 more)
+Cohesion: 0.17
+Nodes (12): admin_user_detail_screen.dart, AdminUserListScreen, _AdminUserListScreenState, build, createState, _error, initState, _loading (+4 more)
 
 ### Community 18 - "Server Data Access Layer"
-Cohesion: 0.12
-Nodes (43): AuthLoginSession, AuthSession, changeAuthorPassword(), ChangePasswordResult, cleanupExpiredSessions(), createAuthor(), createAuthorLoginSession(), deleteAuthorById() (+35 more)
+Cohesion: 0.14
+Nodes (28): AuthLoginSession, AuthSession, changeAuthorPassword(), ChangePasswordResult, createAuthor(), createAuthorLoginSession(), deleteAuthorById(), getAuthorById() (+20 more)
 
 ### Community 19 - "Analytics Service"
 Cohesion: 0.08
@@ -316,7 +315,7 @@ Nodes (17): Any, AppDelegate, SceneDelegate, RunnerTests, Bool, Data, Error, Flu
 
 ### Community 23 - "App Widget Lifecycle"
 Cohesion: 0.10
-Nodes (20): _analytics, appThemeModeProvider, createState, didChangeAppLifecycleState, dispose, hasSeenWelcomeProvider, _isPaused, _logger (+12 more)
+Nodes (19): _analytics, appThemeModeProvider, createState, didChangeAppLifecycleState, dispose, hasSeenWelcomeProvider, _isPaused, _logger (+11 more)
 
 ### Community 24 - "Topic Admin Screen"
 Cohesion: 0.12
@@ -331,8 +330,8 @@ Cohesion: 0.10
 Nodes (20): dist, node_modules, src, compilerOptions, esModuleInterop, forceConsistentCasingInFileNames, isolatedModules, module (+12 more)
 
 ### Community 27 - "Event Detail Screen"
-Cohesion: 0.06
-Nodes (35): _afterCtaConfirmed, _canCreateUpdate, _canDeleteEvent, _canEditEvent, _confirmAndOpenInMaps, _confirmAndOpenLink, createState, dispose (+27 more)
+Cohesion: 0.07
+Nodes (28): _afterCtaConfirmed, _canCreateUpdate, _canDeleteEvent, _canEditEvent, _confirmAndOpenInMaps, _confirmAndOpenLink, createState, dispose (+20 more)
 
 ### Community 28 - "Flutter App Project Docs"
 Cohesion: 0.14
@@ -343,8 +342,8 @@ Cohesion: 0.11
 Nodes (19): box, _buildListEntries, compareByStart, createState, currentMonthKey, entries, event, _EventEntry (+11 more)
 
 ### Community 30 - "Usage Tracking Service"
-Cohesion: 0.09
-Nodes (20): endSession, flushPendingSession, logger, now, NowProvider, pause, _pausedAt, _persistPauseSnapshot (+12 more)
+Cohesion: 0.12
+Nodes (16): endSession, flushPendingSession, logger, now, NowProvider, pause, _pausedAt, _persistPauseSnapshot (+8 more)
 
 ### Community 31 - "Event Sync Service"
 Cohesion: 0.10
@@ -352,7 +351,7 @@ Nodes (19): baseUrl, configuredUrl, eventSyncStatusProvider, _lastSyncedAt, logg
 
 ### Community 32 - "Own Events Provider"
 Cohesion: 0.10
-Nodes (26): maybeAutoDisableAuthor(), syncAdminFlag(), addAdminLayer(), addAuthorLayerGrant(), createLayer(), deleteLayer(), DeleteLayerResult, getAdminLayerIds() (+18 more)
+Nodes (39): maybeAutoDisableAuthor(), setAuthorActive(), syncAdminFlag(), addAdminLayer(), addAuthorLayerGrant(), createLayer(), deleteLayer(), DeleteLayerResult (+31 more)
 
 ### Community 33 - "Server Dev Tooling Deps"
 Cohesion: 0.11
@@ -368,15 +367,15 @@ Nodes (14): accessExpiresAt, accessToken, _authorAccessExpiresAtKey, _authorAcce
 
 ### Community 36 - "Welcome Screen Test"
 Cohesion: 0.12
-Nodes (17): main, FakeRemoteEventSource, fetchLayers, hamburgLayerId, main, pump, pumpUntilFound, pumpWelcomeScreen (+9 more)
+Nodes (16): main, FakeRemoteEventSource, fetchLayers, hamburgLayerId, main, pump, pumpUntilFound, pumpWelcomeScreen (+8 more)
 
 ### Community 37 - "Event List Tile"
-Cohesion: 0.12
-Nodes (15): build, createdBy, isSaved, layerName, location, onDelete, onEdit, onTap (+7 more)
+Cohesion: 0.09
+Nodes (20): build, createdBy, isSaved, layerName, location, onDelete, onEdit, onTap (+12 more)
 
 ### Community 38 - "Wiredash Metadata Service"
-Cohesion: 0.10
-Nodes (15): showAdminOtpDialog, build, CalendarScreen, build, ChangelogScreen, build, ExternalNotificationsPlaceholderScreen, clipboardCalls (+7 more)
+Cohesion: 0.12
+Nodes (13): showAdminOtpDialog, build, ChangelogScreen, build, ExternalNotificationsPlaceholderScreen, clipboardCalls, main, openDialog (+5 more)
 
 ### Community 39 - "Calendar & Changelog Screens"
 Cohesion: 0.25
@@ -391,12 +390,12 @@ Cohesion: 0.12
 Nodes (15): _events, _FakeRemoteEventSource, fetchEvents, fetchLayers, hamburgLayerId, koelnLayerId, main, _pumpEventsScreen (+7 more)
 
 ### Community 42 - "Server Event CRUD Endpoints"
-Cohesion: 0.10
-Nodes (34): diffEventFields(), EventHistoryEntry, EventHistoryRow, FieldChange, getEventHistory(), mapEventHistoryRow(), recordEventHistory(), TRACKED_FIELDS (+26 more)
+Cohesion: 0.12
+Nodes (25): createAuthorEvent(), createEvent(), deleteAllEvents(), deleteAuthorEventById(), deleteEventById(), EventInput, EventRow, getAuthorEvents() (+17 more)
 
 ### Community 43 - "Author Change Password Screen"
-Cohesion: 0.12
-Nodes (16): AuthorChangePasswordScreen, _AuthorChangePasswordScreenState, build, _confirmPasswordController, createState, dispose, _formKey, _newPasswordController (+8 more)
+Cohesion: 0.07
+Nodes (29): AuthorChangePasswordScreen, _AuthorChangePasswordScreenState, build, _confirmPasswordController, createState, dispose, _formKey, _newPasswordController (+21 more)
 
 ### Community 44 - "Event Detail Smoke Test"
 Cohesion: 0.11
@@ -411,8 +410,8 @@ Cohesion: 0.06
 Nodes (34): _admins, _adminsError, _adminsRequestId, allLayers, _authors, _authorsError, _authorsRequestId, build (+26 more)
 
 ### Community 47 - "Author Screen Test"
-Cohesion: 0.12
-Nodes (16): main, RemoteEventSourceStub, buildContainer, _FakeRemoteEventSource, fetchOwnDrafts, fetchOwnDraftsCallCount, fetchOwnEvents, fetchOwnEventsCallCount (+8 more)
+Cohesion: 0.18
+Nodes (10): buildContainer, _FakeRemoteEventSource, fetchOwnDrafts, fetchOwnDraftsCallCount, fetchOwnEvents, fetchOwnEventsCallCount, _loggedInState, main (+2 more)
 
 ### Community 48 - "Repo Structure & Endpoints Doc"
 Cohesion: 0.29
@@ -439,16 +438,16 @@ Cohesion: 0.18
 Nodes (11): dotenv, express, firebase-admin, pg, redis, dependencies, dotenv, express (+3 more)
 
 ### Community 54 - "Event Field Validation"
-Cohesion: 0.12
-Nodes (16): authRateLimiter, authRateLimitMax, authRateLimitWindowMs, createRateLimiter(), globalRateLimiter, globalRateLimitMax, globalRateLimitWindowMs, positiveIntegerFromEnv() (+8 more)
+Cohesion: 0.07
+Nodes (34): BuildInfo, getBuildInfo(), normalizeValue(), shortSha(), port, start(), BaseLogFields, emit() (+26 more)
 
 ### Community 55 - "Skeleton Loading Animation"
 Cohesion: 0.26
 Nodes (15): extractMailtoAddress(), FieldValidation, invalid(), isHttpOrHttpsUrl(), isMailtoCandidate(), isValidMailto(), VALID_RESULT, validateEventTextFields() (+7 more)
 
 ### Community 56 - "App Entry Point"
-Cohesion: 0.09
-Nodes (20): exception, message, RemoteEventSourceException, serverMessage, stackTrace, statusCode, toString, callCount (+12 more)
+Cohesion: 0.10
+Nodes (19): exception, message, RemoteEventSourceException, serverMessage, stackTrace, statusCode, toString, authorCount (+11 more)
 
 ### Community 57 - "Event Model"
 Cohesion: 0.15
@@ -463,8 +462,8 @@ Cohesion: 0.31
 Nodes (9): _AppState, build, currentIndexProvider, initState, appNavigatorKeyProvider, syncServiceProvider, eventsProvider, settings_repository (+1 more)
 
 ### Community 60 - "App Config"
-Cohesion: 0.16
-Nodes (30): AuthorIdentity, getAuthorSession(), getLayerById(), getLayers(), isLayerInAdminScope(), getTopicById(), logRequestError(), getBearerToken() (+22 more)
+Cohesion: 0.13
+Nodes (36): trustProxyHops, AuthorIdentity, getAuthorSession(), getLayerById(), isLayerInAdminScope(), getTopicById(), logRequestError(), getBearerToken() (+28 more)
 
 ### Community 61 - "Error Toast Service"
 Cohesion: 0.18
@@ -475,8 +474,8 @@ Cohesion: 0.22
 Nodes (8): _box, EventRepository, eventRepositoryProvider, getLocalEvents, saveEvents, Box, core/services/hive_service.dart, package:hive/hive.dart
 
 ### Community 63 - "Notification Preference Providers"
-Cohesion: 0.24
-Nodes (12): build, NotificationSettingsScreen, core/services/notification_service.dart, ../data/settings_repository.dart, dv_selection_screen.dart, deadlineReminderDaysBeforeProvider, deadlineReminderProvider, newEventPushEnabledProvider (+4 more)
+Cohesion: 0.39
+Nodes (9): build, NotificationSettingsScreen, deadlineReminderDaysBeforeProvider, deadlineReminderProvider, newEventPushEnabledProvider, notificationsEnabledProvider, subscribedEventsReminderDaysBeforeProvider, subscribedEventsReminderProvider (+1 more)
 
 ### Community 64 - "Safe Markdown Rendering"
 Cohesion: 0.06
@@ -487,12 +486,12 @@ Cohesion: 0.25
 Nodes (7): _env, LoggingEnv, maxDays, maxSizeBytes, maxSizeMb, _positiveInt, static int get
 
 ### Community 66 - "Feedback Service"
-Cohesion: 0.20
-Nodes (9): app.dart, errorContainer, initialize, initializeDateFormatting, main, startupAnalytics, package:firebase_core/firebase_core.dart, package:firebase_messaging/firebase_messaging.dart (+1 more)
+Cohesion: 0.11
+Nodes (16): analytics_service.dart, app.dart, openFeedbackFlow, target, errorContainer, initialize, initializeDateFormatting, main (+8 more)
 
 ### Community 67 - "Logging Env Config"
-Cohesion: 0.26
-Nodes (12): cleanupExpiredDrafts(), cleanupExpiredDraftsInternal(), computeDraftTimeUntilDeletion(), createAuthorDraft(), deleteAuthorDraftById(), Draft, DraftInput, draftRetentionDays() (+4 more)
+Cohesion: 0.17
+Nodes (25): cleanupExpiredSessions(), ensureClient(), cleanupExpiredDrafts(), cleanupExpiredDraftsInternal(), computeDraftTimeUntilDeletion(), createAuthorDraft(), deleteAuthorDraftById(), Draft (+17 more)
 
 ### Community 68 - "Topic Model"
 Cohesion: 0.07
@@ -503,8 +502,8 @@ Cohesion: 0.10
 Nodes (21): API-Spezifikation, Auth, Autoren-Events, DELETE /api/author/events/:id, DELETE /api/events, Endpunkte, GET /api/auth/me, GET /api/author/events (+13 more)
 
 ### Community 70 - "Empty State Widget"
-Cohesion: 0.16
-Nodes (17): analyticsServiceProvider, _openContribution, _openLayerDetail, _submit, build, createState, _editorKey, _finish (+9 more)
+Cohesion: 0.21
+Nodes (11): build, createState, _editorKey, _finish, initState, _skip, WelcomeScreen, _WelcomeScreenState (+3 more)
 
 ### Community 71 - "Labeled Chip Widget"
 Cohesion: 0.12
@@ -527,8 +526,8 @@ Cohesion: 0.25
 Nodes (7): description, pre-push, husky, hooks, main, name, version
 
 ### Community 76 - "Remote Event Source Test"
-Cohesion: 0.15
-Nodes (12): autocompleteAddressNominatim, _fromNominatimJson, stopwatch, uri, baseUrl, main, dart:async, dart:convert (+4 more)
+Cohesion: 0.17
+Nodes (11): autocompleteAddressNominatim, _fromNominatimJson, stopwatch, uri, baseUrl, main, dart:convert, geoapify_service.dart (+3 more)
 
 ### Community 77 - "Server Push Notification Payloads"
 Cohesion: 0.12
@@ -539,13 +538,12 @@ Cohesion: 0.31
 Nodes (11): RemoteEventSource, _FakeRemoteEventSource, FakeRemoteEventSource, _AdminUsersApi, _AuthApi, _DraftsApi, _EventsApi, _GrantsApi (+3 more)
 
 ### Community 79 - "Calendar Leaf Widget"
-Cohesion: 0.33
-Nodes (5): build, CalendarLeaf, date, DateTime, ../utils/date_format_utils.dart
+Cohesion: 0.13
+Nodes (13): main, callCount, changeAuthorPassword, error, _FakeRemoteEventSource, lastNewPassword, lastOldPassword, _loggedInState (+5 more)
 
 ### Community 80 - "Dashboard Stat Row"
-Cohesion: 0.29
-Nodes (6): analytics_service.dart, openFeedbackFlow, target, ../config/app_config.dart, package:wiredash/wiredash.dart, required String screen,
-  String
+Cohesion: 0.23
+Nodes (9): diffEventFields(), EventHistoryEntry, EventHistoryRow, FieldChange, getEventHistory(), mapEventHistoryRow(), recordEventHistory(), TRACKED_FIELDS (+1 more)
 
 ### Community 81 - "PostHog Rollout Phases"
 Cohesion: 0.33
@@ -584,12 +582,12 @@ Cohesion: 0.11
 Nodes (16): accessExpiresAt, accessToken, authorId, AuthorLoginSession, AuthorSessionState, isAdmin, layerGrantIds, refreshExpiresAt (+8 more)
 
 ### Community 95 - "API Health Status"
-Cohesion: 0.18
-Nodes (9): ApiHealthStatus, healthy, message, ApiHealthNotifier, _logger, refresh, ../../core/config/app_config.dart, ../../core/services/logging_service.dart (+1 more)
+Cohesion: 0.40
+Nodes (4): ApiHealthStatus, healthy, message, ApiHealthNotifier
 
 ### Community 96 - "Remote Event Source Exception"
-Cohesion: 0.13
-Nodes (14): build, _clearFieldError, createState, dispose, _fieldError, _flashError, _formKey, initState (+6 more)
+Cohesion: 0.20
+Nodes (9): Animation, AnimationController, build, _controller, count, createState, dispose, initState (+1 more)
 
 ### Community 97 - "Confetti Painter"
 Cohesion: 0.40
@@ -600,16 +598,16 @@ Cohesion: 0.25
 Nodes (7): contains, extractMailtoAddress, isHttpOrHttpsUri, looksLikeMailto, split, trimmed, withoutScheme
 
 ### Community 101 - "Secret Leak Incident Process"
-Cohesion: 0.19
-Nodes (16): notificationServiceProvider, EventDetailScreen, _EventDetailScreenState, initState, _toggleSaved, build, EventsScreen, _EventsScreenState (+8 more)
+Cohesion: 0.08
+Nodes (48): App, analyticsServiceProvider, loggingServiceProvider, apnsTokenProvider, notificationServiceProvider, _openContribution, _openLayerDetail, AuthorLoginScreen (+40 more)
 
 ### Community 103 - "ESLint Config"
 Cohesion: 0.07
 Nodes (27): bundesverband, createLayer, createLayerCallCount, createLayerError, deleteLayer, deleteLayerCallCount, deleteLayerError, fetchAdminLayers (+19 more)
 
 ### Community 109 - "Jest Type Defs"
-Cohesion: 0.21
-Nodes (11): addAuthorTopicGrant(), createTopic(), deleteTopic(), DeleteTopicResult, getAuthorTopicGrantIds(), getTopics(), mapTopicRow(), Topic (+3 more)
+Cohesion: 0.22
+Nodes (7): main, ThemeModeStub, GlobalKey, NavigatorState, package:dpsg_news_app/core/services/analytics_service.dart, package:flutter_riverpod/flutter_riverpod.dart, package:shared_preferences/shared_preferences.dart
 
 ### Community 113 - "Legacy Spring Boot Deployment Plan"
 Cohesion: 0.12
@@ -644,16 +642,16 @@ Cohesion: 0.14
 Nodes (13): SecureStorageService, backingStore, _data, delete, _FakeFlutterSecureStorage, main, read, service (+5 more)
 
 ### Community 138 - "rateLimit.ts"
-Cohesion: 0.20
-Nodes (9): authorCount, fromJson, hasAuthors, id, LayerModel, name, parentId, toJson (+1 more)
+Cohesion: 0.25
+Nodes (7): event, ../../../core/theme/app_theme.dart, Map, ../../../../shared/utils/date_format_utils.dart, ../../../shared/widgets/labeled_chip.dart, ../../../shared/widgets/location_map_view.dart, EventViewedAtNotifier
 
 ### Community 139 - "layer_multi_select_dialog.dart"
 Cohesion: 0.15
 Nodes (13): build, createState, disableDescendantsOfSelected, initialSelectedIds, LayerMultiSelectDialog, _LayerMultiSelectDialogState, layers, _selected (+5 more)
 
 ### Community 140 - "AppSettingsScreen"
-Cohesion: 0.14
-Nodes (17): admin_user_list_screen.dart, App, AdminScreen, _AdminScreenState, build, createState, _openUserList, AdminUserListScreen (+9 more)
+Cohesion: 0.15
+Nodes (12): ../../admin/presentation/admin_screen.dart, admin_user_list_screen.dart, AdminScreen, _AdminScreenState, build, createState, _openUserList, build (+4 more)
 
 ### Community 141 - "App"
 Cohesion: 0.22
@@ -664,8 +662,8 @@ Cohesion: 0.13
 Nodes (15): ../../../admin/presentation/admin_user_detail_screen.dart, build, createState, EventHistoryDialog, _EventHistoryDialogState, _eventHistoryFieldLabels, eventId, _fieldLabel (+7 more)
 
 ### Community 143 - "author_screen_test.dart"
-Cohesion: 0.15
-Nodes (12): deleteDraft, deleteDraftCallCount, _drafts, _events, _FakeRemoteEventSource, fetchOwnDrafts, fetchOwnEvents, isLocked (+4 more)
+Cohesion: 0.12
+Nodes (17): main, RemoteEventSourceStub, deleteDraft, deleteDraftCallCount, _drafts, _events, _FakeRemoteEventSource, fetchOwnDrafts (+9 more)
 
 ### Community 144 - "CLAUDE.md"
 Cohesion: 0.29
@@ -695,29 +693,25 @@ Nodes (5): Backend changes, Flutter changes, Risks, Summary, Testing
 Cohesion: 0.70
 Nodes (5): SettingsRepository, _AuthorSessionSettings, _LayerTreeCacheSettings, _NotificationSettings, _SettingsRepositoryBase
 
-### Community 154 - "Analytics-Opt-in als zentrale Freigabe-Schwelle"
-Cohesion: 0.60
-Nodes (4): BuildInfo, getBuildInfo(), normalizeValue(), shortSha()
-
 ### Community 155 - "geoapify_service.dart"
-Cohesion: 0.20
-Nodes (9): apiKey, autocompleteAddress, formatted, fromJson, GeoapifyAddress, lat, lon, stopwatch (+1 more)
+Cohesion: 0.13
+Nodes (14): _logger, refresh, apiKey, autocompleteAddress, formatted, fromJson, GeoapifyAddress, lat (+6 more)
 
 ### Community 156 - "Datenmodell"
 Cohesion: 0.40
 Nodes (5): Author, Datenmodell, DV, Event, Kategorie
 
 ### Community 157 - "skeleton_card_list.dart"
-Cohesion: 0.22
-Nodes (11): _LayerFormDialog, _LayerFormDialogState, _NameDialog, _NameDialogState, _NameDialog, _NameDialogState, LayerTopicTree, _LayerTopicTreeState (+3 more)
+Cohesion: 0.17
+Nodes (16): _LayerFormDialog, _LayerFormDialogState, _NameDialog, _NameDialogState, _NameDialog, _NameDialogState, ConfettiOverlay, _ConfettiOverlayState (+8 more)
 
 ### Community 158 - "API"
 Cohesion: 0.50
 Nodes (4): API, Auth, Autoren, Öffentlich
 
 ### Community 159 - "admin_screen_test.dart"
-Cohesion: 0.11
-Nodes (17): main, _adminState, _FakeRemoteEventSource, fetchAdminLayers, fetchAdminUsers, fetchAdminUsersCallCount, fetchAdminUsersError, fetchTopics (+9 more)
+Cohesion: 0.17
+Nodes (11): _adminState, _FakeRemoteEventSource, fetchAdminLayers, fetchAdminUsers, fetchAdminUsersCallCount, fetchAdminUsersError, fetchTopics, main (+3 more)
 
 ### Community 164 - "author_login_screen_test.dart"
 Cohesion: 0.17
@@ -731,17 +725,13 @@ Nodes (10): address, build, height, interactive, lat, lng, LocationMapView, pack
 Cohesion: 0.29
 Nodes (6): LoggingService, container, logger, main, package:dpsg_news_app/core/services/logging_service.dart, ProviderContainer
 
-### Community 167 - "dv_tree_provider.dart"
-Cohesion: 0.20
-Nodes (9): layers, LayerTreeNotifier, _loadTree, refresh, _remoteSource, _repository, AsyncValue, ../domain/layer_model.dart (+1 more)
-
 ### Community 168 - "empty_state.dart"
 Cohesion: 0.25
 Nodes (7): actionLabel, build, EmptyState, icon, message, onAction, VoidCallback?
 
 ### Community 169 - "analytics_service_test.dart"
-Cohesion: 0.29
-Nodes (5): testOnlyRouter, clearAuthorData, clearDrafts, clearEvents, createAuthorForTesting
+Cohesion: 0.33
+Nodes (4): clearAuthorData, clearDrafts, clearEvents, createAuthorForTesting
 
 ### Community 170 - "AppSettingsScreen"
 Cohesion: 0.25
@@ -764,24 +754,24 @@ Nodes (3): main, pumpMarkdown, package:dpsg_news_app/shared/widgets/safe_markdow
   spec/plan.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **1381 isolated node(s):** `.tmp_restore.sh script`, `id`, `targets`, `UserNotifications`, `XCTest` (+1376 more)
+- **1372 isolated node(s):** `.tmp_restore.sh script`, `id`, `targets`, `UserNotifications`, `XCTest` (+1367 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **36 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **37 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `Tech Stack` and `Express-Backend (server/)`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `authorAuthProvider` connect `Admin User Detail Screen` to `App Root & Providers`, `Server DB & Auth Sessions`, `Secret Leak Incident Process`, `Empty State Widget`, `Navigation & Author/Events Screens`, `Topic Model & App Settings Screen`, `Author Change Password Screen`, `AppSettingsScreen`, `Author Login Screen`, `Author Auth Provider`, `event_history_dialog.dart`, `Admin Screen & OTP Dialog`, `Admin Dialogs & Log Viewer`, `App Widget Lifecycle`, `Layer Model`?**
+- **Why does `SettingsRepository` connect `SettingsRepository` to `Settings Repository & Keys`, `App Root & Providers`, `Welcome Screen Test`, `Author Auth Provider`, `Event Sync Service`?**
+  _High betweenness centrality (0.008) - this node is a cross-community bridge._
+- **Why does `authorAuthProvider` connect `Admin User Detail Screen` to `Secret Leak Incident Process`, `Navigation & Author/Events Screens`, `Server Build Info & Utils`, `Topic Model & App Settings Screen`, `Author Change Password Screen`, `AppSettingsScreen`, `Author Login Screen`, `Author Auth Provider`, `event_history_dialog.dart`, `Admin Screen & OTP Dialog`, `Admin Dialogs & Log Viewer`, `App Widget Lifecycle`, `Layer Model`?**
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
-- **Why does `SettingsRepository` connect `SettingsRepository` to `Settings Repository & Keys`, `Welcome Screen Test`, `dv_tree_provider.dart`, `Author Auth Provider`, `Event Sync Service`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `RemoteEventSource` connect `Remote Event Source Fakes` to `Backend Security Rules`, `Remote Event Source & Auth`, `author_login_screen_test.dart`, `Welcome Screen Test`, `dv_tree_provider.dart`, `Events Screen Test`, `Event Detail Smoke Test`, `Backend Reliability Rules`, `Author Auth Provider`, `Author Screen Test`, `author_screen_test.dart`, `App Entry Point`, `Layer Tree Provider`, `Event Sync Service`, `admin_screen_test.dart`?**
+- **Why does `RemoteEventSource` connect `Remote Event Source Fakes` to `Backend Security Rules`, `Remote Event Source & Auth`, `App Root & Providers`, `author_login_screen_test.dart`, `Welcome Screen Test`, `Events Screen Test`, `Event Detail Smoke Test`, `Backend Reliability Rules`, `Author Auth Provider`, `Calendar Leaf Widget`, `author_screen_test.dart`, `Author Screen Test`, `Layer Tree Provider`, `Event Sync Service`, `admin_screen_test.dart`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **What connects `.tmp_restore.sh script`, `id`, `targets` to the rest of the system?**
-  _1381 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1372 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Settings Repository & Keys` be split into smaller, more focused modules?**
   _Cohesion score 0.022222222222222223 - nodes in this community are weakly interconnected._
 - **Should `Logging Service Core` be split into smaller, more focused modules?**
-  _Cohesion score 0.03278688524590164 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03389830508474576 - nodes in this community are weakly interconnected._

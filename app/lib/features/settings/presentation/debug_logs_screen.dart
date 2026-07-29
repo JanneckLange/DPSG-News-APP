@@ -8,8 +8,7 @@ class InlineLogsControls extends ConsumerStatefulWidget {
   const InlineLogsControls({super.key});
 
   @override
-  ConsumerState<InlineLogsControls> createState() =>
-      _InlineLogsControlsState();
+  ConsumerState<InlineLogsControls> createState() => _InlineLogsControlsState();
 }
 
 class _InlineLogsControlsState extends ConsumerState<InlineLogsControls> {
@@ -141,6 +140,8 @@ class _InlineLogsControlsState extends ConsumerState<InlineLogsControls> {
                                   : 'Logs: $selectedId';
                           Navigator.of(context).push(
                             MaterialPageRoute(
+                              settings:
+                                  const RouteSettings(name: 'LogViewerPage'),
                               builder: (_) => _LogViewerPage(
                                 title: title,
                                 content: content,
@@ -419,6 +420,8 @@ class _LogsViewScreenState extends ConsumerState<LogsViewScreen> {
                                       : 'Logs: $selectedId';
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
+                                      settings: const RouteSettings(
+                                          name: 'LogViewerPage'),
                                       builder: (_) => _LogViewerPage(
                                         title: title,
                                         content: content,

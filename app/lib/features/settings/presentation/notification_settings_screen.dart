@@ -107,8 +107,11 @@ class NotificationSettingsScreen extends ConsumerWidget {
                               ? () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                        builder: (context) =>
-                                            const DvSelectionScreen()),
+                                      settings: const RouteSettings(
+                                          name: 'DvSelectionScreen'),
+                                      builder: (context) =>
+                                          const DvSelectionScreen(),
+                                    ),
                                   );
                                 }
                               : null,

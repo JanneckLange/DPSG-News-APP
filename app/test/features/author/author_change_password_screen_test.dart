@@ -46,7 +46,6 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 AuthorAuthState _loggedInState({required bool requiresPasswordChange}) {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: false,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,
@@ -81,8 +80,8 @@ void main() {
               remote: remote,
               secureStorage: FakeSecureStorageService(),
               ref: ref,
-              initialState:
-                  _loggedInState(requiresPasswordChange: requiresPasswordChange),
+              initialState: _loggedInState(
+                  requiresPasswordChange: requiresPasswordChange),
             ),
           ),
         ],
@@ -99,8 +98,8 @@ void main() {
       requiresPasswordChange: false,
     );
 
-    expect(find.widgetWithText(TextFormField, 'Altes Passwort'),
-        findsOneWidget);
+    expect(
+        find.widgetWithText(TextFormField, 'Altes Passwort'), findsOneWidget);
   });
 
   testWidgets('hides the old-password field when a change is already required',
@@ -148,8 +147,7 @@ void main() {
     expect(remote.callCount, 0);
   });
 
-  testWidgets(
-      'requires the old password when a change is not already required',
+  testWidgets('requires the old password when a change is not already required',
       (tester) async {
     final remote = _FakeRemoteEventSource();
     await pumpScreen(tester, remote: remote, requiresPasswordChange: false);

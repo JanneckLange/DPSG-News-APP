@@ -83,8 +83,7 @@ Future<void> _pumpEventsScreen(
               remote: remote,
               secureStorage: secureStorage,
               ref: ref,
-              initialState:
-                  const AuthorAuthState(isLoggedIn: false, isLocked: false),
+              initialState: const AuthorAuthState(isLoggedIn: false),
             ),
           ),
         ],

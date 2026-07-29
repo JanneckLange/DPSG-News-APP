@@ -55,7 +55,6 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 AuthorAuthState _adminState() {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: false,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,
@@ -110,8 +109,7 @@ void main() {
     expect(remote.fetchAdminUsersCallCount, 0);
   });
 
-  testWidgets(
-      'shows the access-denied screen when logged in but not an admin',
+  testWidgets('shows the access-denied screen when logged in but not an admin',
       (tester) async {
     final remote = _FakeRemoteEventSource();
     await pumpScreen(
@@ -119,7 +117,6 @@ void main() {
       remote,
       initialState: AuthorAuthState(
         isLoggedIn: true,
-        isLocked: false,
         token: 'valid-token',
         refreshToken: 'refresh-token',
         authorId: 1,

@@ -346,6 +346,7 @@ class _LayerDetailScreenState extends ConsumerState<LayerDetailScreen> {
       Map<String, dynamic> user, VoidCallback onChanged) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
+        settings: const RouteSettings(name: 'AdminUserDetailScreen'),
         builder: (context) => AdminUserDetailScreen(user: user),
       ),
     );

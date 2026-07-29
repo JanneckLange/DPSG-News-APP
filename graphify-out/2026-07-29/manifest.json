@@ -220,13 +220,13 @@
     "semantic_hash": ""
   },
   "app/lib/features/events/presentation/event_detail_screen.dart": {
-    "mtime": 1785283344.1427958,
-    "ast_hash": "a0c38cef5f90ea101acb483c5d8746fd",
+    "mtime": 1785320366.6301756,
+    "ast_hash": "9dca900d93765f05d65a04a6105776d5",
     "semantic_hash": ""
   },
   "app/lib/features/events/presentation/event_editor_sheet.dart": {
-    "mtime": 1785280566.9862583,
-    "ast_hash": "d95d6aee544797966932682da4620328",
+    "mtime": 1785320414.8644485,
+    "ast_hash": "114bd99b9a35f8cbb539d43d911fcff2",
     "semantic_hash": ""
   },
   "app/lib/features/events/presentation/event_list_tile.dart": {
@@ -310,9 +310,9 @@
     "semantic_hash": "280bd8dfc9b72a2ef9ff90c4c95ff163"
   },
   "app/lib/shared/utils/url_utils.dart": {
-    "mtime": 1785280118.6299248,
-    "ast_hash": "a484873f50410b4d38a6f5bb7d9a2805",
-    "semantic_hash": "a484873f50410b4d38a6f5bb7d9a2805"
+    "mtime": 1785320366.6308424,
+    "ast_hash": "fd098a94def2c54ff2c483df1644723e",
+    "semantic_hash": ""
   },
   "app/lib/shared/widgets/calendar_leaf.dart": {
     "mtime": 1785280118.6301742,
@@ -380,8 +380,8 @@
     "semantic_hash": ""
   },
   "app/test/features/events/event_detail_screen_smoke_test.dart": {
-    "mtime": 1785280118.637367,
-    "ast_hash": "dc508860c6a7d1132e17f76790ee0ac7",
+    "mtime": 1785320366.6311922,
+    "ast_hash": "8ea7997b9097dc7aec9dc70c8c272b36",
     "semantic_hash": ""
   },
   "app/test/features/events/event_list_tile_test.dart": {
@@ -430,9 +430,9 @@
     "semantic_hash": "668fef6cf7a59fe98b67ac9878085d72"
   },
   "app/test/shared/utils/url_utils_test.dart": {
-    "mtime": 1785280118.6404314,
-    "ast_hash": "c7d11c67e62173c7f9934b4d65f9a52b",
-    "semantic_hash": "c7d11c67e62173c7f9934b4d65f9a52b"
+    "mtime": 1785320366.6315763,
+    "ast_hash": "03bdb7ba4c77613ae3530e6053cd97b2",
+    "semantic_hash": ""
   },
   "app/test/shared/widgets/safe_markdown_body_test.dart": {
     "mtime": 1785280118.6405969,
@@ -505,8 +505,8 @@
     "semantic_hash": "b2750ad8198f32eb4b452bfee410f0fe"
   },
   "server/src/eventValidation.ts": {
-    "mtime": 1785280118.6713774,
-    "ast_hash": "53dacad85ec3a8ca43ac98ba483e1b63",
+    "mtime": 1785320366.6325197,
+    "ast_hash": "23fc2a44516844cb7be7c0a48834f430",
     "semantic_hash": ""
   },
   "server/src/fcm.ts": {
@@ -550,8 +550,8 @@
     "semantic_hash": ""
   },
   "server/test/drafts.e2e.test.ts": {
-    "mtime": 1785280118.6768231,
-    "ast_hash": "1274bc65ae05366c2be98de758c174e7",
+    "mtime": 1785320366.633216,
+    "ast_hash": "2b21b0d2f0d999ef393fb736a37412a2",
     "semantic_hash": ""
   },
   "server/test/event-updates.e2e.test.ts": {
@@ -560,18 +560,18 @@
     "semantic_hash": ""
   },
   "server/test/eventValidation.unit.test.ts": {
-    "mtime": 1785280118.6773467,
-    "ast_hash": "2fe44a94894c22f0e3defa46b60855cf",
+    "mtime": 1785320366.6334858,
+    "ast_hash": "40ef7cf5dd0ca949422892bcb0ed099f",
     "semantic_hash": ""
   },
   "server/test/events.e2e.test.ts": {
-    "mtime": 1785280118.6775563,
-    "ast_hash": "066267e45c644ae50073c112ca378b2f",
+    "mtime": 1785320366.6337564,
+    "ast_hash": "68dd97d588857d59f2a941946b34694c",
     "semantic_hash": ""
   },
   "server/test/events.unit.test.ts": {
-    "mtime": 1785280118.6777542,
-    "ast_hash": "62ba5a4834f3635cd5c61e250c3bec31",
+    "mtime": 1785320366.6340852,
+    "ast_hash": "d83fa18efbe05c0cefe0555dbb78872f",
     "semantic_hash": ""
   },
   "server/test/health.unit.test.ts": {
@@ -975,8 +975,8 @@
     "semantic_hash": ""
   },
   "server/src/db/drafts.ts": {
-    "mtime": 1785280118.670022,
-    "ast_hash": "52b4fe0f044f0c05167937e39cde1aa4",
+    "mtime": 1785320366.6318567,
+    "ast_hash": "cbf219617434b585be9cfeaa70dccef8",
     "semantic_hash": ""
   },
   "server/src/db/eventUpdates.ts": {
@@ -985,8 +985,8 @@
     "semantic_hash": ""
   },
   "server/src/db/events.ts": {
-    "mtime": 1785280118.6703029,
-    "ast_hash": "7cd85c5575335e77f70e9309b8de87c0",
+    "mtime": 1785320366.6321502,
+    "ast_hash": "c4a38fb0ce190731d1307ea3f6540b27",
     "semantic_hash": ""
   },
   "server/src/db/index.ts": {
@@ -1000,8 +1000,8 @@
     "semantic_hash": ""
   },
   "server/src/db/schema.ts": {
-    "mtime": 1785282932.7911372,
-    "ast_hash": "4c5bfde9bee7323b7b65e6039cb427fb",
+    "mtime": 1785320366.6323078,
+    "ast_hash": "fd38e127cd34a74030158cc5f75e79b4",
     "semantic_hash": ""
   },
   "server/src/db/topics.ts": {
@@ -1060,13 +1060,13 @@
     "semantic_hash": ""
   },
   "server/src/routes/drafts.ts": {
-    "mtime": 1785280118.6752388,
-    "ast_hash": "0a2f0b3a1ad783dac3e68bbe416326fc",
+    "mtime": 1785320366.6327658,
+    "ast_hash": "fa1a110bfdfbc283f28a291e0d4eddc2",
     "semantic_hash": ""
   },
   "server/src/routes/events.ts": {
-    "mtime": 1785282969.5436442,
-    "ast_hash": "9bf54562636ccf35298d718ec225ef83",
+    "mtime": 1785320366.6329122,
+    "ast_hash": "63b93d5433924a29047fcf7c121e1ad7",
     "semantic_hash": ""
   },
   "server/src/routes/public.ts": {
@@ -1385,18 +1385,23 @@
     "semantic_hash": ""
   },
   "app/lib/features/events/presentation/widgets/event_history_dialog.dart": {
-    "mtime": 1785283324.17427,
-    "ast_hash": "a7840182e2e3860f932a7338a1209ab0",
+    "mtime": 1785320462.9471052,
+    "ast_hash": "7fa479025c7845b8a0ebcf27a4fe50d2",
     "semantic_hash": ""
   },
   "server/src/db/eventHistory.ts": {
-    "mtime": 1785282941.487473,
-    "ast_hash": "fba24c8249ff1fcc96aab7f4f74dcb9a",
+    "mtime": 1785320449.720783,
+    "ast_hash": "ddd4d30679ed7d531250f4118f3f85fe",
     "semantic_hash": ""
   },
   "server/test/eventHistory.unit.test.ts": {
     "mtime": 1785283140.714096,
     "ast_hash": "c2b233b3382af46b1c78f5d4be51d417",
+    "semantic_hash": ""
+  },
+  "app/lib/features/events/domain/event_cta_labels.dart": {
+    "mtime": 1785320366.6299858,
+    "ast_hash": "b6decd6dc23c458a9c555c222a806403",
     "semantic_hash": ""
   }
 }

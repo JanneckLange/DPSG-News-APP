@@ -45,8 +45,7 @@ class _FakeRemoteEventSource extends RemoteEventSource {
   int? lastDeletedLayerId;
 
   @override
-  Future<Map<String, dynamic>> fetchAdminLayers(
-      {required String token}) async {
+  Future<Map<String, dynamic>> fetchAdminLayers({required String token}) async {
     if (fetchAdminLayersError != null) {
       // ignore: only_throw_errors
       throw fetchAdminLayersError!;
@@ -122,7 +121,6 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 AuthorAuthState _loggedInState() {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: false,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,
@@ -173,8 +171,7 @@ void main() {
   }
 
   Finder popupMenuFor(String layerName) => find.descendant(
-        of: find.ancestor(
-            of: find.text(layerName), matching: find.byType(Row)),
+        of: find.ancestor(of: find.text(layerName), matching: find.byType(Row)),
         matching: find.byType(PopupMenuButton<String>),
       );
 
@@ -241,8 +238,7 @@ void main() {
     final remote = _FakeRemoteEventSource(layers: const [bundesverband]);
     await pumpScreen(tester, remote, initialState: AuthorAuthState.signedOut());
 
-    expect(
-        find.text('Layer konnten nicht geladen werden: Kein Zugriff'),
+    expect(find.text('Layer konnten nicht geladen werden: Kein Zugriff'),
         findsOneWidget);
   });
 
@@ -262,8 +258,7 @@ void main() {
 
   testWidgets('only shows the delete action for non-root layers',
       (tester) async {
-    final remote =
-        _FakeRemoteEventSource(layers: const [bundesverband, koeln]);
+    final remote = _FakeRemoteEventSource(layers: const [bundesverband, koeln]);
     await pumpScreen(tester, remote);
 
     await tester.tap(popupMenuFor('Bundesverband'));
@@ -321,8 +316,7 @@ void main() {
 
   testWidgets('canceling the delete confirmation does not call deleteLayer',
       (tester) async {
-    final remote =
-        _FakeRemoteEventSource(layers: const [bundesverband, koeln]);
+    final remote = _FakeRemoteEventSource(layers: const [bundesverband, koeln]);
     await pumpScreen(tester, remote);
 
     await tester.tap(popupMenuFor('Köln'));
@@ -337,10 +331,10 @@ void main() {
     expect(remote.deleteLayerCallCount, 0);
   });
 
-  testWidgets('confirming the delete dialog calls deleteLayer with the layer id',
+  testWidgets(
+      'confirming the delete dialog calls deleteLayer with the layer id',
       (tester) async {
-    final remote =
-        _FakeRemoteEventSource(layers: const [bundesverband, koeln]);
+    final remote = _FakeRemoteEventSource(layers: const [bundesverband, koeln]);
     await pumpScreen(tester, remote);
 
     await tester.tap(popupMenuFor('Köln'));
