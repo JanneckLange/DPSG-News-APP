@@ -28,6 +28,12 @@ Future<List<GeoapifyAddress>> autocompleteAddressNominatim(
     },
   );
 
+  await logger?.logHttpRequestStart(
+    source: 'nominatim.autocomplete',
+    method: 'get',
+    uri: uri,
+  );
+
   final stopwatch = Stopwatch()..start();
   try {
     final response = await http.get(

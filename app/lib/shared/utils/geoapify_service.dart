@@ -55,6 +55,12 @@ Future<List<GeoapifyAddress>> autocompleteAddress(
     },
   );
 
+  await logger?.logHttpRequestStart(
+    source: 'geoapify.autocomplete',
+    method: 'get',
+    uri: uri,
+  );
+
   final stopwatch = Stopwatch()..start();
   try {
     final response = await http.get(uri);
