@@ -55,7 +55,6 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 AuthorAuthState _adminState() {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: false,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,
@@ -119,7 +118,6 @@ void main() {
       remote,
       initialState: AuthorAuthState(
         isLoggedIn: true,
-        isLocked: false,
         token: 'valid-token',
         refreshToken: 'refresh-token',
         authorId: 1,

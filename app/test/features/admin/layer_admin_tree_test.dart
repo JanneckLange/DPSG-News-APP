@@ -122,7 +122,6 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 AuthorAuthState _loggedInState() {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: false,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,

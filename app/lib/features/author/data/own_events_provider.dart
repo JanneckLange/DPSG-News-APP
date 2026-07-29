@@ -4,11 +4,11 @@ import '../../../core/services/sync_service.dart' as sync_service;
 import 'author_auth_provider.dart';
 
 /// Liefert die eigenen (veroeffentlichten) Events des eingeloggten Autors.
-/// Leere Liste, solange nicht eingeloggt/gesperrt/Passwortwechsel noetig.
+/// Leere Liste, solange nicht eingeloggt/Passwortwechsel noetig.
 final ownEventsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final auth = ref.watch(authorAuthProvider);
-  if (!auth.isLoggedIn || auth.isLocked || auth.requiresPasswordChange) {
+  if (!auth.isLoggedIn || auth.requiresPasswordChange) {
     return <Map<String, dynamic>>[];
   }
   return ref.read(authorAuthProvider.notifier).callAuthenticated(
@@ -22,7 +22,7 @@ final ownEventsProvider =
 final ownDraftsProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final auth = ref.watch(authorAuthProvider);
-  if (!auth.isLoggedIn || auth.isLocked || auth.requiresPasswordChange) {
+  if (!auth.isLoggedIn || auth.requiresPasswordChange) {
     return <Map<String, dynamic>>[];
   }
   return ref.read(authorAuthProvider.notifier).callAuthenticated(

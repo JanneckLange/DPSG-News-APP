@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_auth/local_auth.dart';
 
 import '../../../core/services/app_navigation_service.dart';
 import '../../../core/services/error_toast_service.dart';
@@ -10,12 +9,9 @@ import '../../../core/services/sync_service.dart' as sync_service;
 import '../../events/data/remote_event_source.dart';
 import '../../settings/data/settings_repository.dart';
 
-const Duration authorLockTimeout = Duration(seconds: 60);
-
 class AuthorAuthState {
   const AuthorAuthState({
     required this.isLoggedIn,
-    required this.isLocked,
     this.token,
     this.refreshToken,
     this.authorId,
@@ -29,7 +25,6 @@ class AuthorAuthState {
   });
 
   final bool isLoggedIn;
-  final bool isLocked;
   final String? token;
   final String? refreshToken;
   final int? authorId;
@@ -43,7 +38,6 @@ class AuthorAuthState {
 
   AuthorAuthState copyWith({
     bool? isLoggedIn,
-    bool? isLocked,
     String? token,
     String? refreshToken,
     int? authorId,
@@ -57,7 +51,6 @@ class AuthorAuthState {
   }) {
     return AuthorAuthState(
       isLoggedIn: isLoggedIn ?? this.isLoggedIn,
-      isLocked: isLocked ?? this.isLocked,
       token: token ?? this.token,
       refreshToken: refreshToken ?? this.refreshToken,
       authorId: authorId ?? this.authorId,
@@ -73,7 +66,7 @@ class AuthorAuthState {
   }
 
   static AuthorAuthState signedOut() =>
-      const AuthorAuthState(isLoggedIn: false, isLocked: false, isAdmin: false);
+      const AuthorAuthState(isLoggedIn: false, isAdmin: false);
 }
 
 final authorAuthProvider =
@@ -91,13 +84,11 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     required RemoteEventSource remote,
     required SecureStorageService secureStorage,
     required Ref ref,
-    LocalAuthentication? localAuthentication,
     bool restoreSessionOnInit = true,
   })  : _repository = repository,
         _remote = remote,
         _secureStorage = secureStorage,
         _ref = ref,
-        _localAuth = localAuthentication ?? LocalAuthentication(),
         super(AuthorAuthState.signedOut()) {
     if (restoreSessionOnInit) {
       unawaited(_restoreSession());
@@ -108,7 +99,6 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
   final RemoteEventSource _remote;
   final SecureStorageService _secureStorage;
   final Ref _ref;
-  final LocalAuthentication _localAuth;
 
   Future<void> _restoreSession() async {
     final storedTokens = await _secureStorage.readAuthorTokens();
@@ -121,7 +111,6 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     }
     state = AuthorAuthState(
       isLoggedIn: true,
-      isLocked: false,
       token: storedTokens.accessToken,
       refreshToken: storedTokens.refreshToken,
       authorId: _repository.getAuthorId(),
@@ -153,7 +142,6 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     await _repository.clearLegacyAuthorAuthToken();
     state = AuthorAuthState(
       isLoggedIn: true,
-      isLocked: false,
       token: session.accessToken,
       refreshToken: session.refreshToken,
       authorId: session.authorId,
@@ -313,40 +301,6 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     if (!state.isLoggedIn) {
       return;
     }
-    final lastBackgroundedAt = _repository.getAuthorLastBackgroundedAt();
     await _repository.setAuthorLastBackgroundedAt(null);
-    if (lastBackgroundedAt == null) {
-      return;
-    }
-    final inactiveFor = DateTime.now().toUtc().difference(lastBackgroundedAt);
-    if (inactiveFor >= authorLockTimeout) {
-      state = state.copyWith(isLocked: true);
-    }
-  }
-
-  Future<void> unlock() async {
-    if (!state.isLoggedIn || !state.isLocked) {
-      return;
-    }
-
-    final canCheck = await _localAuth.canCheckBiometrics;
-    final supported = await _localAuth.isDeviceSupported();
-    if (!canCheck && !supported) {
-      state = state.copyWith(isLocked: false);
-      return;
-    }
-
-    final authenticated = await _localAuth.authenticate(
-      localizedReason: 'Bitte entsperre den Autorenbereich.',
-      options: const AuthenticationOptions(
-        biometricOnly: false,
-        sensitiveTransaction: true,
-        stickyAuth: true,
-      ),
-    );
-    if (!authenticated) {
-      throw StateError('Biometrische Entsperrung abgebrochen.');
-    }
-    state = state.copyWith(isLocked: false);
   }
 }

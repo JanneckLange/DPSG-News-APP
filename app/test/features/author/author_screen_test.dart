@@ -50,12 +50,10 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 }
 
 AuthorAuthState _loggedInState({
-  bool isLocked = false,
   bool requiresPasswordChange = false,
 }) {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: isLocked,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,
@@ -103,15 +101,6 @@ void main() {
     await tester.pump();
     await tester.pump();
   }
-
-  testWidgets('shows the biometric unlock button while the author area is locked',
-      (tester) async {
-    final remote = _FakeRemoteEventSource();
-    await pumpScreen(tester, remote: remote, initialState: _loggedInState(isLocked: true));
-
-    expect(find.text('Mit Biometrie entsperren'), findsOneWidget);
-    expect(find.byIcon(Icons.lock_open), findsOneWidget);
-  });
 
   testWidgets(
       'shows the change-password button while a password change is required',

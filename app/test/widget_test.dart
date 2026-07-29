@@ -337,7 +337,6 @@ void main() {
       tester,
       state: const AuthorAuthState(
         isLoggedIn: true,
-        isLocked: false,
         username: 'admin',
         isAdmin: true,
       ),
@@ -353,7 +352,6 @@ void main() {
       tester,
       state: const AuthorAuthState(
         isLoggedIn: true,
-        isLocked: false,
         username: 'author',
         isAdmin: false,
       ),
@@ -404,7 +402,6 @@ void main() {
               ref: ref,
               initialState: AuthorAuthState(
                 isLoggedIn: true,
-                isLocked: false,
                 token: 'test-token',
                 refreshToken: 'test-refresh-token',
                 authorId: 1,

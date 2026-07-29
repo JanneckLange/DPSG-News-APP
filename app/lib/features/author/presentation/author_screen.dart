@@ -118,19 +118,6 @@ class AuthorScreen extends ConsumerWidget {
       );
     }
 
-    if (auth.isLocked) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Autor')),
-        body: Center(
-          child: FilledButton.icon(
-            onPressed: () => ref.read(authorAuthProvider.notifier).unlock(),
-            icon: const Icon(Icons.lock_open),
-            label: const Text('Mit Biometrie entsperren'),
-          ),
-        ),
-      );
-    }
-
     if (auth.requiresPasswordChange) {
       return Scaffold(
         appBar: AppBar(title: const Text('Autor')),

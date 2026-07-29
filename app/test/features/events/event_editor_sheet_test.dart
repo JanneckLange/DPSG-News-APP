@@ -116,7 +116,6 @@ Future<void> _pumpEditor(
             ref: ref,
             initialState: AuthorAuthState(
               isLoggedIn: true,
-              isLocked: false,
               token: 'test-token',
               authorId: 1,
               username: 'author',

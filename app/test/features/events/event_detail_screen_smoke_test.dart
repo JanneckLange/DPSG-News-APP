@@ -120,7 +120,7 @@ Future<void> _pumpEvent(WidgetTester tester, Map<String, dynamic> event) async {
               secureStorage: secureStorage,
               ref: ref,
               initialState:
-                  const AuthorAuthState(isLoggedIn: false, isLocked: false),
+                  const AuthorAuthState(isLoggedIn: false),
             ),
           ),
         ],
@@ -169,7 +169,7 @@ void main() {
                 secureStorage: secureStorage,
                 ref: ref,
                 initialState:
-                    const AuthorAuthState(isLoggedIn: false, isLocked: false),
+                    const AuthorAuthState(isLoggedIn: false),
               ),
             ),
           ],
@@ -220,7 +220,6 @@ void main() {
                 ref: ref,
                 initialState: AuthorAuthState(
                   isLoggedIn: true,
-                  isLocked: false,
                   token: 'test-token',
                   refreshToken: 'test-refresh-token',
                   authorId: 1,
@@ -274,7 +273,7 @@ void main() {
             secureStorage: secureStorage,
             ref: ref,
             initialState:
-                const AuthorAuthState(isLoggedIn: false, isLocked: false),
+                const AuthorAuthState(isLoggedIn: false),
           ),
         ),
       ],

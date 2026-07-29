@@ -41,12 +41,10 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 }
 
 AuthorAuthState _loggedInState({
-  bool isLocked = false,
   bool requiresPasswordChange = false,
 }) {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: isLocked,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,
@@ -92,18 +90,6 @@ void main() {
     final remote = _FakeRemoteEventSource();
     final container =
         buildContainer(remote, AuthorAuthState.signedOut());
-
-    final events = await container.read(ownEventsProvider.future);
-
-    expect(events, isEmpty);
-    expect(remote.fetchOwnEventsCallCount, 0);
-  });
-
-  test('ownEventsProvider returns an empty list while the author area is locked',
-      () async {
-    final remote = _FakeRemoteEventSource();
-    final container =
-        buildContainer(remote, _loggedInState(isLocked: true));
 
     final events = await container.read(ownEventsProvider.future);
 

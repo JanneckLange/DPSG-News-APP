@@ -46,7 +46,6 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 AuthorAuthState _loggedInState({required bool requiresPasswordChange}) {
   return AuthorAuthState(
     isLoggedIn: true,
-    isLocked: false,
     token: 'valid-token',
     refreshToken: 'refresh-token',
     authorId: 1,
