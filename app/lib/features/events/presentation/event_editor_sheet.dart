@@ -13,6 +13,7 @@ import '../../admin/domain/topic_model.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/domain/layer_model.dart';
+import '../domain/event_cta_labels.dart';
 
 class EventEditorPage extends ConsumerStatefulWidget {
   const EventEditorPage({super.key, this.existingEvent, this.existingDraft})
@@ -32,9 +33,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _cta1LabelController = TextEditingController();
   final _cta1UrlController = TextEditingController();
-  final _cta2LabelController = TextEditingController();
   final _cta2UrlController = TextEditingController();
   String? _locationAddress;
   double? _locationLat;
@@ -73,15 +72,11 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     if (_descriptionController.text.trim().isEmpty) {
       _stepHasError[1] = true;
     }
-    if (_showCta1) {
-      final l1 = _cta1LabelController.text.trim();
-      final u1 = _cta1UrlController.text.trim();
-      if (l1.isEmpty || u1.isEmpty) _stepHasError[1] = true;
+    if (_showCta1 && _cta1UrlController.text.trim().isEmpty) {
+      _stepHasError[1] = true;
     }
-    if (_showCta2) {
-      final l2 = _cta2LabelController.text.trim();
-      final u2 = _cta2UrlController.text.trim();
-      if (l2.isEmpty || u2.isEmpty) _stepHasError[1] = true;
+    if (_showCta2 && _cta2UrlController.text.trim().isEmpty) {
+      _stepHasError[1] = true;
     }
 
     return !_stepHasError.contains(true);
@@ -115,14 +110,10 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _selectedLayerId = (event['layerId'] as num?)?.toInt();
       _selectedTopicId = (event['topicId'] as num?)?.toInt();
       _isPublic = event['isPublic'] as bool? ?? false;
-      _cta1LabelController.text = event['cta1Label'] as String? ?? '';
       _cta1UrlController.text = event['cta1Url'] as String? ?? '';
-      _cta2LabelController.text = event['cta2Label'] as String? ?? '';
       _cta2UrlController.text = event['cta2Url'] as String? ?? '';
-      _showCta1 = _cta1LabelController.text.isNotEmpty ||
-          _cta1UrlController.text.isNotEmpty;
-      _showCta2 = _cta2LabelController.text.isNotEmpty ||
-          _cta2UrlController.text.isNotEmpty;
+      _showCta1 = _cta1UrlController.text.isNotEmpty;
+      _showCta2 = _cta2UrlController.text.isNotEmpty;
       _startDate = DateTime.tryParse(event['startDate'] as String? ?? '');
       _endDate = DateTime.tryParse(event['endDate'] as String? ?? '');
     }
@@ -240,9 +231,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _cta1LabelController.dispose();
     _cta1UrlController.dispose();
-    _cta2LabelController.dispose();
     _cta2UrlController.dispose();
     _locationAutocompleteDebounce?.cancel();
     super.dispose();
@@ -318,12 +307,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       if (_selectedLayerId != null) 'layerId': _selectedLayerId,
       if (_selectedTopicId != null) 'topicId': _selectedTopicId,
       'isPublic': _isPublic && !_isSelectedLayerRoot,
-      if (_showCta1 && _cta1LabelController.text.trim().isNotEmpty)
-        'cta1Label': _cta1LabelController.text.trim(),
       if (_showCta1 && _cta1UrlController.text.trim().isNotEmpty)
         'cta1Url': _cta1UrlController.text.trim(),
-      if (_showCta2 && _cta2LabelController.text.trim().isNotEmpty)
-        'cta2Label': _cta2LabelController.text.trim(),
       if (_showCta2 && _cta2UrlController.text.trim().isNotEmpty)
         'cta2Url': _cta2UrlController.text.trim(),
     };
@@ -783,19 +768,18 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                       FilledButton.icon(
                         onPressed: () => setState(() => _showCta1 = true),
                         icon: const Icon(Icons.add),
-                        label: const Text('Button hinzufügen'),
+                        label: const Text('Anmeldung hinzufügen'),
                       ),
                     if (_showCta1) ...[
-                      TextFormField(
-                        controller: _cta1LabelController,
-                        decoration: const InputDecoration(
-                            labelText: 'Button 1 Beschriftung'),
-                      ),
+                      const Text(kEventCta1Label,
+                          style: TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _cta1UrlController,
-                        decoration:
-                            const InputDecoration(labelText: 'Button 1 URL'),
+                        decoration: const InputDecoration(
+                          labelText: 'Link oder E-Mail-Adresse',
+                          hintText: 'https://... oder name@example.org',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -805,16 +789,14 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             TextButton.icon(
                               onPressed: () => setState(() => _showCta2 = true),
                               icon: const Icon(Icons.add),
-                              label: const Text('Weiteren Button hinzufügen'),
+                              label: const Text('Weitere Infos hinzufügen'),
                             ),
                           TextButton.icon(
                             onPressed: () {
                               setState(() {
                                 _showCta1 = false;
                                 _showCta2 = false;
-                                _cta1LabelController.clear();
                                 _cta1UrlController.clear();
-                                _cta2LabelController.clear();
                                 _cta2UrlController.clear();
                               });
                             },
@@ -826,23 +808,19 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     ],
                     if (_showCta2) ...[
                       const Divider(height: 32),
-                      TextFormField(
-                        controller: _cta2LabelController,
-                        decoration: const InputDecoration(
-                            labelText: 'Button 2 Beschriftung'),
-                      ),
+                      const Text(kEventCta2Label,
+                          style: TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _cta2UrlController,
                         decoration:
-                            const InputDecoration(labelText: 'Button 2 URL'),
+                            const InputDecoration(labelText: 'Link'),
                       ),
                       const SizedBox(height: 12),
                       TextButton.icon(
                         onPressed: () {
                           setState(() {
                             _showCta2 = false;
-                            _cta2LabelController.clear();
                             _cta2UrlController.clear();
                           });
                         },
@@ -914,25 +892,32 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             const SizedBox(height: 20),
-                            Wrap(
-                              spacing: 12,
-                              children: [
-                                if (_showCta1 &&
-                                    _cta1LabelController.text.trim().isNotEmpty)
-                                  OutlinedButton(
-                                    onPressed: null,
-                                    child:
-                                        Text(_cta1LabelController.text.trim()),
-                                  ),
-                                if (_showCta2 &&
-                                    _cta2LabelController.text.trim().isNotEmpty)
-                                  OutlinedButton(
-                                    onPressed: null,
-                                    child:
-                                        Text(_cta2LabelController.text.trim()),
-                                  ),
-                              ],
-                            ),
+                            Builder(builder: (context) {
+                              final previewHasCta1 = _showCta1 &&
+                                  _cta1UrlController.text.trim().isNotEmpty;
+                              final previewHasCta2 = _showCta2 &&
+                                  _cta2UrlController.text.trim().isNotEmpty;
+                              return Wrap(
+                                spacing: 12,
+                                children: [
+                                  if (previewHasCta1)
+                                    const FilledButton(
+                                      onPressed: null,
+                                      child: Text(kEventCta1Label),
+                                    ),
+                                  if (previewHasCta2)
+                                    previewHasCta1
+                                        ? const OutlinedButton(
+                                            onPressed: null,
+                                            child: Text(kEventCta2Label),
+                                          )
+                                        : const FilledButton(
+                                            onPressed: null,
+                                            child: Text(kEventCta2Label),
+                                          ),
+                                ],
+                              );
+                            }),
                           ],
                         ),
                       ),

@@ -20,6 +20,7 @@ import '../../../shared/widgets/location_map_view.dart';
 import '../../../shared/widgets/safe_markdown_body.dart';
 import '../../../shared/widgets/section_card.dart';
 import '../../admin/domain/topic_model.dart';
+import '../domain/event_cta_labels.dart';
 import 'event_editor_sheet.dart';
 import 'widgets/event_history_dialog.dart';
 
@@ -259,7 +260,84 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     }
   }
 
-  Future<void> _confirmAndOpenLink(String url, String label) async {
+  static final RegExp _simpleEmailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+  Future<void> _afterCtaConfirmed(String label, {String? channel, String? url}) async {
+    if (_eventId.isNotEmpty) {
+      final settingsRepository = ref.read(settingsRepositoryProvider);
+      final autoSave = settingsRepository.getAutoSaveEventOnCtaClick();
+      if (autoSave && !_isSaved) {
+        await ref.read(savedEventIdsProvider.notifier).addEvent(_eventId);
+        await ref.read(notificationServiceProvider).refreshTopicSubscriptions();
+      }
+    }
+
+    final analytics = ref.read(analyticsServiceProvider);
+    unawaited(analytics.trackFeatureEvent(
+      'event_cta_clicked',
+      screen: 'event_detail',
+      action: 'cta_click',
+      target: label,
+      additionalProperties: channel != null
+          ? {'event_id': _eventId, 'channel': channel}
+          : {'event_id': _eventId, 'url': url},
+    ));
+  }
+
+  Future<void> _confirmAndOpenLink(String url, String label, {bool allowMailto = false}) async {
+    if (allowMailto && looksLikeMailto(url)) {
+      final address = extractMailtoAddress(url).trim();
+      if (!_simpleEmailRegex.hasMatch(address)) {
+        if (mounted) {
+          showErrorToast(ref, 'Ungültige E-Mail-Adresse');
+        }
+        return;
+      }
+
+      final title = widget.event['title']?.toString() ?? '';
+      final startDate =
+          formatEventDateTime(widget.event['startDate']?.toString());
+      final mailUri = Uri(
+        scheme: 'mailto',
+        path: address,
+        queryParameters: {
+          'subject': 'Anmeldung $title',
+          'body': 'Ich möchte mich zum Event $title am $startDate anmelden.',
+        },
+      );
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('E-Mail senden'),
+          content: Text('Möchtest du eine E-Mail senden an: $address'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Abbrechen'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Ja'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) {
+        return;
+      }
+
+      await _afterCtaConfirmed(label, channel: 'mailto');
+
+      if (!mounted) return;
+      if (!await launchUrl(mailUri)) {
+        if (mounted) {
+          showErrorToast(ref, 'E-Mail-App konnte nicht geöffnet werden');
+        }
+      }
+      return;
+    }
+
     var uri = Uri.tryParse(url);
     if (uri != null && uri.scheme.isEmpty) {
       uri = Uri.tryParse('https://$url');
@@ -298,23 +376,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       return;
     }
 
-    if (_eventId.isNotEmpty) {
-      final settingsRepository = ref.read(settingsRepositoryProvider);
-      final autoSave = settingsRepository.getAutoSaveEventOnCtaClick();
-      if (autoSave && !_isSaved) {
-        await ref.read(savedEventIdsProvider.notifier).addEvent(_eventId);
-        await ref.read(notificationServiceProvider).refreshTopicSubscriptions();
-      }
-    }
-
-    final analytics = ref.read(analyticsServiceProvider);
-    unawaited(analytics.trackFeatureEvent(
-      'event_cta_clicked',
-      screen: 'event_detail',
-      action: 'cta_click',
-      target: label,
-      additionalProperties: {'event_id': _eventId, 'url': url},
-    ));
+    await _afterCtaConfirmed(label, url: url);
 
     if (!mounted) return;
     if (!await launchUrl(uri, mode: LaunchMode.inAppWebView)) {
@@ -442,10 +504,10 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     final startDate =
         formatEventDateTime(widget.event['startDate']?.toString());
     final endDate = formatEventDateTime(widget.event['endDate']?.toString());
-    final cta1Label = widget.event['cta1Label']?.toString();
     final cta1Url = widget.event['cta1Url']?.toString();
-    final cta2Label = widget.event['cta2Label']?.toString();
     final cta2Url = widget.event['cta2Url']?.toString();
+    final hasCta1 = cta1Url != null && cta1Url.isNotEmpty;
+    final hasCta2 = cta2Url != null && cta2Url.isNotEmpty;
 
     final canEditEvent = _canEditEvent;
     final canDeleteEvent = _canDeleteEvent;
@@ -543,22 +605,25 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           const SizedBox(height: 16),
           SafeMarkdownBody(data: description),
           const SizedBox(height: 24),
-          if (cta1Label != null &&
-              cta1Url != null &&
-              cta1Label.isNotEmpty &&
-              cta1Url.isNotEmpty)
+          if (hasCta1)
             FilledButton(
-              onPressed: () => _confirmAndOpenLink(cta1Url, cta1Label),
-              child: Text(cta1Label),
+              onPressed: () => _confirmAndOpenLink(cta1Url, kEventCta1Label,
+                  allowMailto: true),
+              child: const Text(kEventCta1Label),
             ),
-          if (cta2Label != null &&
-              cta2Url != null &&
-              cta2Label.isNotEmpty &&
-              cta2Url.isNotEmpty)
-            FilledButton(
-              onPressed: () => _confirmAndOpenLink(cta2Url, cta2Label),
-              child: Text(cta2Label),
-            ),
+          if (hasCta1 && hasCta2) const SizedBox(height: 8),
+          if (hasCta2)
+            hasCta1
+                ? OutlinedButton(
+                    onPressed: () =>
+                        _confirmAndOpenLink(cta2Url, kEventCta2Label),
+                    child: const Text(kEventCta2Label),
+                  )
+                : FilledButton(
+                    onPressed: () =>
+                        _confirmAndOpenLink(cta2Url, kEventCta2Label),
+                    child: const Text(kEventCta2Label),
+                  ),
           const SizedBox(height: 24),
           SectionCard(
             title: 'Updates',
