@@ -43,9 +43,12 @@ class LocationMapView extends StatelessWidget {
               options: MapOptions(
                 initialCenter: point,
                 initialZoom: 15,
+                minZoom: 5,
+                maxZoom: 18,
                 interactionOptions: InteractionOptions(
-                  flags:
-                      interactive ? InteractiveFlag.all : InteractiveFlag.none,
+                  flags: interactive
+                      ? InteractiveFlag.all & ~InteractiveFlag.rotate
+                      : InteractiveFlag.none,
                 ),
               ),
               children: [
