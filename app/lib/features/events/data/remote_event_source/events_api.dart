@@ -331,6 +331,28 @@ mixin _EventsApi on _RemoteEventSourceBase {
     return List<Map<String, dynamic>>.from(json['updates'] as List<dynamic>);
   }
 
+  Future<List<Map<String, dynamic>>> fetchEventHistory(
+      {required int eventId, String? token}) async {
+    final uri = baseUrl.replace(path: '/api/events/$eventId/history');
+    final response = await _client
+        .get(
+          uri,
+          headers: token == null
+              ? null
+              : {HttpHeaders.authorizationHeader: 'Bearer $token'},
+        )
+        .timeout(timeout);
+    if (response.statusCode != 200) {
+      throw RemoteEventSourceException(
+        'Failed to fetch event history: ${response.statusCode} ${response.body}',
+        statusCode: response.statusCode,
+        serverMessage: _parseServerError(response.body),
+      );
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return List<Map<String, dynamic>>.from(json['history'] as List<dynamic>);
+  }
+
   Future<Map<String, dynamic>> createEventUpdate({
     required String token,
     required int eventId,

@@ -21,6 +21,7 @@ import '../../../shared/widgets/safe_markdown_body.dart';
 import '../../../shared/widgets/section_card.dart';
 import '../../admin/domain/topic_model.dart';
 import 'event_editor_sheet.dart';
+import 'widgets/event_history_dialog.dart';
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({super.key, required this.event});
@@ -383,6 +384,12 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     }
   }
 
+  Future<void> _showHistoryDialog() async {
+    final eventId = _eventIdAsInt;
+    if (eventId == null) return;
+    await showEventHistoryDialog(context, eventId: eventId);
+  }
+
   Future<void> _deleteEvent() async {
     final analytics = ref.read(analyticsServiceProvider);
     unawaited(analytics.trackFeatureEvent(
@@ -465,12 +472,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   _editEvent();
                 } else if (value == 'delete') {
                   _deleteEvent();
+                } else if (value == 'history') {
+                  _showHistoryDialog();
                 }
               },
               itemBuilder: (context) => [
                 if (canEditEvent)
                   const PopupMenuItem(
                       value: 'edit', child: Text('Bearbeiten')),
+                if (canEditEvent)
+                  const PopupMenuItem(
+                      value: 'history', child: Text('Änderungsprotokoll')),
                 if (canDeleteEvent)
                   const PopupMenuItem(
                       value: 'delete', child: Text('Löschen')),
