@@ -187,6 +187,16 @@ export async function connect(): Promise<void> {
     );
   `);
   await client.query(`CREATE INDEX IF NOT EXISTS event_updates_event_id_idx ON event_updates(event_id);`);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS event_history (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      author_id INTEGER REFERENCES authors(id) ON DELETE SET NULL,
+      changes JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS event_history_event_id_idx ON event_history(event_id);`);
   await cleanupExpiredSessions(true);
   await cleanupExpiredDrafts(true);
   await ensureBootstrapAuthor();

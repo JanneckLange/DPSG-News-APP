@@ -47,6 +47,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   DateTime? _endDate;
   int? _selectedLayerId;
   int? _selectedTopicId;
+  bool _isPublic = false;
   List<TopicModel> _topics = <TopicModel>[];
   bool _loadingTopics = false;
   bool _saving = false;
@@ -84,6 +85,18 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   bool get _isEditingEvent => widget.existingEvent != null;
   bool get _isEditingDraft => widget.existingDraft != null;
 
+  /// Ob der aktuell gewaehlte Layer der Wurzel-Layer ("Bundesverband DPSG")
+  /// ist. Auf dieser Ebene hat "Global bewerben" keinen Effekt, da der
+  /// Layer ohnehin bereits layeruebergreifend sichtbar ist (siehe #37).
+  bool get _isSelectedLayerRoot {
+    if (_selectedLayerId == null) return false;
+    final layers = ref.read(layerTreeProvider).asData?.value ?? const <LayerModel>[];
+    for (final layer in layers) {
+      if (layer.id == _selectedLayerId) return layer.parentId == null;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -96,6 +109,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _locationLng = (event['locationLng'] as num?)?.toDouble();
       _selectedLayerId = (event['layerId'] as num?)?.toInt();
       _selectedTopicId = (event['topicId'] as num?)?.toInt();
+      _isPublic = event['isPublic'] as bool? ?? false;
       _cta1UrlController.text = event['cta1Url'] as String? ?? '';
       _cta2UrlController.text = event['cta2Url'] as String? ?? '';
       _showCta1 = _cta1UrlController.text.isNotEmpty;
@@ -292,6 +306,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       if (_locationLng != null) 'locationLng': _locationLng,
       if (_selectedLayerId != null) 'layerId': _selectedLayerId,
       if (_selectedTopicId != null) 'topicId': _selectedTopicId,
+      'isPublic': _isPublic && !_isSelectedLayerRoot,
       if (_showCta1 && _cta1UrlController.text.trim().isNotEmpty)
         'cta1Url': _cta1UrlController.text.trim(),
       if (_showCta2 && _cta2UrlController.text.trim().isNotEmpty)
@@ -655,6 +670,13 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               _selectedLayerId = value;
                               _selectedTopicId = null;
                               _topics = <TopicModel>[];
+                              if (value != null) {
+                                final newLayer = authorizedLayers
+                                    .firstWhere((layer) => layer.id == value);
+                                if (newLayer.parentId == null) {
+                                  _isPublic = false;
+                                }
+                              }
                             });
                             if (value != null) {
                               unawaited(_loadTopicsForLayer(value));
@@ -672,6 +694,46 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     const SizedBox(height: 12),
                     if (_selectedLayerId != null)
                       _buildTopicDropdown(topicGrantIds),
+                    if (_selectedLayerId != null && !_isSelectedLayerRoot) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: const Text('Global bewerben'),
+                              value: _isPublic,
+                              onChanged: (value) =>
+                                  setState(() => _isPublic = value ?? false),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.info_outline),
+                            tooltip: 'Global bewerben',
+                            onPressed: () => showDialog<void>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Global bewerben'),
+                                content: const Text(
+                                  'Alle Events sind öffentlich einsehbar. '
+                                  'Wird diese Option aktiviert, wird das '
+                                  'Event zusätzlich layerübergreifend '
+                                  'beworben (z. B. Dashboard-Kachel).',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    child: const Text('Verstanden'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
