@@ -50,8 +50,6 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   List<TopicModel> _topics = <TopicModel>[];
   bool _loadingTopics = false;
   bool _saving = false;
-  bool _showCta1 = false;
-  bool _showCta2 = false;
   int _currentStep = 0;
   final List<bool> _stepHasError = [false, false, false];
 
@@ -69,12 +67,6 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
 
     // step 1: description and CTA validity
     if (_descriptionController.text.trim().isEmpty) {
-      _stepHasError[1] = true;
-    }
-    if (_showCta1 && _cta1UrlController.text.trim().isEmpty) {
-      _stepHasError[1] = true;
-    }
-    if (_showCta2 && _cta2UrlController.text.trim().isEmpty) {
       _stepHasError[1] = true;
     }
 
@@ -98,8 +90,6 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _selectedTopicId = (event['topicId'] as num?)?.toInt();
       _cta1UrlController.text = event['cta1Url'] as String? ?? '';
       _cta2UrlController.text = event['cta2Url'] as String? ?? '';
-      _showCta1 = _cta1UrlController.text.isNotEmpty;
-      _showCta2 = _cta2UrlController.text.isNotEmpty;
       _startDate = DateTime.tryParse(event['startDate'] as String? ?? '');
       _endDate = DateTime.tryParse(event['endDate'] as String? ?? '');
     }
@@ -292,9 +282,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       if (_locationLng != null) 'locationLng': _locationLng,
       if (_selectedLayerId != null) 'layerId': _selectedLayerId,
       if (_selectedTopicId != null) 'topicId': _selectedTopicId,
-      if (_showCta1 && _cta1UrlController.text.trim().isNotEmpty)
+      if (_cta1UrlController.text.trim().isNotEmpty)
         'cta1Url': _cta1UrlController.text.trim(),
-      if (_showCta2 && _cta2UrlController.text.trim().isNotEmpty)
+      if (_cta2UrlController.text.trim().isNotEmpty)
         'cta2Url': _cta2UrlController.text.trim(),
     };
 
@@ -702,70 +692,27 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     const Text('Buttons',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
-                    if (!_showCta1)
-                      FilledButton.icon(
-                        onPressed: () => setState(() => _showCta1 = true),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Anmeldung hinzufügen'),
+                    const Text(kEventCta1Label,
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _cta1UrlController,
+                      decoration: const InputDecoration(
+                        labelText: 'Link oder E-Mail-Adresse',
+                        hintText: 'https://... oder name@example.org',
                       ),
-                    if (_showCta1) ...[
-                      const Text(kEventCta1Label,
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _cta1UrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Link oder E-Mail-Adresse',
-                          hintText: 'https://... oder name@example.org',
-                        ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(kEventCta2Label,
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _cta2UrlController,
+                      decoration: const InputDecoration(
+                        labelText: 'Link oder E-Mail-Adresse',
+                        hintText: 'https://... oder name@example.org',
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          if (!_showCta2)
-                            TextButton.icon(
-                              onPressed: () => setState(() => _showCta2 = true),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Weitere Infos hinzufügen'),
-                            ),
-                          TextButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _showCta1 = false;
-                                _showCta2 = false;
-                                _cta1UrlController.clear();
-                                _cta2UrlController.clear();
-                              });
-                            },
-                            icon: const Icon(Icons.close),
-                            label: const Text('Button entfernen'),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (_showCta2) ...[
-                      const Divider(height: 32),
-                      const Text(kEventCta2Label,
-                          style: TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _cta2UrlController,
-                        decoration:
-                            const InputDecoration(labelText: 'Link'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _showCta2 = false;
-                            _cta2UrlController.clear();
-                          });
-                        },
-                        icon: const Icon(Icons.close),
-                        label: const Text('Button 2 entfernen'),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -831,9 +778,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             ),
                             const SizedBox(height: 20),
                             Builder(builder: (context) {
-                              final previewHasCta1 = _showCta1 &&
+                              final previewHasCta1 =
                                   _cta1UrlController.text.trim().isNotEmpty;
-                              final previewHasCta2 = _showCta2 &&
+                              final previewHasCta2 =
                                   _cta2UrlController.text.trim().isNotEmpty;
                               return Wrap(
                                 spacing: 12,
