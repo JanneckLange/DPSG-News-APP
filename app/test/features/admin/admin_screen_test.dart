@@ -109,8 +109,7 @@ void main() {
     expect(remote.fetchAdminUsersCallCount, 0);
   });
 
-  testWidgets(
-      'shows the access-denied screen when logged in but not an admin',
+  testWidgets('shows the access-denied screen when logged in but not an admin',
       (tester) async {
     final remote = _FakeRemoteEventSource();
     await pumpScreen(

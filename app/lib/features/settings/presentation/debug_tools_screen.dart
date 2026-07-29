@@ -89,11 +89,11 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
                 onPressed: () async {
                   unawaited(
                     ref.read(analyticsServiceProvider).trackUiClick(
-                      'refresh_api_status',
-                      screen: 'debug_tools',
-                      action: 'press',
-                      target: 'api_health',
-                    ),
+                          'refresh_api_status',
+                          screen: 'debug_tools',
+                          action: 'press',
+                          target: 'api_health',
+                        ),
                   );
                   await ref
                       .read(apiHealthProvider.notifier)
@@ -118,11 +118,11 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
                     : () async {
                         unawaited(
                           ref.read(analyticsServiceProvider).trackUiClick(
-                            'copy_apns_token',
-                            screen: 'debug_tools',
-                            action: 'press',
-                            target: 'apns_token',
-                          ),
+                                'copy_apns_token',
+                                screen: 'debug_tools',
+                                action: 'press',
+                                target: 'apns_token',
+                              ),
                         );
                         await Clipboard.setData(ClipboardData(text: apnsToken));
                         if (context.mounted) {
@@ -174,11 +174,11 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
                 );
                 unawaited(
                   ref.read(analyticsServiceProvider).trackUiClick(
-                    'app_rating',
-                    screen: 'debug_tools',
-                    action: 'open',
-                    target: 'store',
-                  ),
+                        'app_rating',
+                        screen: 'debug_tools',
+                        action: 'open',
+                        target: 'store',
+                      ),
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -315,19 +315,20 @@ class _DebugToolsBodyState extends ConsumerState<DebugToolsBody> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
         leading: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(11),
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              size: 20),
         ),
-        child: Icon(icon,
-            color: Theme.of(context).colorScheme.onPrimaryContainer, size: 20),
-      ),
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: trailing ?? const Icon(Icons.chevron_right),
-      onTap: onTap,
+        title: Text(title),
+        subtitle: subtitle == null ? null : Text(subtitle),
+        trailing: trailing ?? const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }

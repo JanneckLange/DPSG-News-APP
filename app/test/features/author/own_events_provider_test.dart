@@ -65,8 +65,8 @@ void main() {
     await HiveService.getSettingsBox().clear();
   });
 
-  ProviderContainer buildContainer(_FakeRemoteEventSource remote,
-      AuthorAuthState initialState) {
+  ProviderContainer buildContainer(
+      _FakeRemoteEventSource remote, AuthorAuthState initialState) {
     final container = ProviderContainer(
       overrides: [
         sync_service.remoteEventSourceProvider.overrideWithValue(remote),
@@ -85,11 +85,11 @@ void main() {
     return container;
   }
 
-  test('ownEventsProvider returns an empty list without calling the remote source when signed out',
+  test(
+      'ownEventsProvider returns an empty list without calling the remote source when signed out',
       () async {
     final remote = _FakeRemoteEventSource();
-    final container =
-        buildContainer(remote, AuthorAuthState.signedOut());
+    final container = buildContainer(remote, AuthorAuthState.signedOut());
 
     final events = await container.read(ownEventsProvider.future);
 
@@ -123,11 +123,11 @@ void main() {
     expect(remote.fetchOwnEventsCallCount, 1);
   });
 
-  test('ownDraftsProvider returns an empty list without calling the remote source when signed out',
+  test(
+      'ownDraftsProvider returns an empty list without calling the remote source when signed out',
       () async {
     final remote = _FakeRemoteEventSource();
-    final container =
-        buildContainer(remote, AuthorAuthState.signedOut());
+    final container = buildContainer(remote, AuthorAuthState.signedOut());
 
     final drafts = await container.read(ownDraftsProvider.future);
 

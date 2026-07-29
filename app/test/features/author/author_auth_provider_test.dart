@@ -81,8 +81,7 @@ void main() {
               refreshToken: 'refresh-token',
               authorId: 1,
               username: 'author',
-              expiresAt:
-                  DateTime.now().toUtc().add(const Duration(hours: 1)),
+              expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
               refreshExpiresAt:
                   DateTime.now().toUtc().add(const Duration(days: 7)),
             ),
@@ -110,8 +109,7 @@ void main() {
     expect(container.read(authorAuthProvider).isLoggedIn, isTrue);
   });
 
-  test(
-      'callAuthenticated force-refreshes once and retries after a live 401',
+  test('callAuthenticated force-refreshes once and retries after a live 401',
       () async {
     final remote = _FakeRemoteEventSource(refreshResult: _session());
     final container = buildContainer(remote);
@@ -138,8 +136,7 @@ void main() {
   test(
       'callAuthenticated logs out and rethrows when the forced refresh itself fails',
       () async {
-    final remote =
-        _FakeRemoteEventSource(refreshErrorStatusCode: 401);
+    final remote = _FakeRemoteEventSource(refreshErrorStatusCode: 401);
     final container = buildContainer(remote);
     addTearDown(container.dispose);
     final notifier = container.read(authorAuthProvider.notifier);
@@ -158,8 +155,7 @@ void main() {
     expect(container.read(authorAuthProvider).isLoggedIn, isFalse);
   });
 
-  test(
-      'callAuthenticated logs out and rethrows when the retry also gets a 401',
+  test('callAuthenticated logs out and rethrows when the retry also gets a 401',
       () async {
     final remote = _FakeRemoteEventSource(refreshResult: _session());
     final container = buildContainer(remote);

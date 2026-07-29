@@ -261,7 +261,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
   static final RegExp _simpleEmailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
-  Future<void> _afterCtaConfirmed(String label, {String? channel, String? url}) async {
+  Future<void> _afterCtaConfirmed(String label,
+      {String? channel, String? url}) async {
     if (_eventId.isNotEmpty) {
       final settingsRepository = ref.read(settingsRepositoryProvider);
       final autoSave = settingsRepository.getAutoSaveEventOnCtaClick();
@@ -283,7 +284,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     ));
   }
 
-  Future<void> _confirmAndOpenLink(String url, String label, {bool allowMailto = false}) async {
+  Future<void> _confirmAndOpenLink(String url, String label,
+      {bool allowMailto = false}) async {
     if (allowMailto && looksLikeMailto(url)) {
       final address = extractMailtoAddress(url).trim();
       if (!_simpleEmailRegex.hasMatch(address)) {
@@ -385,7 +387,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     }
   }
 
-  Future<void> _confirmAndOpenInMaps(double lat, double lng, String? label) async {
+  Future<void> _confirmAndOpenInMaps(
+      double lat, double lng, String? label) async {
     final uri = Platform.isIOS
         ? Uri.parse('https://maps.apple.com/?ll=$lat,$lng'
             '${label != null && label.isNotEmpty ? '&q=${Uri.encodeComponent(label)}' : ''}')
@@ -402,7 +405,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Navigation starten'),
-        content: const Text('Möchtest du diesen Ort in einer Karten-App öffnen?'),
+        content:
+            const Text('Möchtest du diesen Ort in einer Karten-App öffnen?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -532,11 +536,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               },
               itemBuilder: (context) => [
                 if (canEditEvent)
-                  const PopupMenuItem(
-                      value: 'edit', child: Text('Bearbeiten')),
+                  const PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
                 if (canDeleteEvent)
-                  const PopupMenuItem(
-                      value: 'delete', child: Text('Löschen')),
+                  const PopupMenuItem(value: 'delete', child: Text('Löschen')),
               ],
             ),
         ],
@@ -567,8 +569,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () =>
-                  _confirmAndOpenInMaps(locationLat, locationLng, locationAddress),
+              onPressed: () => _confirmAndOpenInMaps(
+                  locationLat, locationLng, locationAddress),
               icon: const Icon(Icons.directions),
               label: const Text('Navigation'),
             ),

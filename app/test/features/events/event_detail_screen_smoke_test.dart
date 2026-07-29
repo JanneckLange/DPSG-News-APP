@@ -119,8 +119,7 @@ Future<void> _pumpEvent(WidgetTester tester, Map<String, dynamic> event) async {
               remote: remote,
               secureStorage: secureStorage,
               ref: ref,
-              initialState:
-                  const AuthorAuthState(isLoggedIn: false),
+              initialState: const AuthorAuthState(isLoggedIn: false),
             ),
           ),
         ],
@@ -146,8 +145,7 @@ void main() {
     await HiveService.getSettingsBox().clear();
   });
 
-  testWidgets(
-      'renders title in AppBar, DV/Topic chips and location map',
+  testWidgets('renders title in AppBar, DV/Topic chips and location map',
       (tester) async {
     final repository =
         settings_repo.SettingsRepository(HiveService.getSettingsBox());
@@ -168,8 +166,7 @@ void main() {
                 remote: remote,
                 secureStorage: secureStorage,
                 ref: ref,
-                initialState:
-                    const AuthorAuthState(isLoggedIn: false),
+                initialState: const AuthorAuthState(isLoggedIn: false),
               ),
             ),
           ],
@@ -272,8 +269,7 @@ void main() {
             remote: remote,
             secureStorage: secureStorage,
             ref: ref,
-            initialState:
-                const AuthorAuthState(isLoggedIn: false),
+            initialState: const AuthorAuthState(isLoggedIn: false),
           ),
         ),
       ],
@@ -326,8 +322,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'renders CTA1 as primary and CTA2 as secondary when both are set',
+  testWidgets('renders CTA1 as primary and CTA2 as secondary when both are set',
       (tester) async {
     await _pumpEvent(tester, {
       ..._sampleEvent,

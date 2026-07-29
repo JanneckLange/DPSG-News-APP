@@ -45,7 +45,8 @@ Future<List<GeoapifyAddress>> autocompleteAddress(
     throw Exception('No API key configured for Geoapify (GEOAPIFY_KEY)');
   }
 
-  final uri = Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete').replace(
+  final uri =
+      Uri.parse('https://api.geoapify.com/v1/geocode/autocomplete').replace(
     queryParameters: {
       'text': text,
       'lang': 'de',
@@ -88,7 +89,8 @@ Future<List<GeoapifyAddress>> autocompleteAddress(
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final results = data['results'] as List<dynamic>? ?? [];
     return results
-        .map((result) => GeoapifyAddress.fromJson(result as Map<String, dynamic>))
+        .map((result) =>
+            GeoapifyAddress.fromJson(result as Map<String, dynamic>))
         .toList();
   } catch (error) {
     if (stopwatch.isRunning) {

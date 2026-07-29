@@ -26,7 +26,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _handleTripleTapInTwoSeconds() {
     final now = DateTime.now();
-    if (_firstTapAt == null || now.difference(_firstTapAt!) > const Duration(seconds: 2)) {
+    if (_firstTapAt == null ||
+        now.difference(_firstTapAt!) > const Duration(seconds: 2)) {
       _firstTapAt = now;
       _tapCount = 1;
     } else {
@@ -69,7 +70,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'App-Einstellungen',
                 subtitle: 'Darstellung, Sprache und Tracking',
                 onTap: () {
-                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('app_settings_entry', screen: 'settings', action: 'open', target: 'app_settings'));
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick(
+                      'app_settings_entry',
+                      screen: 'settings',
+                      action: 'open',
+                      target: 'app_settings'));
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       settings: const RouteSettings(name: 'AppSettingsScreen'),
@@ -84,13 +89,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Benachrichtigungen',
                 subtitle: 'Praeferenzen und DV-/Topic-Auswahl',
                 onTap: () {
-                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('notifications_entry', screen: 'settings', action: 'open', target: 'notifications'));
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick(
+                      'notifications_entry',
+                      screen: 'settings',
+                      action: 'open',
+                      target: 'notifications'));
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       settings: const RouteSettings(
                           name: 'NotificationSettingsScreen'),
-                      builder: (context) =>
-                          const NotificationSettingsScreen(),
+                      builder: (context) => const NotificationSettingsScreen(),
                     ),
                   );
                 },
@@ -101,7 +109,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'DV-Auswahl',
                 subtitle: 'Diözesanverbände und Favoriten',
                 onTap: () {
-                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('dv_selection_entry', screen: 'settings', action: 'open', target: 'dv_selection'));
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick(
+                      'dv_selection_entry',
+                      screen: 'settings',
+                      action: 'open',
+                      target: 'dv_selection'));
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       settings: const RouteSettings(name: 'DvSelectionScreen'),
@@ -116,7 +128,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSectionHeader('Debug & Tools'),
           _buildCard(
             children: [
-               _buildNavigationTile(
+              _buildNavigationTile(
                 context,
                 icon: Icons.feedback_outlined,
                 title: 'Feedback senden',
@@ -131,7 +143,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Debug & Tools',
                 subtitle: 'Logs, Diagnose und Referenzen',
                 onTap: () {
-                  unawaited(ref.read(analyticsServiceProvider).trackUiClick('debug_tools_entry', screen: 'settings', action: 'open', target: 'debug_tools'));
+                  unawaited(ref.read(analyticsServiceProvider).trackUiClick(
+                      'debug_tools_entry',
+                      screen: 'settings',
+                      action: 'open',
+                      target: 'debug_tools'));
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       settings: const RouteSettings(name: 'DebugToolsScreen'),
@@ -146,8 +162,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildSectionHeader('Rechtliches'),
           _buildCard(
             children: [
-              _buildNavigationTile(context, icon: Icons.gavel, title: 'Impressum', onTap: () {}),
-              _buildNavigationTile(context, icon: Icons.shield, title: 'Datenschutz', onTap: () {}),
+              _buildNavigationTile(context,
+                  icon: Icons.gavel, title: 'Impressum', onTap: () {}),
+              _buildNavigationTile(context,
+                  icon: Icons.shield, title: 'Datenschutz', onTap: () {}),
             ],
           ),
           const SizedBox(height: 24),
@@ -162,11 +180,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('Entwickelt mit', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text('Entwickelt mit',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
                       SizedBox(width: 4),
                       Icon(Icons.favorite, size: 14, color: Colors.red),
                       SizedBox(width: 4),
-                      Text('in Hamburg', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text('in Hamburg',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
                   SizedBox(height: 6),
@@ -193,11 +213,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onTap: () {
           unawaited(
             ref.read(analyticsServiceProvider).trackUiClick(
-              'profile_card',
-              screen: 'settings',
-              action: 'open',
-              target: 'profile',
-            ),
+                  'profile_card',
+                  screen: 'settings',
+                  action: 'open',
+                  target: 'profile',
+                ),
           );
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -213,7 +233,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: Icon(Icons.person, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                child: Icon(Icons.person,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -221,17 +242,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      authorAuth.isLoggedIn ? (authorAuth.username ?? 'Autor') : 'Profil',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      authorAuth.isLoggedIn
+                          ? (authorAuth.username ?? 'Autor')
+                          : 'Profil',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       authorAuth.isLoggedIn ? 'Accounts und Rechte' : 'Anonym',
-                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      authorAuth.isLoggedIn ? 'Passwort, Logout und Admin-Bereich hier' : 'Login über Profil verfügbar',
+                      authorAuth.isLoggedIn
+                          ? 'Passwort, Logout und Admin-Bereich hier'
+                          : 'Login über Profil verfügbar',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -248,7 +275,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      child: Text(title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -262,18 +290,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildNavigationTile(
     BuildContext context, {
-      required IconData icon,
-      required String title,
-      String? subtitle,
-      Widget? trailing,
-      VoidCallback? onTap,
-    }) {
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: CircleAvatar(
         radius: 16,
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        child: Icon(icon, size: 18, color: Theme.of(context).colorScheme.onPrimaryContainer),
+        child: Icon(icon,
+            size: 18, color: Theme.of(context).colorScheme.onPrimaryContainer),
       ),
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle),

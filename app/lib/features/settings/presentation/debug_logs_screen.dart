@@ -8,8 +8,7 @@ class InlineLogsControls extends ConsumerStatefulWidget {
   const InlineLogsControls({super.key});
 
   @override
-  ConsumerState<InlineLogsControls> createState() =>
-      _InlineLogsControlsState();
+  ConsumerState<InlineLogsControls> createState() => _InlineLogsControlsState();
 }
 
 class _InlineLogsControlsState extends ConsumerState<InlineLogsControls> {

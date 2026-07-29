@@ -271,13 +271,16 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     // war), diesen Text ohne Koordinaten als Ortsangabe uebernehmen.
     final typedLocation = _locationTextController?.text.trim();
     final resolvedLocationAddress = _locationAddress ??
-        ((typedLocation != null && typedLocation.isNotEmpty) ? typedLocation : null);
+        ((typedLocation != null && typedLocation.isNotEmpty)
+            ? typedLocation
+            : null);
     final payload = <String, dynamic>{
       'title': title,
       'description': _descriptionController.text.trim(),
       if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
       if (_endDate != null) 'endDate': _endDate!.toIso8601String(),
-      if (resolvedLocationAddress != null) 'locationAddress': resolvedLocationAddress,
+      if (resolvedLocationAddress != null)
+        'locationAddress': resolvedLocationAddress,
       if (_locationLat != null) 'locationLat': _locationLat,
       if (_locationLng != null) 'locationLng': _locationLng,
       if (_selectedLayerId != null) 'layerId': _selectedLayerId,
@@ -446,8 +449,10 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                     ),
                     const SizedBox(height: 12),
                     Autocomplete<String>(
-                      initialValue: TextEditingValue(text: _locationAddress ?? ''),
-                      optionsBuilder: (TextEditingValue textEditingValue) async {
+                      initialValue:
+                          TextEditingValue(text: _locationAddress ?? ''),
+                      optionsBuilder:
+                          (TextEditingValue textEditingValue) async {
                         final query = textEditingValue.text.trim();
                         if (query.length < 3) {
                           _locationSuggestions = [];
@@ -465,7 +470,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             List<GeoapifyAddress> results = [];
                             var unavailable = false;
                             try {
-                              results = await autocompleteAddress(query, logger: logger);
+                              results = await autocompleteAddress(query,
+                                  logger: logger);
                             } catch (primaryError, primaryStack) {
                               await logger.logServiceError(
                                 'geoapify',
@@ -495,17 +501,20 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                               // auseinanderlaeuft (Race-Condition durch
                               // Timer.cancel(), das laufende Callbacks nicht
                               // stoppt).
-                              completer.complete(const Iterable<String>.empty());
+                              completer
+                                  .complete(const Iterable<String>.empty());
                               return;
                             }
                             _locationSuggestions = results;
                             if (mounted) {
-                              setState(() => _locationSearchUnavailable = unavailable);
+                              setState(() =>
+                                  _locationSearchUnavailable = unavailable);
                             } else {
                               _locationSearchUnavailable = unavailable;
                             }
                             completer.complete(
-                              _locationSuggestions.map((address) => address.formatted),
+                              _locationSuggestions
+                                  .map((address) => address.formatted),
                             );
                           },
                         );

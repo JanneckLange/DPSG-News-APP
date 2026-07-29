@@ -22,7 +22,9 @@ class _FakeRemoteEventSource extends RemoteEventSource {
   _FakeRemoteEventSource() : super(baseUrl: Uri.parse('http://localhost'));
 
   @override
-  Future<Map<String, dynamic>> fetchAdminLayers({required String token}) async => {
+  Future<Map<String, dynamic>> fetchAdminLayers(
+          {required String token}) async =>
+      {
         'layers': [
           {'id': _hamburgLayerId, 'name': 'Hamburg', 'parentId': null},
           {'id': _koelnLayerId, 'name': 'Köln', 'parentId': null},
@@ -38,7 +40,8 @@ class _FakeRemoteEventSource extends RemoteEventSource {
 }
 
 Future<void> _pumpUntilFound(WidgetTester tester, Finder finder,
-    {int maxAttempts = 20, Duration step = const Duration(milliseconds: 100)}) async {
+    {int maxAttempts = 20,
+    Duration step = const Duration(milliseconds: 100)}) async {
   for (var i = 0; i < maxAttempts; i++) {
     if (tester.any(finder)) return;
     await Future<void>.delayed(step);
@@ -70,7 +73,8 @@ void main() {
       ProviderScope(
         overrides: [
           sync_service.remoteEventSourceProvider.overrideWithValue(remote),
-          settings_repo.settingsRepositoryProvider.overrideWithValue(repository),
+          settings_repo.settingsRepositoryProvider
+              .overrideWithValue(repository),
           authorAuthProvider.overrideWith(
             (ref) => TestAuthorAuthNotifier(
               repository: repository,

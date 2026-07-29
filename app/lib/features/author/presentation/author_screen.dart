@@ -89,8 +89,7 @@ class AuthorScreen extends ConsumerWidget {
             ? null
             : () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    settings:
-                        const RouteSettings(name: 'StaleEventsScreen'),
+                    settings: const RouteSettings(name: 'StaleEventsScreen'),
                     builder: (context) =>
                         StaleEventsScreen(events: stats.staleEvents),
                   ),
@@ -131,8 +130,8 @@ class AuthorScreen extends ConsumerWidget {
             onPressed: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  settings: const RouteSettings(
-                      name: 'AuthorChangePasswordScreen'),
+                  settings:
+                      const RouteSettings(name: 'AuthorChangePasswordScreen'),
                   builder: (context) => const AuthorChangePasswordScreen(),
                 ),
               );
