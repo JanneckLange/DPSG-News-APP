@@ -566,8 +566,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_app_app",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "app"
     },
     {
@@ -588,8 +588,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_app_appstate",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "_appstate"
     },
     {
@@ -610,8 +610,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "widgetsbindingobserver",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "widgetsbindingobserver"
     },
     {
@@ -621,8 +621,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "appthememodeprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 170,
+      "community_name": "AppSettingsScreen",
       "norm_label": "appthememodeprovider"
     },
     {
@@ -643,8 +643,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "settings_repository",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "settings_repository"
     },
     {
@@ -676,8 +676,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_app_currentindexprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "currentindexprovider"
     },
     {
@@ -742,8 +742,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_app_initstate",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 23,
+      "community_name": "App Widget Lifecycle",
       "norm_label": "initstate"
     },
     {
@@ -775,8 +775,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_app_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "build"
     },
     {
@@ -797,8 +797,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "dart_async",
-      "community": 76,
-      "community_name": "Remote Event Source Test",
+      "community": 66,
+      "community_name": "Feedback Service",
       "norm_label": "dart:async"
     },
     {
@@ -830,8 +830,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_flutter_riverpod_flutter_riverpod_dart",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "package:flutter_riverpod/flutter_riverpod.dart"
     },
     {
@@ -863,8 +863,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "core_theme_app_theme_dart",
-      "community": 59,
-      "community_name": "Layer Model",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "../../../core/theme/app_theme.dart"
     },
     {
@@ -874,8 +874,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "core_services_analytics_service_dart",
-      "community": 66,
-      "community_name": "Feedback Service",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "core/services/analytics_service.dart"
     },
     {
@@ -962,8 +962,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "features_author_data_author_auth_provider_dart",
-      "community": 31,
-      "community_name": "Event Sync Service",
+      "community": 23,
+      "community_name": "App Widget Lifecycle",
       "norm_label": "../../features/author/data/author_auth_provider.dart"
     },
     {
@@ -1149,8 +1149,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "dart_io",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "dart:io"
     },
     {
@@ -1182,8 +1182,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_analytics_service_analyticsservice",
-      "community": 19,
-      "community_name": "Analytics Service",
+      "community": 23,
+      "community_name": "App Widget Lifecycle",
       "norm_label": "analyticsservice"
     },
     {
@@ -1215,8 +1215,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "return",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "return"
     },
     {
@@ -1512,8 +1512,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_shared_preferences_shared_preferences_dart",
-      "community": 169,
-      "community_name": "analytics_service_test.dart",
+      "community": 30,
+      "community_name": "Usage Tracking Service",
       "norm_label": "package:shared_preferences/shared_preferences.dart"
     },
     {
@@ -1534,8 +1534,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_app_navigation_service",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "app_navigation_service.dart"
     },
     {
@@ -1545,8 +1545,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_app_navigation_service_appnavigatorkeyprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "appnavigatorkeyprovider"
     },
     {
@@ -1556,8 +1556,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "globalkey",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "globalkey"
     },
     {
@@ -1567,8 +1567,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "navigatorstate",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "navigatorstate"
     },
     {
@@ -2007,8 +2007,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_logging_service_appnavigationloggingobserver",
-      "community": 173,
-      "community_name": "AppNavigationLoggingObserver",
+      "community": 1,
+      "community_name": "Logging Service Core",
       "norm_label": "appnavigationloggingobserver"
     },
     {
@@ -2018,8 +2018,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "navigatorobserver",
-      "community": 173,
-      "community_name": "AppNavigationLoggingObserver",
+      "community": 1,
+      "community_name": "Logging Service Core",
       "norm_label": "navigatorobserver"
     },
     {
@@ -2029,8 +2029,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_logging_service_loggingserviceprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 4,
+      "community_name": "Server DB & Auth Sessions",
       "norm_label": "loggingserviceprovider"
     },
     {
@@ -2084,8 +2084,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "list",
-      "community": 159,
-      "community_name": "admin_screen_test.dart",
+      "community": 171,
+      "community_name": "AuthorAuthNotifier",
       "norm_label": "list"
     },
     {
@@ -2139,8 +2139,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "future",
-      "community": 1,
-      "community_name": "Logging Service Core",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
       "norm_label": "future"
     },
     {
@@ -2733,8 +2733,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_notification_service_apnstokenprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 9,
+      "community_name": "Debug Tools Screen",
       "norm_label": "apnstokenprovider"
     },
     {
@@ -3305,8 +3305,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_sync_service_syncserviceprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 23,
+      "community_name": "App Widget Lifecycle",
       "norm_label": "syncserviceprovider"
     },
     {
@@ -3602,8 +3602,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_wiredash_metadata_service",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 172,
+      "community_name": "wiredash_metadata_service.dart",
       "norm_label": "wiredash_metadata_service.dart"
     },
     {
@@ -3613,8 +3613,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_wiredash_metadata_service_wiredashmetadataservice",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 172,
+      "community_name": "wiredash_metadata_service.dart",
       "norm_label": "wiredashmetadataservice"
     },
     {
@@ -3624,8 +3624,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_core_services_wiredash_metadata_service",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 172,
+      "community_name": "wiredash_metadata_service.dart",
       "norm_label": "_"
     },
     {
@@ -3635,8 +3635,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_core_services_wiredash_metadata_service_buildsafecustommetadata",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 172,
+      "community_name": "wiredash_metadata_service.dart",
       "norm_label": "buildsafecustommetadata"
     },
     {
@@ -4053,8 +4053,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "materialpageroute",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 140,
+      "community_name": "AppSettingsScreen",
       "norm_label": "materialpageroute"
     },
     {
@@ -4141,8 +4141,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "sync_service",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "sync_service"
     },
     {
@@ -4163,8 +4163,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "map",
-      "community": 59,
-      "community_name": "Layer Model",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "map"
     },
     {
@@ -4328,8 +4328,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_admin_user_detail_screen_loadlayercontext",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_loadlayercontext"
     },
     {
@@ -4350,8 +4350,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_admin_user_detail_screen_addadminlayers",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_addadminlayers"
     },
     {
@@ -4372,8 +4372,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_admin_user_detail_screen_editauthorgrants",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_editauthorgrants"
     },
     {
@@ -4493,8 +4493,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_admin_user_detail_screen_opencontribution",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 140,
+      "community_name": "AppSettingsScreen",
       "norm_label": "_opencontribution"
     },
     {
@@ -4504,8 +4504,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_admin_user_detail_screen_build",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "build"
     },
     {
@@ -4553,15 +4553,15 @@
       "norm_label": "../../settings/domain/layer_model.dart"
     },
     {
-      "label": "../../../core/services/error_toast_service.dart",
+      "label": "../../../../core/services/error_toast_service.dart",
       "file_type": "code",
       "source_file": null,
       "source_location": null,
       "_origin": "ast",
       "id": "core_services_error_toast_service_dart",
-      "community": 43,
-      "community_name": "Author Change Password Screen",
-      "norm_label": "../../../core/services/error_toast_service.dart"
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "../../../../core/services/error_toast_service.dart"
     },
     {
       "label": "../../domain/topic_model.dart",
@@ -4768,8 +4768,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_layeradmintree",
-      "community": 52,
-      "community_name": "Admin Dialogs & Log Viewer",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "layeradmintree"
     },
     {
@@ -4779,8 +4779,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_layeradmintreestate",
-      "community": 52,
-      "community_name": "Admin Dialogs & Log Viewer",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_layeradmintreestate"
     },
     {
@@ -5076,8 +5076,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_loadtopics",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_loadtopics"
     },
     {
@@ -5087,8 +5087,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_loadlayers",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_loadlayers"
     },
     {
@@ -5098,8 +5098,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_openlayerdetail",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 140,
+      "community_name": "AppSettingsScreen",
       "norm_label": "_openlayerdetail"
     },
     {
@@ -5109,8 +5109,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_createchildlayer",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_createchildlayer"
     },
     {
@@ -5120,8 +5120,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_renamelayer",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_renamelayer"
     },
     {
@@ -5131,8 +5131,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_admin_tree_deletelayer",
-      "community": 52,
-      "community_name": "Admin Dialogs & Log Viewer",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_deletelayer"
     },
     {
@@ -5296,8 +5296,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_layerdetailscreen",
-      "community": 46,
-      "community_name": "Author Login Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "layerdetailscreen"
     },
     {
@@ -5307,8 +5307,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_layerdetailscreenstate",
-      "community": 46,
-      "community_name": "Author Login Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_layerdetailscreenstate"
     },
     {
@@ -5582,8 +5582,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_loadtopics",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 46,
+      "community_name": "Author Login Screen",
       "norm_label": "_loadtopics"
     },
     {
@@ -5593,8 +5593,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_loadadmins",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 46,
+      "community_name": "Author Login Screen",
       "norm_label": "_loadadmins"
     },
     {
@@ -5604,8 +5604,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_loadauthors",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 46,
+      "community_name": "Author Login Screen",
       "norm_label": "_loadauthors"
     },
     {
@@ -5615,8 +5615,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_createtopic",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 46,
+      "community_name": "Author Login Screen",
       "norm_label": "_createtopic"
     },
     {
@@ -5626,8 +5626,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_renametopic",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 46,
+      "community_name": "Author Login Screen",
       "norm_label": "_renametopic"
     },
     {
@@ -5637,8 +5637,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_deletetopic",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 46,
+      "community_name": "Author Login Screen",
       "norm_label": "_deletetopic"
     },
     {
@@ -5648,8 +5648,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_createadmin",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 46,
+      "community_name": "Author Login Screen",
       "norm_label": "_createadmin"
     },
     {
@@ -5659,8 +5659,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_layer_detail_screen_createauthor",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_createauthor"
     },
     {
@@ -5956,8 +5956,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_widgets_layer_topic_grant_tree_dialog_layertopicgranttreedialog",
-      "community": 77,
-      "community_name": "Server Push Notification Payloads",
+      "community": 157,
+      "community_name": "skeleton_card_list.dart",
       "norm_label": "_layertopicgranttreedialog"
     },
     {
@@ -5967,8 +5967,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_admin_presentation_widgets_layer_topic_grant_tree_dialog_layertopicgranttreedialogstate",
-      "community": 77,
-      "community_name": "Server Push Notification Payloads",
+      "community": 157,
+      "community_name": "skeleton_card_list.dart",
       "norm_label": "_layertopicgranttreedialogstate"
     },
     {
@@ -6242,8 +6242,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_data_author_auth_provider_authorauthstate",
-      "community": 171,
-      "community_name": "AuthorAuthNotifier",
+      "community": 15,
+      "community_name": "Author Auth Provider",
       "norm_label": "authorauthstate"
     },
     {
@@ -6253,8 +6253,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_data_author_auth_provider_authorauthnotifier",
-      "community": 171,
-      "community_name": "AuthorAuthNotifier",
+      "community": 15,
+      "community_name": "Author Auth Provider",
       "norm_label": "authorauthnotifier"
     },
     {
@@ -6429,8 +6429,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_data_author_auth_provider_authorauthprovider",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "authorauthprovider"
     },
     {
@@ -7078,8 +7078,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_presentation_author_login_screen_authorloginscreen",
-      "community": 43,
-      "community_name": "Author Change Password Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "authorloginscreen"
     },
     {
@@ -7089,8 +7089,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_presentation_author_login_screen_authorloginscreenstate",
-      "community": 43,
-      "community_name": "Author Change Password Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_authorloginscreenstate"
     },
     {
@@ -7221,8 +7221,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_presentation_author_login_screen_submit",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 140,
+      "community_name": "AppSettingsScreen",
       "norm_label": "_submit"
     },
     {
@@ -7276,8 +7276,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "consumerwidget",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "consumerwidget"
     },
     {
@@ -7320,8 +7320,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_presentation_author_screen_buildstattiles",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 140,
+      "community_name": "AppSettingsScreen",
       "norm_label": "_buildstattiles"
     },
     {
@@ -7452,8 +7452,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_author_presentation_stale_events_screen_staleeventsscreen",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "staleeventsscreen"
     },
     {
@@ -7485,8 +7485,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_calendar_presentation_calendar_screen",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "calendar_screen.dart"
     },
     {
@@ -7496,8 +7496,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_calendar_presentation_calendar_screen_calendarscreen",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "calendarscreen"
     },
     {
@@ -7507,8 +7507,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "statelesswidget",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 24,
+      "community_name": "Topic Admin Screen",
       "norm_label": "statelesswidget"
     },
     {
@@ -7518,8 +7518,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_calendar_presentation_calendar_screen_build",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "build"
     },
     {
@@ -8205,6 +8205,17 @@
       "norm_label": "fetcheventupdates"
     },
     {
+      "label": "fetchEventHistory",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/data/remote_event_source/events_api.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_features_events_data_remote_event_source_fetcheventhistory",
+      "community": 2,
+      "community_name": "Remote Event Source & Auth",
+      "norm_label": "fetcheventhistory"
+    },
+    {
       "label": "createEventUpdate",
       "file_type": "code",
       "source_file": "app/lib/features/events/data/remote_event_source/events_api.dart",
@@ -8486,8 +8497,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "remote_event_source_exception.dart"
     },
     {
@@ -8497,8 +8508,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception_remoteeventsourceexception",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "remoteeventsourceexception"
     },
     {
@@ -8508,8 +8519,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "exception",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "exception"
     },
     {
@@ -8519,8 +8530,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception_message",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "message"
     },
     {
@@ -8530,8 +8541,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception_exception",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "exception"
     },
     {
@@ -8541,8 +8552,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "object",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "object?"
     },
     {
@@ -8552,8 +8563,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception_stacktrace",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "stacktrace"
     },
     {
@@ -8563,8 +8574,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "stacktrace",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "stacktrace?"
     },
     {
@@ -8574,8 +8585,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception_statuscode",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "statuscode"
     },
     {
@@ -8585,8 +8596,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception_servermessage",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "servermessage"
     },
     {
@@ -8596,8 +8607,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_data_remote_event_source_remote_event_source_exception_tostring",
-      "community": 96,
-      "community_name": "Remote Event Source Exception",
+      "community": 159,
+      "community_name": "admin_screen_test.dart",
       "norm_label": "tostring"
     },
     {
@@ -8838,8 +8849,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "settingsrepositoryprovider",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "settingsrepositoryprovider"
     },
     {
@@ -9014,8 +9025,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_detail_screen_loadtopicname",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "_loadtopicname"
     },
     {
@@ -9036,8 +9047,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_detail_screen_loadupdates",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_loadupdates"
     },
     {
@@ -9047,8 +9058,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_detail_screen_postupdate",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "_postupdate"
     },
     {
@@ -9113,9 +9124,20 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_detail_screen_editevent",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_editevent"
+    },
+    {
+      "label": "_showHistoryDialog",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/event_detail_screen.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_event_detail_screen_showhistorydialog",
+      "community": 27,
+      "community_name": "Event Detail Screen",
+      "norm_label": "_showhistorydialog"
     },
     {
       "label": "_deleteEvent",
@@ -9124,8 +9146,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_detail_screen_deleteevent",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_deleteevent"
     },
     {
@@ -9135,8 +9157,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_detail_screen_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "build"
     },
     {
@@ -9151,15 +9173,15 @@
       "norm_label": "package:url_launcher/url_launcher.dart"
     },
     {
-      "label": "../../../shared/utils/date_format_utils.dart",
+      "label": "../../../../shared/utils/date_format_utils.dart",
       "file_type": "code",
       "source_file": null,
       "source_location": null,
       "_origin": "ast",
       "id": "shared_utils_date_format_utils_dart",
-      "community": 59,
-      "community_name": "Layer Model",
-      "norm_label": "../../../shared/utils/date_format_utils.dart"
+      "community": 27,
+      "community_name": "Event Detail Screen",
+      "norm_label": "../../../../shared/utils/date_format_utils.dart"
     },
     {
       "label": "../../../shared/utils/url_utils.dart",
@@ -9179,8 +9201,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "shared_widgets_labeled_chip_dart",
-      "community": 59,
-      "community_name": "Layer Model",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "../../../shared/widgets/labeled_chip.dart"
     },
     {
@@ -9190,8 +9212,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "shared_widgets_location_map_view_dart",
-      "community": 59,
-      "community_name": "Layer Model",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "../../../shared/widgets/location_map_view.dart"
     },
     {
@@ -9239,14 +9261,25 @@
       "norm_label": "event_editor_sheet.dart"
     },
     {
+      "label": "widgets/event_history_dialog.dart",
+      "file_type": "code",
+      "source_file": null,
+      "source_location": null,
+      "_origin": "ast",
+      "id": "widgets_event_history_dialog_dart",
+      "community": 27,
+      "community_name": "Event Detail Screen",
+      "norm_label": "widgets/event_history_dialog.dart"
+    },
+    {
       "label": "event_details_preview.dart",
       "file_type": "code",
       "source_file": "app/lib/features/events/presentation/event_details_preview.dart",
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_details_preview",
-      "community": 59,
-      "community_name": "Layer Model",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "event_details_preview.dart"
     },
     {
@@ -9256,8 +9289,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_details_preview_eventdetailspreview",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "eventdetailspreview"
     },
     {
@@ -9267,8 +9300,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_details_preview_event",
-      "community": 59,
-      "community_name": "Layer Model",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "event"
     },
     {
@@ -9278,8 +9311,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_details_preview_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "build"
     },
     {
@@ -9300,8 +9333,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_editor_sheet_eventeditorpage",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "eventeditorpage"
     },
     {
@@ -9311,8 +9344,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_editor_sheet_eventeditorpagestate",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "_eventeditorpagestate"
     },
     {
@@ -9696,8 +9729,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_editor_sheet_initstate",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "initstate"
     },
     {
@@ -9707,8 +9740,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_editor_sheet_loadtopicsforlayer",
-      "community": 14,
-      "community_name": "Admin User Detail Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_loadtopicsforlayer"
     },
     {
@@ -9795,8 +9828,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_editor_sheet_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 4,
+      "community_name": "Server DB & Auth Sessions",
       "norm_label": "build"
     },
     {
@@ -9850,8 +9883,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_event_list_tile_eventlisttile",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 24,
+      "community_name": "Topic Admin Screen",
       "norm_label": "eventlisttile"
     },
     {
@@ -9982,8 +10015,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "voidcallback",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "voidcallback?"
     },
     {
@@ -10125,8 +10158,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "events_screen.dart"
     },
     {
@@ -10136,8 +10169,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_listentry",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "_listentry"
     },
     {
@@ -10147,8 +10180,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_monthheaderentry",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "_monthheaderentry"
     },
     {
@@ -10158,8 +10191,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_evententry",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "_evententry"
     },
     {
@@ -10191,8 +10224,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_eventsprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "eventsprovider"
     },
     {
@@ -10202,8 +10235,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_box",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "box"
     },
     {
@@ -10213,8 +10246,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_label",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "label"
     },
     {
@@ -10224,8 +10257,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_event",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "event"
     },
     {
@@ -10235,8 +10268,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_saved",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "saved"
     },
     {
@@ -10246,8 +10279,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_rest",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "rest"
     },
     {
@@ -10257,8 +10290,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_entries",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "entries"
     },
     {
@@ -10268,8 +10301,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_currentmonthkey",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "currentmonthkey"
     },
     {
@@ -10279,8 +10312,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_buildlistentries",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "_buildlistentries"
     },
     {
@@ -10290,8 +10323,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_startof",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "startof"
     },
     {
@@ -10301,8 +10334,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_comparebystart",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "comparebystart"
     },
     {
@@ -10312,8 +10345,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_createstate",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "createstate"
     },
     {
@@ -10323,8 +10356,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_events_presentation_events_screen_initstate",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "initstate"
     },
     {
@@ -10367,8 +10400,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "event_detail_screen_dart",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "event_detail_screen.dart"
     },
     {
@@ -10378,8 +10411,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "event_list_tile_dart",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "event_list_tile.dart"
     },
     {
@@ -10389,9 +10422,174 @@
       "source_location": null,
       "_origin": "ast",
       "id": "events_dashboard_stats_dart",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 29,
+      "community_name": "App Navigation State",
       "norm_label": "events_dashboard_stats.dart"
+    },
+    {
+      "label": "event_history_dialog.dart",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "event_history_dialog.dart"
+    },
+    {
+      "label": "EventHistoryDialog",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialog",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
+      "norm_label": "eventhistorydialog"
+    },
+    {
+      "label": "_EventHistoryDialogState",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialogstate",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
+      "norm_label": "_eventhistorydialogstate"
+    },
+    {
+      "label": "_eventHistoryFieldLabels",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistoryfieldlabels",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "_eventhistoryfieldlabels"
+    },
+    {
+      "label": "eventId",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_eventid",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "eventid"
+    },
+    {
+      "label": "_historyFuture",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_historyfuture",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "_historyfuture"
+    },
+    {
+      "label": "_fieldLabel",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_fieldlabel",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "_fieldlabel"
+    },
+    {
+      "label": "_formatValue",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_formatvalue",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "_formatvalue"
+    },
+    {
+      "label": "toString",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_tostring",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "tostring"
+    },
+    {
+      "label": "showEventHistoryDialog",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_showeventhistorydialog",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "showeventhistorydialog"
+    },
+    {
+      "label": "createState",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_createstate",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "createstate"
+    },
+    {
+      "label": "_loadHistory",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_loadhistory",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "_loadhistory"
+    },
+    {
+      "label": "_openAuthorProfile",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_openauthorprofile",
+      "community": 140,
+      "community_name": "AppSettingsScreen",
+      "norm_label": "_openauthorprofile"
+    },
+    {
+      "label": "build",
+      "file_type": "code",
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "_origin": "ast",
+      "id": "app_lib_features_events_presentation_widgets_event_history_dialog_build",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "build"
+    },
+    {
+      "label": "../../../admin/presentation/admin_user_detail_screen.dart",
+      "file_type": "code",
+      "source_file": null,
+      "source_location": null,
+      "_origin": "ast",
+      "id": "admin_presentation_admin_user_detail_screen_dart",
+      "community": 142,
+      "community_name": "event_history_dialog.dart",
+      "norm_label": "../../../admin/presentation/admin_user_detail_screen.dart"
     },
     {
       "label": "welcome_screen.dart",
@@ -10510,8 +10708,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_profile_presentation_profile_screen_profilescreen",
-      "community": 6,
-      "community_name": "Navigation & Author/Events Screens",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "profilescreen"
     },
     {
@@ -10587,8 +10785,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_api_health_provider_apihealthprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 9,
+      "community_name": "Debug Tools Screen",
       "norm_label": "apihealthprovider"
     },
     {
@@ -10620,8 +10818,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "dv_tree_provider.dart"
     },
     {
@@ -10631,8 +10829,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_layertreenotifier",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "layertreenotifier"
     },
     {
@@ -10642,8 +10840,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "asyncvalue",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "asyncvalue"
     },
     {
@@ -10653,8 +10851,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_layertreeprovider",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "layertreeprovider"
     },
     {
@@ -10664,8 +10862,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_layernamesbyidprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 59,
+      "community_name": "Layer Model",
       "norm_label": "layernamesbyidprovider"
     },
     {
@@ -10675,8 +10873,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_layers",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "layers"
     },
     {
@@ -10686,8 +10884,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_repository",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "_repository"
     },
     {
@@ -10697,8 +10895,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_remotesource",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "_remotesource"
     },
     {
@@ -10708,8 +10906,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_refresh",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "refresh"
     },
     {
@@ -10719,8 +10917,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_data_dv_tree_provider_loadtree",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "_loadtree"
     },
     {
@@ -10730,8 +10928,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "domain_layer_model_dart",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "../domain/layer_model.dart"
     },
     {
@@ -10741,8 +10939,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "settings_repository_dart",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 167,
+      "community_name": "dv_tree_provider.dart",
       "norm_label": "settings_repository.dart"
     },
     {
@@ -11764,8 +11962,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_features_settings_data_settings_repository_eventviewedatnotifier",
-      "community": 59,
-      "community_name": "Layer Model",
+      "community": 27,
+      "community_name": "Event Detail Screen",
       "norm_label": "eventviewedatnotifier"
     },
     {
@@ -11863,8 +12061,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_features_settings_data_settings_repository_analyticstrackingprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 170,
+      "community_name": "AppSettingsScreen",
       "norm_label": "analyticstrackingprovider"
     },
     {
@@ -11874,8 +12072,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_features_settings_data_settings_repository_applanguageprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 170,
+      "community_name": "AppSettingsScreen",
       "norm_label": "applanguageprovider"
     },
     {
@@ -11962,8 +12160,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_features_settings_data_settings_repository_autosaveeventonctaclickprovider",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 170,
+      "community_name": "AppSettingsScreen",
       "norm_label": "autosaveeventonctaclickprovider"
     },
     {
@@ -12545,8 +12743,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_app_settings_screen_appsettingsscreen",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 170,
+      "community_name": "AppSettingsScreen",
       "norm_label": "appsettingsscreen"
     },
     {
@@ -12589,8 +12787,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_app_settings_screen_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 170,
+      "community_name": "AppSettingsScreen",
       "norm_label": "build"
     },
     {
@@ -12611,8 +12809,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_changelog_screen",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "changelog_screen.dart"
     },
     {
@@ -12622,8 +12820,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_changelog_screen_changelogscreen",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "changelogscreen"
     },
     {
@@ -12633,8 +12831,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_changelog_screen_build",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "build"
     },
     {
@@ -12655,8 +12853,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_confetti_overlay_confettioverlay",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "confettioverlay"
     },
     {
@@ -12677,8 +12875,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_confetti_overlay_confettioverlaystate",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "_confettioverlaystate"
     },
     {
@@ -12688,8 +12886,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "singletickerproviderstatemixin",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "singletickerproviderstatemixin"
     },
     {
@@ -12864,8 +13062,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "color",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "color?"
     },
     {
@@ -12908,8 +13106,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "animationcontroller",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "animationcontroller"
     },
     {
@@ -13073,8 +13271,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_logs_screen_inlinelogscontrols",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 4,
+      "community_name": "Server DB & Auth Sessions",
       "norm_label": "inlinelogscontrols"
     },
     {
@@ -13084,8 +13282,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_logs_screen_inlinelogscontrolsstate",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 4,
+      "community_name": "Server DB & Auth Sessions",
       "norm_label": "_inlinelogscontrolsstate"
     },
     {
@@ -13095,8 +13293,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_logs_screen_logsviewscreen",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 4,
+      "community_name": "Server DB & Auth Sessions",
       "norm_label": "logsviewscreen"
     },
     {
@@ -13106,8 +13304,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_logs_screen_logsviewscreenstate",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 4,
+      "community_name": "Server DB & Auth Sessions",
       "norm_label": "_logsviewscreenstate"
     },
     {
@@ -13139,8 +13337,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_logs_screen_coloredlogview",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 24,
+      "community_name": "Topic Admin Screen",
       "norm_label": "_coloredlogview"
     },
     {
@@ -13315,8 +13513,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_logs_screen_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 4,
+      "community_name": "Server DB & Auth Sessions",
       "norm_label": "build"
     },
     {
@@ -13425,8 +13623,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_tools_screen_debugtoolsscreen",
-      "community": 9,
-      "community_name": "Debug Tools Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "debugtoolsscreen"
     },
     {
@@ -13436,8 +13634,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_tools_screen_debugtoolsscreenstate",
-      "community": 9,
-      "community_name": "Debug Tools Screen",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_debugtoolsscreenstate"
     },
     {
@@ -13447,8 +13645,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_tools_screen_debugtoolsbody",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 9,
+      "community_name": "Debug Tools Screen",
       "norm_label": "debugtoolsbody"
     },
     {
@@ -13458,8 +13656,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_tools_screen_debugtoolsbodystate",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 9,
+      "community_name": "Debug Tools Screen",
       "norm_label": "_debugtoolsbodystate"
     },
     {
@@ -13502,8 +13700,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_debug_tools_screen_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 9,
+      "community_name": "Debug Tools Screen",
       "norm_label": "build"
     },
     {
@@ -13612,8 +13810,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_dvselectionscreen",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 24,
+      "community_name": "Topic Admin Screen",
       "norm_label": "dvselectionscreen"
     },
     {
@@ -13623,8 +13821,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_dvselectioneditor",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "dvselectioneditor"
     },
     {
@@ -13634,8 +13832,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_dvselectioneditorstate",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "dvselectioneditorstate"
     },
     {
@@ -13733,8 +13931,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_build",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "build"
     },
     {
@@ -13777,8 +13975,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_initstate",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "initstate"
     },
     {
@@ -13799,8 +13997,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_loadtopics",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_loadtopics"
     },
     {
@@ -13832,8 +14030,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_persistlayerselection",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "_persistlayerselection"
     },
     {
@@ -13876,8 +14074,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_persisttopicsforlayer",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "_persisttopicsforlayer"
     },
     {
@@ -13898,8 +14096,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_rundebouncedsideeffects",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 101,
+      "community_name": "Secret Leak Incident Process",
       "norm_label": "_rundebouncedsideeffects"
     },
     {
@@ -13909,8 +14107,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_dv_selection_screen_save",
-      "community": 3,
-      "community_name": "App Root & Providers",
+      "community": 154,
+      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
       "norm_label": "save"
     },
     {
@@ -13931,8 +14129,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_external_notifications_placeholder_screen",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "external_notifications_placeholder_screen.dart"
     },
     {
@@ -13942,8 +14140,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_external_notifications_placeholder_screen_externalnotificationsplaceholderscreen",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "externalnotificationsplaceholderscreen"
     },
     {
@@ -13953,8 +14151,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_external_notifications_placeholder_screen_build",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "build"
     },
     {
@@ -14096,8 +14294,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_settings_screen_build",
-      "community": 101,
-      "community_name": "Secret Leak Incident Process",
+      "community": 140,
+      "community_name": "AppSettingsScreen",
       "norm_label": "build"
     },
     {
@@ -14228,8 +14426,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_widgets_debug_ui_atoms_debugbuttongroup",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 24,
+      "community_name": "Topic Admin Screen",
       "norm_label": "debugbuttongroup"
     },
     {
@@ -14239,8 +14437,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_features_settings_presentation_widgets_debug_ui_atoms_debugactionbutton",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 24,
+      "community_name": "Topic Admin Screen",
       "norm_label": "debugactionbutton"
     },
     {
@@ -14448,8 +14646,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_intl_date_symbol_data_local_dart",
-      "community": 44,
-      "community_name": "Event Detail Smoke Test",
+      "community": 128,
+      "community_name": "Backend Security Rules",
       "norm_label": "package:intl/date_symbol_data_local.dart"
     },
     {
@@ -14866,8 +15064,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_dashboard_stat_row",
-      "community": 159,
-      "community_name": "admin_screen_test.dart",
+      "community": 171,
+      "community_name": "AuthorAuthNotifier",
       "norm_label": "dashboard_stat_row.dart"
     },
     {
@@ -14877,8 +15075,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_dashboard_stat_row_dashboardstatrow",
-      "community": 154,
-      "community_name": "Analytics-Opt-in als zentrale Freigabe-Schwelle",
+      "community": 24,
+      "community_name": "Topic Admin Screen",
       "norm_label": "dashboardstatrow"
     },
     {
@@ -14888,8 +15086,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_dashboard_stat_row_tiles",
-      "community": 159,
-      "community_name": "admin_screen_test.dart",
+      "community": 171,
+      "community_name": "AuthorAuthNotifier",
       "norm_label": "tiles"
     },
     {
@@ -14899,8 +15097,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_dashboard_stat_row_build",
-      "community": 159,
-      "community_name": "admin_screen_test.dart",
+      "community": 171,
+      "community_name": "AuthorAuthNotifier",
       "norm_label": "build"
     },
     {
@@ -14910,8 +15108,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "stat_tile_dart",
-      "community": 159,
-      "community_name": "admin_screen_test.dart",
+      "community": 171,
+      "community_name": "AuthorAuthNotifier",
       "norm_label": "stat_tile.dart"
     },
     {
@@ -14921,8 +15119,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_empty_state",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "empty_state.dart"
     },
     {
@@ -14932,8 +15130,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_empty_state_emptystate",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "emptystate"
     },
     {
@@ -14943,8 +15141,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_empty_state_icon",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "icon"
     },
     {
@@ -14954,8 +15152,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_empty_state_message",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "message"
     },
     {
@@ -14965,8 +15163,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_empty_state_actionlabel",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "actionlabel"
     },
     {
@@ -14976,8 +15174,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_empty_state_onaction",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "onaction"
     },
     {
@@ -14987,8 +15185,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_empty_state_build",
-      "community": 71,
-      "community_name": "Labeled Chip Widget",
+      "community": 168,
+      "community_name": "empty_state.dart",
       "norm_label": "build"
     },
     {
@@ -14998,8 +15196,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_labeled_chip",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "labeled_chip.dart"
     },
     {
@@ -15009,8 +15207,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_labeled_chip_labeledchip",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "labeledchip"
     },
     {
@@ -15020,8 +15218,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_labeled_chip_icon",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "icon"
     },
     {
@@ -15031,8 +15229,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_labeled_chip_label",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "label"
     },
     {
@@ -15042,8 +15240,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_labeled_chip_value",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "value"
     },
     {
@@ -15053,8 +15251,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_labeled_chip_color",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "color"
     },
     {
@@ -15064,8 +15262,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_labeled_chip_build",
-      "community": 70,
-      "community_name": "Empty State Widget",
+      "community": 71,
+      "community_name": "Labeled Chip Widget",
       "norm_label": "build"
     },
     {
@@ -15097,8 +15295,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_layer_topic_tree_layertopictree",
-      "community": 68,
-      "community_name": "Topic Model",
+      "community": 157,
+      "community_name": "skeleton_card_list.dart",
       "norm_label": "layertopictree"
     },
     {
@@ -15108,8 +15306,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_layer_topic_tree_layertopictreestate",
-      "community": 68,
-      "community_name": "Topic Model",
+      "community": 157,
+      "community_name": "skeleton_card_list.dart",
       "norm_label": "_layertopictreestate"
     },
     {
@@ -15647,8 +15845,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "skeleton_card_list.dart"
     },
     {
@@ -15658,8 +15856,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_skeletoncardlist",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "skeletoncardlist"
     },
     {
@@ -15669,8 +15867,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_skeletoncardliststate",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "_skeletoncardliststate"
     },
     {
@@ -15680,8 +15878,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_count",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "count"
     },
     {
@@ -15691,8 +15889,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_controller",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "_controller"
     },
     {
@@ -15702,8 +15900,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_opacity",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "_opacity"
     },
     {
@@ -15713,8 +15911,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "animation",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "animation"
     },
     {
@@ -15724,8 +15922,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_createstate",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "createstate"
     },
     {
@@ -15735,8 +15933,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_initstate",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "initstate"
     },
     {
@@ -15746,8 +15944,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_dispose",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "dispose"
     },
     {
@@ -15757,8 +15955,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_lib_shared_widgets_skeleton_card_list_build",
-      "community": 157,
-      "community_name": "skeleton_card_list.dart",
+      "community": 16,
+      "community_name": "Confetti Overlay",
       "norm_label": "build"
     },
     {
@@ -15856,8 +16054,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_analytics_service_test",
-      "community": 169,
-      "community_name": "analytics_service_test.dart",
+      "community": 30,
+      "community_name": "Usage Tracking Service",
       "norm_label": "analytics_service_test.dart"
     },
     {
@@ -15867,8 +16065,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_analytics_service_test_thememodestub",
-      "community": 169,
-      "community_name": "analytics_service_test.dart",
+      "community": 30,
+      "community_name": "Usage Tracking Service",
       "norm_label": "thememodestub"
     },
     {
@@ -15878,8 +16076,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_analytics_service_test_main",
-      "community": 169,
-      "community_name": "analytics_service_test.dart",
+      "community": 30,
+      "community_name": "Usage Tracking Service",
       "norm_label": "main"
     },
     {
@@ -15900,8 +16098,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_core_services_analytics_service_dart",
-      "community": 169,
-      "community_name": "analytics_service_test.dart",
+      "community": 30,
+      "community_name": "Usage Tracking Service",
       "norm_label": "package:dpsg_news_app/core/services/analytics_service.dart"
     },
     {
@@ -15966,8 +16164,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_error_toast_service_test",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "error_toast_service_test.dart"
     },
     {
@@ -15977,8 +16175,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_error_toast_service_test_main",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "main"
     },
     {
@@ -15988,8 +16186,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_core_services_error_toast_service_dart",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "package:dpsg_news_app/core/services/error_toast_service.dart"
     },
     {
@@ -15999,8 +16197,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_features_events_data_remote_event_source_dart",
-      "community": 128,
-      "community_name": "Backend Security Rules",
+      "community": 164,
+      "community_name": "author_login_screen_test.dart",
       "norm_label": "package:dpsg_news_app/features/events/data/remote_event_source.dart"
     },
     {
@@ -16186,8 +16384,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_core_services_hive_service_dart",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "package:dpsg_news_app/core/services/hive_service.dart"
     },
     {
@@ -16219,8 +16417,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_features_author_data_author_auth_provider_dart",
-      "community": 58,
-      "community_name": "Layer Tree Provider",
+      "community": 47,
+      "community_name": "Author Screen Test",
       "norm_label": "package:dpsg_news_app/features/author/data/author_auth_provider.dart"
     },
     {
@@ -16230,8 +16428,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "widget_test_dart",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 58,
+      "community_name": "Layer Tree Provider",
       "norm_label": "../../widget_test.dart"
     },
     {
@@ -16362,8 +16560,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_features_settings_data_settings_repository_dart",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "package:dpsg_news_app/features/settings/data/settings_repository.dart"
     },
     {
@@ -17363,8 +17561,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "author_screen_test.dart"
     },
     {
@@ -17374,8 +17572,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_fakeremoteeventsource",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "_fakeremoteeventsource"
     },
     {
@@ -17385,8 +17583,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_events",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "_events"
     },
     {
@@ -17396,8 +17594,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_drafts",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "_drafts"
     },
     {
@@ -17407,8 +17605,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_deletedraftcallcount",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "deletedraftcallcount"
     },
     {
@@ -17418,8 +17616,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_islocked",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "islocked"
     },
     {
@@ -17429,8 +17627,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_requirespasswordchange",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "requirespasswordchange"
     },
     {
@@ -17440,8 +17638,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_fetchownevents",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "fetchownevents"
     },
     {
@@ -17451,8 +17649,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_fetchowndrafts",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "fetchowndrafts"
     },
     {
@@ -17462,8 +17660,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_deletedraft",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "deletedraft"
     },
     {
@@ -17473,8 +17671,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_loggedinstate",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "_loggedinstate"
     },
     {
@@ -17484,8 +17682,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_main",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "main"
     },
     {
@@ -17495,8 +17693,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_features_author_author_screen_test_pumpscreen",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 143,
+      "community_name": "author_screen_test.dart",
       "norm_label": "pumpscreen"
     },
     {
@@ -18265,8 +18463,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_hive_service_test",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "hive_service_test.dart"
     },
     {
@@ -18276,8 +18474,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_hive_service_test_main",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "main"
     },
     {
@@ -18694,8 +18892,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_settings_repository_test",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "settings_repository_test.dart"
     },
     {
@@ -18705,8 +18903,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_settings_repository_test_repository",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "repository"
     },
     {
@@ -18716,8 +18914,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_settings_repository_test_main",
-      "community": 47,
-      "community_name": "Author Screen Test",
+      "community": 44,
+      "community_name": "Event Detail Smoke Test",
       "norm_label": "main"
     },
     {
@@ -18727,8 +18925,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_shared_utils_date_format_utils_test",
-      "community": 44,
-      "community_name": "Event Detail Smoke Test",
+      "community": 128,
+      "community_name": "Backend Security Rules",
       "norm_label": "date_format_utils_test.dart"
     },
     {
@@ -18738,8 +18936,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_shared_utils_date_format_utils_test_main",
-      "community": 44,
-      "community_name": "Event Detail Smoke Test",
+      "community": 128,
+      "community_name": "Backend Security Rules",
       "norm_label": "main"
     },
     {
@@ -18749,8 +18947,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_shared_utils_date_format_utils_dart",
-      "community": 44,
-      "community_name": "Event Detail Smoke Test",
+      "community": 128,
+      "community_name": "Backend Security Rules",
       "norm_label": "package:dpsg_news_app/shared/utils/date_format_utils.dart"
     },
     {
@@ -18793,8 +18991,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_shared_widgets_safe_markdown_body_test",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 173,
+      "community_name": "AppNavigationLoggingObserver",
       "norm_label": "safe_markdown_body_test.dart"
     },
     {
@@ -18804,8 +19002,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_shared_widgets_safe_markdown_body_test_main",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 173,
+      "community_name": "AppNavigationLoggingObserver",
       "norm_label": "main"
     },
     {
@@ -18815,8 +19013,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_shared_widgets_safe_markdown_body_test_pumpmarkdown",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 173,
+      "community_name": "AppNavigationLoggingObserver",
       "norm_label": "pumpmarkdown"
     },
     {
@@ -18826,8 +19024,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_shared_widgets_safe_markdown_body_dart",
-      "community": 38,
-      "community_name": "Wiredash Metadata Service",
+      "community": 173,
+      "community_name": "AppNavigationLoggingObserver",
       "norm_label": "package:dpsg_news_app/shared/widgets/safe_markdown_body.dart"
     },
     {
@@ -18914,8 +19112,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_widget_test_testauthorauthnotifier",
-      "community": 171,
-      "community_name": "AuthorAuthNotifier",
+      "community": 15,
+      "community_name": "Author Auth Provider",
       "norm_label": "testauthorauthnotifier"
     },
     {
@@ -19310,8 +19508,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_wiredash_metadata_service_test",
-      "community": 13,
-      "community_name": "Server Auth Rate Limiting",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "wiredash_metadata_service_test.dart"
     },
     {
@@ -19321,8 +19519,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "app_test_wiredash_metadata_service_test_main",
-      "community": 13,
-      "community_name": "Server Auth Rate Limiting",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "main"
     },
     {
@@ -19332,8 +19530,8 @@
       "source_location": null,
       "_origin": "ast",
       "id": "package_dpsg_news_app_core_services_wiredash_metadata_service_dart",
-      "community": 13,
-      "community_name": "Server Auth Rate Limiting",
+      "community": 38,
+      "community_name": "Wiredash Metadata Service",
       "norm_label": "package:dpsg_news_app/core/services/wiredash_metadata_service.dart"
     },
     {
@@ -20288,8 +20486,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "server_src_db_authors_authoridentity",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "authoridentity"
     },
     {
@@ -20332,8 +20530,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "server_src_db_authors_revokeauthorsessions",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "revokeauthorsessions()"
     },
     {
@@ -20409,8 +20607,8 @@
       "source_location": "L251",
       "_origin": "ast",
       "id": "server_src_db_authors_getauthorsession",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 18,
+      "community_name": "Server Data Access Layer",
       "norm_label": "getauthorsession()"
     },
     {
@@ -20431,8 +20629,8 @@
       "source_location": "L376",
       "_origin": "ast",
       "id": "server_src_db_authors_mapauthorrecord",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "mapauthorrecord()"
     },
     {
@@ -20442,8 +20640,8 @@
       "source_location": "L390",
       "_origin": "ast",
       "id": "server_src_db_authors_listauthors",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "listauthors()"
     },
     {
@@ -20453,8 +20651,8 @@
       "source_location": "L397",
       "_origin": "ast",
       "id": "server_src_db_authors_getauthorbyid",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "getauthorbyid()"
     },
     {
@@ -20464,8 +20662,8 @@
       "source_location": "L405",
       "_origin": "ast",
       "id": "server_src_db_authors_createauthor",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "createauthor()"
     },
     {
@@ -20475,8 +20673,8 @@
       "source_location": "L440",
       "_origin": "ast",
       "id": "server_src_db_authors_setauthoractive",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "setauthoractive()"
     },
     {
@@ -20486,8 +20684,8 @@
       "source_location": "L451",
       "_origin": "ast",
       "id": "server_src_db_authors_deleteauthorbyid",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "deleteauthorbyid()"
     },
     {
@@ -20497,8 +20695,8 @@
       "source_location": "L459",
       "_origin": "ast",
       "id": "server_src_db_authors_resetauthorpassword",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "resetauthorpassword()"
     },
     {
@@ -20508,8 +20706,8 @@
       "source_location": "L477",
       "_origin": "ast",
       "id": "server_src_db_authors_logoutauthor",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "logoutauthor()"
     },
     {
@@ -20574,8 +20772,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "server_src_db_client_getdatabaseurl",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "getdatabaseurl()"
     },
     {
@@ -20585,8 +20783,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "server_src_db_client_ensureclient",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "ensureclient()"
     },
     {
@@ -20673,8 +20871,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "server_src_db_client_connectclient",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "connectclient()"
     },
     {
@@ -20827,8 +21025,8 @@
       "source_location": "L176",
       "_origin": "ast",
       "id": "server_src_db_drafts_deleteauthordraftbyid",
-      "community": 67,
-      "community_name": "Logging Env Config",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "deleteauthordraftbyid()"
     },
     {
@@ -20843,14 +21041,113 @@
       "norm_label": "cleardrafts()"
     },
     {
+      "label": "eventHistory.ts",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "eventhistory.ts"
+    },
+    {
+      "label": "TRACKED_FIELDS",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_tracked_fields",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "tracked_fields"
+    },
+    {
+      "label": "FieldChange",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_fieldchange",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "fieldchange"
+    },
+    {
+      "label": "EventHistoryRow",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_eventhistoryrow",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "eventhistoryrow"
+    },
+    {
+      "label": "EventHistoryEntry",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L38",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_eventhistoryentry",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "eventhistoryentry"
+    },
+    {
+      "label": "mapEventHistoryRow()",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L47",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_mapeventhistoryrow",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "mapeventhistoryrow()"
+    },
+    {
+      "label": "diffEventFields()",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L58",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_diffeventfields",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "diffeventfields()"
+    },
+    {
+      "label": "recordEventHistory()",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L70",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_recordeventhistory",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "recordeventhistory()"
+    },
+    {
+      "label": "getEventHistory()",
+      "file_type": "code",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L81",
+      "_origin": "ast",
+      "id": "server_src_db_eventhistory_geteventhistory",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "geteventhistory()"
+    },
+    {
       "label": "eventUpdates.ts",
       "file_type": "code",
       "source_file": "server/src/db/eventUpdates.ts",
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_db_eventupdates",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "eventupdates.ts"
     },
     {
@@ -20860,8 +21157,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_eventupdaterow",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "eventupdaterow"
     },
     {
@@ -20871,8 +21168,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_eventupdate",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "eventupdate"
     },
     {
@@ -20882,8 +21179,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_mapeventupdaterow",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "mapeventupdaterow()"
     },
     {
@@ -20893,8 +21190,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_createeventupdate",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "createeventupdate()"
     },
     {
@@ -20904,8 +21201,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_geteventupdates",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "geteventupdates()"
     },
     {
@@ -20915,8 +21212,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_geteventupdatebyid",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "geteventupdatebyid()"
     },
     {
@@ -20926,8 +21223,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_updateeventupdatebyid",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "updateeventupdatebyid()"
     },
     {
@@ -20937,8 +21234,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "server_src_db_eventupdates_deleteeventupdatebyid",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "deleteeventupdatebyid()"
     },
     {
@@ -21124,8 +21421,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_db_index",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "db/index.ts"
     },
     {
@@ -21223,8 +21520,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "server_src_db_layers_islayerinadminscope",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "islayerinadminscope()"
     },
     {
@@ -21256,8 +21553,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "server_src_db_layers_getlayeradmins",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "getlayeradmins()"
     },
     {
@@ -21322,8 +21619,8 @@
       "source_location": "L195",
       "_origin": "ast",
       "id": "server_src_db_layers_addauthorlayergrant",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "addauthorlayergrant()"
     },
     {
@@ -21399,8 +21696,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_db_schema",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "schema.ts"
     },
     {
@@ -21410,96 +21707,96 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "server_src_db_schema_connect",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "connect()"
     },
     {
       "label": "ensureSeedLayers()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L203",
+      "source_location": "L213",
       "_origin": "ast",
       "id": "server_src_db_schema_ensureseedlayers",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "ensureseedlayers()"
     },
     {
       "label": "migrateAdminLayerId()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L242",
+      "source_location": "L252",
       "_origin": "ast",
       "id": "server_src_db_schema_migrateadminlayerid",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "migrateadminlayerid()"
     },
     {
       "label": "migrateAuthorAdminLayers()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L257",
+      "source_location": "L267",
       "_origin": "ast",
       "id": "server_src_db_schema_migrateauthoradminlayers",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "migrateauthoradminlayers()"
     },
     {
       "label": "migrateAuthorLayerGrants()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L279",
+      "source_location": "L289",
       "_origin": "ast",
       "id": "server_src_db_schema_migrateauthorlayergrants",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "migrateauthorlayergrants()"
     },
     {
       "label": "migrateAuthorTopicGrants()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L292",
+      "source_location": "L302",
       "_origin": "ast",
       "id": "server_src_db_schema_migrateauthortopicgrants",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "migrateauthortopicgrants()"
     },
     {
       "label": "migrateTopicToTopicId()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L305",
+      "source_location": "L315",
       "_origin": "ast",
       "id": "server_src_db_schema_migratetopictotopicid",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "migratetopictotopicid()"
     },
     {
       "label": "migrateDvToLayerId()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L338",
+      "source_location": "L348",
       "_origin": "ast",
       "id": "server_src_db_schema_migratedvtolayerid",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "migratedvtolayerid()"
     },
     {
       "label": "ensureBootstrapAuthor()",
       "file_type": "code",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L371",
+      "source_location": "L381",
       "_origin": "ast",
       "id": "server_src_db_schema_ensurebootstrapauthor",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "ensurebootstrapauthor()"
     },
     {
@@ -21509,8 +21806,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_db_topics",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "topics.ts"
     },
     {
@@ -21520,8 +21817,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "server_src_db_topics_topicrow",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "topicrow"
     },
     {
@@ -21531,8 +21828,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "server_src_db_topics_topic",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "topic"
     },
     {
@@ -21542,8 +21839,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "server_src_db_topics_topicinput",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "topicinput"
     },
     {
@@ -21553,8 +21850,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "server_src_db_topics_maptopicrow",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "maptopicrow()"
     },
     {
@@ -21564,8 +21861,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "server_src_db_topics_getauthortopicgrantids",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "getauthortopicgrantids()"
     },
     {
@@ -21575,8 +21872,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "server_src_db_topics_addauthortopicgrant",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "addauthortopicgrant()"
     },
     {
@@ -21597,8 +21894,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "server_src_db_topics_gettopics",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "gettopics()"
     },
     {
@@ -21608,8 +21905,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "server_src_db_topics_gettopicbyid",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "gettopicbyid()"
     },
     {
@@ -21619,8 +21916,8 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "server_src_db_topics_createtopic",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "createtopic()"
     },
     {
@@ -21630,8 +21927,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "server_src_db_topics_updatetopic",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "updatetopic()"
     },
     {
@@ -21641,8 +21938,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "server_src_db_topics_deletetopicresult",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "deletetopicresult"
     },
     {
@@ -21652,8 +21949,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "server_src_db_topics_deletetopic",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "deletetopic()"
     },
     {
@@ -22378,8 +22675,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_middleware_scope",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "scope.ts"
     },
     {
@@ -22389,8 +22686,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "server_src_middleware_scope_requirelayerscope",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "requirelayerscope()"
     },
     {
@@ -22400,8 +22697,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "server_src_middleware_scope_requirelayerscopeforall",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "requirelayerscopeforall()"
     },
     {
@@ -22411,8 +22708,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "server_src_middleware_scope_accountscopetarget",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "accountscopetarget"
     },
     {
@@ -22422,8 +22719,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "server_src_middleware_scope_getaccountscopelayerids",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "getaccountscopelayerids()"
     },
     {
@@ -22433,8 +22730,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "server_src_middleware_scope_requiremanageableaccountscope",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "requiremanageableaccountscope()"
     },
     {
@@ -22444,8 +22741,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "server_src_middleware_scope_isaccountvisibletoadmin",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "isaccountvisibletoadmin()"
     },
     {
@@ -22455,8 +22752,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "server_src_middleware_scope_redacttoownscope",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "redacttoownscope()"
     },
     {
@@ -22466,8 +22763,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "server_src_middleware_scope_filterauthorsforadmin",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "filterauthorsforadmin()"
     },
     {
@@ -22477,8 +22774,8 @@
       "source_location": "L124",
       "_origin": "ast",
       "id": "server_src_middleware_scope_requireeventgrant",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "requireeventgrant()"
     },
     {
@@ -22499,8 +22796,8 @@
       "source_location": "L143",
       "_origin": "ast",
       "id": "server_src_middleware_scope_canmanagewithinlayerscope",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "canmanagewithinlayerscope()"
     },
     {
@@ -22510,8 +22807,8 @@
       "source_location": "L160",
       "_origin": "ast",
       "id": "server_src_middleware_scope_requiremanageablewithinlayerscope",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "requiremanageablewithinlayerscope()"
     },
     {
@@ -22521,8 +22818,8 @@
       "source_location": "L179",
       "_origin": "ast",
       "id": "server_src_middleware_scope_requireownevent",
-      "community": 42,
-      "community_name": "Server Event CRUD Endpoints",
+      "community": 70,
+      "community_name": "Empty State Widget",
       "norm_label": "requireownevent()"
     },
     {
@@ -22697,8 +22994,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "server_src_ratelimitstore_redisratelimitstore_constructor",
-      "community": 54,
-      "community_name": "Event Field Validation",
+      "community": 7,
+      "community_name": "Server Build Info & Utils",
       "norm_label": ".constructor()"
     },
     {
@@ -22774,8 +23071,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_routes_adminusers",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 32,
+      "community_name": "Own Events Provider",
       "norm_label": "adminusers.ts"
     },
     {
@@ -22807,8 +23104,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "server_src_routes_auth_authrouter",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 12,
+      "community_name": "Test App Bootstrap",
       "norm_label": "authrouter"
     },
     {
@@ -22848,7 +23145,7 @@
       "label": "eventsRouter",
       "file_type": "code",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L34",
+      "source_location": "L36",
       "_origin": "ast",
       "id": "server_src_routes_events_eventsrouter",
       "community": 12,
@@ -22862,8 +23159,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_routes_public",
-      "community": 60,
-      "community_name": "App Config",
+      "community": 7,
+      "community_name": "Server Build Info & Utils",
       "norm_label": "public.ts"
     },
     {
@@ -22873,8 +23170,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "server_src_routes_public_publicrouter",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 7,
+      "community_name": "Server Build Info & Utils",
       "norm_label": "publicrouter"
     },
     {
@@ -22895,8 +23192,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "server_src_routes_testonly_testonlyrouter",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 169,
+      "community_name": "analytics_service_test.dart",
       "norm_label": "testonlyrouter"
     },
     {
@@ -22906,8 +23203,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_seedlayers",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "seedlayers.ts"
     },
     {
@@ -22917,8 +23214,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_src_seedlayers_seedlayer",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "seedlayer"
     },
     {
@@ -22928,8 +23225,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "server_src_seedlayers_seed_dvs",
-      "community": 18,
-      "community_name": "Server Data Access Layer",
+      "community": 96,
+      "community_name": "Remote Event Source Exception",
       "norm_label": "seed_dvs"
     },
     {
@@ -23109,6 +23406,28 @@
       "norm_label": "createevent()"
     },
     {
+      "label": "eventHistory.unit.test.ts",
+      "file_type": "code",
+      "source_file": "server/test/eventHistory.unit.test.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "server_test_eventhistory_unit_test",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "eventhistory.unit.test.ts"
+    },
+    {
+      "label": "makeEvent()",
+      "file_type": "code",
+      "source_file": "server/test/eventHistory.unit.test.ts",
+      "source_location": "L3",
+      "_origin": "ast",
+      "id": "server_test_eventhistory_unit_test_makeevent",
+      "community": 42,
+      "community_name": "Server Event CRUD Endpoints",
+      "norm_label": "makeevent()"
+    },
+    {
       "label": "eventValidation.unit.test.ts",
       "file_type": "code",
       "source_file": "server/test/eventValidation.unit.test.ts",
@@ -23247,8 +23566,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_test_testonly_unit_test",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 169,
+      "community_name": "analytics_service_test.dart",
       "norm_label": "testonly.unit.test.ts"
     },
     {
@@ -23258,8 +23577,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "server_test_testonly_unit_test_clearevents",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 169,
+      "community_name": "analytics_service_test.dart",
       "norm_label": "clearevents"
     },
     {
@@ -23269,8 +23588,8 @@
       "source_location": "L2",
       "_origin": "ast",
       "id": "server_test_testonly_unit_test_cleardrafts",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 169,
+      "community_name": "analytics_service_test.dart",
       "norm_label": "cleardrafts"
     },
     {
@@ -23280,8 +23599,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "server_test_testonly_unit_test_clearauthordata",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 169,
+      "community_name": "analytics_service_test.dart",
       "norm_label": "clearauthordata"
     },
     {
@@ -23291,8 +23610,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "server_test_testonly_unit_test_createauthorfortesting",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 169,
+      "community_name": "analytics_service_test.dart",
       "norm_label": "createauthorfortesting"
     },
     {
@@ -23302,8 +23621,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "server_test_testonly_unit_test_buildapp",
-      "community": 12,
-      "community_name": "Test App Bootstrap",
+      "community": 169,
+      "community_name": "analytics_service_test.dart",
       "norm_label": "buildapp()"
     },
     {
@@ -27828,6 +28147,17 @@
       "relation": "inherits",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialog",
+      "target": "consumerstatefulwidget"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "app/lib/features/onboarding/presentation/welcome_screen.dart",
       "source_location": null,
       "weight": 1.0,
@@ -28163,6 +28493,17 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_lib_features_events_presentation_events_screen_eventsscreenstate",
+      "target": "consumerstate"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialogstate",
       "target": "consumerstate"
     },
     {
@@ -28934,6 +29275,17 @@
       "relation": "imports",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "package_flutter_material_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "app/lib/features/onboarding/presentation/welcome_screen.dart",
       "source_location": null,
       "weight": 1.0,
@@ -29682,6 +30034,17 @@
       "relation": "imports",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "package_flutter_riverpod_flutter_riverpod_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "app/lib/features/onboarding/presentation/welcome_screen.dart",
       "source_location": null,
       "weight": 1.0,
@@ -30424,6 +30787,17 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_lib_features_events_presentation_events_screen",
+      "target": "core_services_sync_service_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
       "target": "core_services_sync_service_dart"
     },
     {
@@ -33838,6 +34212,18 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "context": "variable_type",
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "future"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "app/lib/features/events/presentation/event_detail_screen.dart",
       "source_location": null,
       "weight": 1.0,
@@ -35630,6 +36016,18 @@
       "relation": "navigates",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "context": "route_object",
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_openauthorprofile",
+      "target": "materialpageroute"
+    },
+    {
+      "relation": "navigates",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "app/lib/features/profile/presentation/profile_screen.dart",
       "source_location": null,
       "weight": 1.0,
@@ -35785,6 +36183,17 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_lib_features_events_presentation_events_screen",
+      "target": "author_data_author_auth_provider_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
       "target": "author_data_author_auth_provider_dart"
     },
     {
@@ -36669,6 +37078,18 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "context": "variable_type",
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "map"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "app/lib/shared/widgets/layer_topic_tree.dart",
       "source_location": null,
       "weight": 1.0,
@@ -37095,6 +37516,17 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_lib_features_events_presentation_event_editor_sheet",
+      "target": "core_services_error_toast_service_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
       "target": "core_services_error_toast_service_dart"
     },
     {
@@ -40410,6 +40842,54 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "context": "riverpod_reference",
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_build",
+      "target": "app_lib_features_author_data_author_auth_provider_authorauthprovider"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "context": "riverpod_reference",
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialogstate",
+      "target": "app_lib_features_author_data_author_auth_provider_authorauthprovider"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "context": "riverpod_reference",
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_loadhistory",
+      "target": "app_lib_features_author_data_author_auth_provider_authorauthprovider"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "context": "riverpod_reference",
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_openauthorprofile",
+      "target": "app_lib_features_author_data_author_auth_provider_authorauthprovider"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
       "source_file": "app/lib/features/profile/presentation/profile_screen.dart",
       "source_location": null,
       "weight": 1.0,
@@ -42252,6 +42732,17 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_lib_features_events_data_remote_event_source",
+      "target": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_features_events_data_remote_event_source_fetcheventhistory"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/data/remote_event_source/events_api.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_data_remote_event_source",
       "target": "users_lange_documents_dpsgnews_dpsg_news_app_claude_worktrees_feat_37_app_lib_features_events_data_remote_event_source_fetchevents"
     },
     {
@@ -43694,6 +44185,17 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_lib_features_events_presentation_event_detail_screen",
+      "target": "app_lib_features_events_presentation_event_detail_screen_showhistorydialog"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/event_detail_screen.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_event_detail_screen",
       "target": "app_lib_features_events_presentation_event_detail_screen_togglesaved"
     },
     {
@@ -43828,6 +44330,17 @@
       "_origin": "ast",
       "source": "app_lib_features_events_presentation_event_detail_screen",
       "target": "shared_widgets_section_card_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/event_detail_screen.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_event_detail_screen",
+      "target": "widgets_event_history_dialog_dart"
     },
     {
       "relation": "references",
@@ -44134,6 +44647,17 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_lib_features_events_presentation_events_screen",
+      "target": "shared_utils_date_format_utils_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
       "target": "shared_utils_date_format_utils_dart"
     },
     {
@@ -45565,6 +46089,171 @@
       "_origin": "ast",
       "source": "app_lib_features_onboarding_presentation_welcome_screen",
       "target": "settings_presentation_dv_selection_screen_dart"
+    },
+    {
+      "relation": "imports",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "admin_presentation_admin_user_detail_screen_dart"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_build"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_createstate"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialog"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialogstate"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistoryfieldlabels"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_eventid"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_fieldlabel"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_formatvalue"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_historyfuture"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_loadhistory"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_openauthorprofile"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_showeventhistorydialog"
+    },
+    {
+      "relation": "defines",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_tostring"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/lib/features/events/presentation/widgets/event_history_dialog.dart",
+      "source_location": null,
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialogstate",
+      "target": "app_lib_features_events_presentation_widgets_event_history_dialog_eventhistorydialog"
     },
     {
       "relation": "defines",
@@ -57980,7 +58669,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L194",
+      "source_location": "L204",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_connect",
@@ -59359,6 +60048,18 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_client",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "server/src/db/events.ts",
       "source_location": "L2",
       "weight": 1.0,
@@ -59521,6 +60222,42 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_drafts_updateauthordraftbyid",
+      "target": "server_src_db_client_ensureclient"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_client_ensureclient",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L82",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory_geteventhistory",
+      "target": "server_src_db_client_ensureclient"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L75",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory_recordeventhistory",
       "target": "server_src_db_client_ensureclient"
     },
     {
@@ -59936,7 +60673,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L378",
+      "source_location": "L388",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_ensurebootstrapauthor",
@@ -59948,7 +60685,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L204",
+      "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_ensureseedlayers",
@@ -59960,7 +60697,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L243",
+      "source_location": "L253",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_migrateadminlayerid",
@@ -59972,7 +60709,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L258",
+      "source_location": "L268",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_migrateauthoradminlayers",
@@ -59984,7 +60721,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L280",
+      "source_location": "L290",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_migrateauthorlayergrants",
@@ -59996,7 +60733,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L293",
+      "source_location": "L303",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_migrateauthortopicgrants",
@@ -60008,7 +60745,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L339",
+      "source_location": "L349",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_migratedvtolayerid",
@@ -60020,7 +60757,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L306",
+      "source_location": "L316",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_migratetopictotopicid",
@@ -60608,7 +61345,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L195",
+      "source_location": "L205",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_connect",
@@ -60816,6 +61553,274 @@
       "_origin": "ast",
       "source": "server_test_drafts_e2e_test",
       "target": "server_src_db_drafts_cleardrafts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L58",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_diffeventfields",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L38",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_eventhistoryentry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_eventhistoryrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L23",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_fieldchange",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_geteventhistory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_mapeventhistoryrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L70",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_recordeventhistory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_eventhistory_tracked_fields",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_events",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory",
+      "target": "server_src_db_events_event",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "re_exports",
+      "context": "export",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/index.ts",
+      "source_location": "L98",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_index",
+      "target": "server_src_db_eventhistory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "re_exports",
+      "context": "re-export",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/index.ts",
+      "source_location": "L98",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_index",
+      "target": "server_src_db_eventhistory_fieldchange",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "re_exports",
+      "context": "re-export",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/index.ts",
+      "source_location": "L98",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_index",
+      "target": "server_src_db_eventhistory_eventhistoryentry",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "indirect_call",
+      "context": "argument",
+      "confidence": "INFERRED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L90",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory_geteventhistory",
+      "target": "server_src_db_eventhistory_mapeventhistoryrow",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "re_exports",
+      "context": "re-export",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/index.ts",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_index",
+      "target": "server_src_db_eventhistory_mapeventhistoryrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/test/eventHistory.unit.test.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_test_eventhistory_unit_test",
+      "target": "server_src_db_eventhistory_mapeventhistoryrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/eventHistory.ts",
+      "source_location": "L71",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_eventhistory_recordeventhistory",
+      "target": "server_src_db_eventhistory_diffeventfields",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "re_exports",
+      "context": "re-export",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/index.ts",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_index",
+      "target": "server_src_db_eventhistory_diffeventfields",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/test/eventHistory.unit.test.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_test_eventhistory_unit_test",
+      "target": "server_src_db_eventhistory_diffeventfields",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "re_exports",
+      "context": "re-export",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/index.ts",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_index",
+      "target": "server_src_db_eventhistory_recordeventhistory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/routes/events.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_routes_events",
+      "target": "server_src_db_eventhistory_recordeventhistory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "re_exports",
+      "context": "re-export",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/db/index.ts",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_db_index",
+      "target": "server_src_db_eventhistory_geteventhistory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/src/routes/events.ts",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_src_routes_events",
+      "target": "server_src_db_eventhistory_geteventhistory",
       "confidence_score": 1.0
     },
     {
@@ -61296,6 +62301,18 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_index",
+      "target": "server_src_db_events_event",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/test/eventHistory.unit.test.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_test_eventhistory_unit_test",
       "target": "server_src_db_events_event",
       "confidence_score": 1.0
     },
@@ -62252,7 +63269,7 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/index.ts",
-      "source_location": "L98",
+      "source_location": "L106",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_index",
@@ -62264,7 +63281,7 @@
       "context": "re-export",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/index.ts",
-      "source_location": "L98",
+      "source_location": "L106",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_index",
@@ -62460,6 +63477,18 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_test_event_updates_e2e_test",
+      "target": "server_src_db_index",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "server/test/eventHistory.unit.test.ts",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_test_eventhistory_unit_test",
       "target": "server_src_db_index",
       "confidence_score": 1.0
     },
@@ -63211,7 +64240,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L371",
+      "source_location": "L381",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63222,7 +64251,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L203",
+      "source_location": "L213",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63233,7 +64262,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L242",
+      "source_location": "L252",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63244,7 +64273,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L257",
+      "source_location": "L267",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63255,7 +64284,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L279",
+      "source_location": "L289",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63266,7 +64295,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L292",
+      "source_location": "L302",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63277,7 +64306,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L338",
+      "source_location": "L348",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63288,7 +64317,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L305",
+      "source_location": "L315",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema",
@@ -63348,7 +64377,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L196",
+      "source_location": "L206",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_connect",
@@ -63372,7 +64401,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L197",
+      "source_location": "L207",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_connect",
@@ -63384,7 +64413,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L198",
+      "source_location": "L208",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_connect",
@@ -63396,7 +64425,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L199",
+      "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_connect",
@@ -63408,7 +64437,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L200",
+      "source_location": "L210",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_connect",
@@ -63564,7 +64593,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "server/src/db/schema.ts",
-      "source_location": "L383",
+      "source_location": "L393",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_db_schema_ensurebootstrapauthor",
@@ -64195,7 +65224,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L23",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -64423,7 +65452,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L23",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -64447,7 +65476,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L23",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -64526,7 +65555,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L21",
+      "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -64598,7 +65627,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L21",
+      "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -64634,7 +65663,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L21",
+      "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65034,7 +66063,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L22",
+      "source_location": "L24",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65214,7 +66243,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L22",
+      "source_location": "L24",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65370,7 +66399,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L22",
+      "source_location": "L24",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65569,7 +66598,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65677,7 +66706,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65689,7 +66718,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65749,7 +66778,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -65809,7 +66838,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66229,7 +67258,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L25",
+      "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66289,7 +67318,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L25",
+      "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66397,7 +67426,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L25",
+      "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66457,7 +67486,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L25",
+      "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66481,7 +67510,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L25",
+      "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66493,7 +67522,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L25",
+      "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66609,7 +67638,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L32",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66681,7 +67710,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L32",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -66741,7 +67770,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L32",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -67024,7 +68053,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "server/src/routes/events.ts",
-      "source_location": "L34",
+      "source_location": "L36",
       "weight": 1.0,
       "_origin": "ast",
       "source": "server_src_routes_events",
@@ -67230,6 +68259,17 @@
       "_origin": "ast",
       "source": "server_test_event_updates_e2e_test",
       "target": "server_test_event_updates_e2e_test_loginauthor",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "server/test/eventHistory.unit.test.ts",
+      "source_location": "L3",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "server_test_eventhistory_unit_test",
+      "target": "server_test_eventhistory_unit_test_makeevent",
       "confidence_score": 1.0
     },
     {
@@ -70465,5 +71505,5 @@
       "source_file": "doc/planning/settings_relaunch_plan.md"
     }
   ],
-  "built_at_commit": "5a5aa2df5c3bb92849fbe9f7ff156d68e15ae022"
+  "built_at_commit": "620cbed9590b2f7c36e7cd3a25c1c57f497022fd"
 }
