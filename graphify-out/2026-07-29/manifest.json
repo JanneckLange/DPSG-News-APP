@@ -220,8 +220,8 @@
     "semantic_hash": ""
   },
   "app/lib/features/events/presentation/event_detail_screen.dart": {
-    "mtime": 1785280118.6222856,
-    "ast_hash": "38a5b76c0151a45bca68e13bac53a1fc",
+    "mtime": 1785283344.1427958,
+    "ast_hash": "a0c38cef5f90ea101acb483c5d8746fd",
     "semantic_hash": ""
   },
   "app/lib/features/events/presentation/event_editor_sheet.dart": {
@@ -890,8 +890,8 @@
     "semantic_hash": ""
   },
   "app/lib/features/events/data/remote_event_source/events_api.dart": {
-    "mtime": 1785280118.6210349,
-    "ast_hash": "ba20468b7a1cd5ede9d064a45e1df16b",
+    "mtime": 1785283226.4081278,
+    "ast_hash": "1032831cb51e7a49820eaa7da2681e01",
     "semantic_hash": ""
   },
   "app/lib/features/events/data/remote_event_source/grants_api.dart": {
@@ -990,8 +990,8 @@
     "semantic_hash": ""
   },
   "server/src/db/index.ts": {
-    "mtime": 1785280118.6704636,
-    "ast_hash": "81b5f65ca18972013bd4c8a899b9e701",
+    "mtime": 1785282944.806415,
+    "ast_hash": "98a32800789f1fd73a84e9b7f63657fb",
     "semantic_hash": ""
   },
   "server/src/db/layers.ts": {
@@ -1000,8 +1000,8 @@
     "semantic_hash": ""
   },
   "server/src/db/schema.ts": {
-    "mtime": 1785280118.6707315,
-    "ast_hash": "4b880a59a92c56dc09e9056874eb67f9",
+    "mtime": 1785282932.7911372,
+    "ast_hash": "4c5bfde9bee7323b7b65e6039cb427fb",
     "semantic_hash": ""
   },
   "server/src/db/topics.ts": {
@@ -1065,8 +1065,8 @@
     "semantic_hash": ""
   },
   "server/src/routes/events.ts": {
-    "mtime": 1785280118.6753867,
-    "ast_hash": "63b22833112b9d83f0c552c8f03ba7b2",
+    "mtime": 1785282969.5436442,
+    "ast_hash": "9bf54562636ccf35298d718ec225ef83",
     "semantic_hash": ""
   },
   "server/src/routes/public.ts": {
@@ -1382,6 +1382,21 @@
   "app/lib/shared/utils/nominatim_service.dart": {
     "mtime": 1785280118.629699,
     "ast_hash": "e8875820ca1a313ef00d0536b1d980df",
+    "semantic_hash": ""
+  },
+  "app/lib/features/events/presentation/widgets/event_history_dialog.dart": {
+    "mtime": 1785283324.17427,
+    "ast_hash": "a7840182e2e3860f932a7338a1209ab0",
+    "semantic_hash": ""
+  },
+  "server/src/db/eventHistory.ts": {
+    "mtime": 1785282941.487473,
+    "ast_hash": "fba24c8249ff1fcc96aab7f4f74dcb9a",
+    "semantic_hash": ""
+  },
+  "server/test/eventHistory.unit.test.ts": {
+    "mtime": 1785283140.714096,
+    "ast_hash": "c2b233b3382af46b1c78f5d4be51d417",
     "semantic_hash": ""
   }
 }

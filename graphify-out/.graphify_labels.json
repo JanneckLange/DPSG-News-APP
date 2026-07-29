@@ -173,7 +173,10 @@
   "171": "AuthorAuthNotifier",
   "172": "wiredash_metadata_service.dart",
   "173": "AppNavigationLoggingObserver",
+  "174": "event_cta_labels.dart",
   "175": "FakeAdminRemoteEventSource",
   "176": "FakeSettingsRepository",
-  "177": "eslint"
+  "177": "eslint",
+  "178": "@types/node",
+  "179": "@example"
 }
