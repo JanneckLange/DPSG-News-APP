@@ -19,6 +19,7 @@ import '../../../shared/widgets/stat_tile.dart';
 import 'event_detail_screen.dart';
 import 'event_list_tile.dart';
 import 'events_dashboard_stats.dart';
+import 'next_month_events_screen.dart';
 
 final eventsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   final box = HiveService.getEventsBox();
@@ -142,7 +143,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
     Widget buildContent(List<Map<String, dynamic>> events) {
       final filteredEvents = selectedLayerIds.isEmpty
-          ? events
+          ? const <Map<String, dynamic>>[]
           : events
               .where((event) => selectedLayerIds
                   .contains((event['layerId'] as num?)?.toInt()))
@@ -155,12 +156,26 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       final listView = filteredEvents.isEmpty
           ? ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(height: 48),
-                EmptyState(
-                  icon: Icons.event_busy,
-                  message: 'Keine Events verfügbar.',
-                ),
+              children: [
+                const SizedBox(height: 48),
+                selectedLayerIds.isEmpty
+                    ? EmptyState(
+                        icon: Icons.event_busy,
+                        message:
+                            'Bitte wähle mindestens einen DV/Topic aus, um Events zu sehen.',
+                        actionLabel: 'DV/Topic wählen',
+                        onAction: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            settings:
+                                const RouteSettings(name: 'DvSelectionScreen'),
+                            builder: (context) => const DvSelectionScreen(),
+                          ),
+                        ),
+                      )
+                    : const EmptyState(
+                        icon: Icons.event_busy,
+                        message: 'Keine Events verfügbar.',
+                      ),
               ],
             )
           : ListView.builder(
@@ -278,7 +293,17 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               StatTile(
                 icon: Icons.calendar_month,
                 value: '${stats.nextMonthCount}',
-                label: 'Innerhalb des nächsten Monats',
+                label: 'Innerhalb der nächsten 30 Tage',
+                onTap: stats.nextMonthCount == 0
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            settings: const RouteSettings(
+                                name: 'NextMonthEventsScreen'),
+                            builder: (context) => NextMonthEventsScreen(
+                                events: stats.nextMonthEvents),
+                          ),
+                        ),
               ),
               StatTile(
                 icon: Icons.update,

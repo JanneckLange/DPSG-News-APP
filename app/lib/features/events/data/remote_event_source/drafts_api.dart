@@ -4,9 +4,14 @@ mixin _DraftsApi on _RemoteEventSourceBase {
   Future<List<Map<String, dynamic>>> fetchOwnDrafts(
       {required String token}) async {
     final uri = baseUrl.replace(path: '/api/author/drafts');
-    final response = await _client.get(uri, headers: {
-      HttpHeaders.authorizationHeader: 'Bearer $token'
-    }).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'drafts.fetchOwnDrafts',
+      method: 'get',
+      uri: uri,
+      send: () => _client.get(uri, headers: {
+        HttpHeaders.authorizationHeader: 'Bearer $token'
+      }).timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch own drafts: ${response.statusCode} ${response.body}',
@@ -23,16 +28,21 @@ mixin _DraftsApi on _RemoteEventSourceBase {
     required Map<String, dynamic> draft,
   }) async {
     final uri = baseUrl.replace(path: '/api/author/drafts');
-    final response = await _client
-        .post(
-          uri,
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $token',
-            HttpHeaders.contentTypeHeader: 'application/json',
-          },
-          body: jsonEncode(draft),
-        )
-        .timeout(timeout);
+    final response = await loggedRequest(
+      source: 'drafts.createDraft',
+      method: 'post',
+      uri: uri,
+      send: () => _client
+          .post(
+            uri,
+            headers: {
+              HttpHeaders.authorizationHeader: 'Bearer $token',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: jsonEncode(draft),
+          )
+          .timeout(timeout),
+    );
     if (response.statusCode != 201) {
       throw RemoteEventSourceException(
         'Failed to create draft: ${response.statusCode} ${response.body}',
@@ -50,16 +60,21 @@ mixin _DraftsApi on _RemoteEventSourceBase {
     required Map<String, dynamic> draft,
   }) async {
     final uri = baseUrl.replace(path: '/api/author/drafts/$draftId');
-    final response = await _client
-        .put(
-          uri,
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $token',
-            HttpHeaders.contentTypeHeader: 'application/json',
-          },
-          body: jsonEncode(draft),
-        )
-        .timeout(timeout);
+    final response = await loggedRequest(
+      source: 'drafts.updateDraft',
+      method: 'put',
+      uri: uri,
+      send: () => _client
+          .put(
+            uri,
+            headers: {
+              HttpHeaders.authorizationHeader: 'Bearer $token',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: jsonEncode(draft),
+          )
+          .timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to update draft: ${response.statusCode} ${response.body}',
@@ -76,10 +91,15 @@ mixin _DraftsApi on _RemoteEventSourceBase {
     required int draftId,
   }) async {
     final uri = baseUrl.replace(path: '/api/author/drafts/$draftId');
-    final response = await _client.delete(
-      uri,
-      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-    ).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'drafts.deleteDraft',
+      method: 'delete',
+      uri: uri,
+      send: () => _client.delete(
+        uri,
+        headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+      ).timeout(timeout),
+    );
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to delete draft: ${response.statusCode} ${response.body}',

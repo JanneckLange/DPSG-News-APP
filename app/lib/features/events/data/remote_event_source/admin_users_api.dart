@@ -4,9 +4,14 @@ mixin _AdminUsersApi on _RemoteEventSourceBase {
   Future<List<Map<String, dynamic>>> fetchAdminUsers(
       {required String token}) async {
     final uri = baseUrl.replace(path: '/api/admin/users');
-    final response = await _client.get(uri, headers: {
-      HttpHeaders.authorizationHeader: 'Bearer $token'
-    }).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'adminUsers.fetchAdminUsers',
+      method: 'get',
+      uri: uri,
+      send: () => _client.get(uri, headers: {
+        HttpHeaders.authorizationHeader: 'Bearer $token'
+      }).timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch admin users: ${response.statusCode} ${response.body}',
@@ -23,9 +28,14 @@ mixin _AdminUsersApi on _RemoteEventSourceBase {
     required int layerId,
   }) async {
     final uri = baseUrl.replace(path: '/api/admin/layers/$layerId/admins');
-    final response = await _client.get(uri, headers: {
-      HttpHeaders.authorizationHeader: 'Bearer $token'
-    }).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'adminUsers.fetchLayerAdmins',
+      method: 'get',
+      uri: uri,
+      send: () => _client.get(uri, headers: {
+        HttpHeaders.authorizationHeader: 'Bearer $token'
+      }).timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch layer admins: ${response.statusCode} ${response.body}',
@@ -44,20 +54,25 @@ mixin _AdminUsersApi on _RemoteEventSourceBase {
     List<int>? layerIds,
   }) async {
     final uri = baseUrl.replace(path: '/api/admin/users');
-    final response = await _client
-        .post(
-          uri,
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $token',
-            HttpHeaders.contentTypeHeader: 'application/json',
-          },
-          body: jsonEncode({
-            'username': username,
-            'isAdmin': isAdmin,
-            if (layerIds != null) 'layerIds': layerIds,
-          }),
-        )
-        .timeout(timeout);
+    final response = await loggedRequest(
+      source: 'adminUsers.createAdminUser',
+      method: 'post',
+      uri: uri,
+      send: () => _client
+          .post(
+            uri,
+            headers: {
+              HttpHeaders.authorizationHeader: 'Bearer $token',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: jsonEncode({
+              'username': username,
+              'isAdmin': isAdmin,
+              if (layerIds != null) 'layerIds': layerIds,
+            }),
+          )
+          .timeout(timeout),
+    );
     if (response.statusCode != 201) {
       throw RemoteEventSourceException(
         'Failed to create admin user: ${response.statusCode} ${response.body}',
@@ -74,16 +89,21 @@ mixin _AdminUsersApi on _RemoteEventSourceBase {
     required bool isActive,
   }) async {
     final uri = baseUrl.replace(path: '/api/admin/users/$userId');
-    final response = await _client
-        .patch(
-          uri,
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $token',
-            HttpHeaders.contentTypeHeader: 'application/json',
-          },
-          body: jsonEncode({'isActive': isActive}),
-        )
-        .timeout(timeout);
+    final response = await loggedRequest(
+      source: 'adminUsers.setAdminUserActive',
+      method: 'patch',
+      uri: uri,
+      send: () => _client
+          .patch(
+            uri,
+            headers: {
+              HttpHeaders.authorizationHeader: 'Bearer $token',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: jsonEncode({'isActive': isActive}),
+          )
+          .timeout(timeout),
+    );
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to update user status: ${response.statusCode} ${response.body}',
@@ -98,10 +118,15 @@ mixin _AdminUsersApi on _RemoteEventSourceBase {
     required int userId,
   }) async {
     final uri = baseUrl.replace(path: '/api/admin/users/$userId');
-    final response = await _client.delete(
-      uri,
-      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-    ).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'adminUsers.deleteAdminUser',
+      method: 'delete',
+      uri: uri,
+      send: () => _client.delete(
+        uri,
+        headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+      ).timeout(timeout),
+    );
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to delete user: ${response.statusCode} ${response.body}',
@@ -117,10 +142,15 @@ mixin _AdminUsersApi on _RemoteEventSourceBase {
   }) async {
     final uri =
         baseUrl.replace(path: '/api/admin/users/$userId/reset-password');
-    final response = await _client.post(
-      uri,
-      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-    ).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'adminUsers.resetAdminUserPassword',
+      method: 'post',
+      uri: uri,
+      send: () => _client.post(
+        uri,
+        headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+      ).timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to reset password: ${response.statusCode} ${response.body}',

@@ -112,15 +112,17 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     final hasSeenWelcome = ref.watch(hasSeenWelcomeProvider);
     final navigatorKey = ref.watch(appNavigatorKeyProvider);
 
+    final showAuthorTab = authorAuth.isLoggedIn && authorAuth.hasAuthorRights;
+
     final pages = <Widget>[
       const EventsScreen(),
-      if (authorAuth.isLoggedIn) const AuthorScreen(),
+      if (showAuthorTab) const AuthorScreen(),
       const SettingsScreen(),
     ];
 
     final destinations = <NavigationDestination>[
       const NavigationDestination(icon: Icon(Icons.event), label: 'Events'),
-      if (authorAuth.isLoggedIn)
+      if (showAuthorTab)
         const NavigationDestination(icon: Icon(Icons.edit), label: 'Autor'),
       const NavigationDestination(
           icon: Icon(Icons.settings), label: 'Einstellungen'),

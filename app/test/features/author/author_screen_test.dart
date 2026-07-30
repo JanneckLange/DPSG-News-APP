@@ -61,6 +61,7 @@ AuthorAuthState _loggedInState({
     requiresPasswordChange: requiresPasswordChange,
     expiresAt: DateTime.now().toUtc().add(const Duration(hours: 1)),
     refreshExpiresAt: DateTime.now().toUtc().add(const Duration(days: 7)),
+    layerGrantIds: const [1],
   );
 }
 

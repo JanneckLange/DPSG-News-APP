@@ -68,6 +68,7 @@ void main() {
                 requiresPasswordChange: false,
                 expiresAt: DateTime.utc(2099, 1, 1),
                 refreshExpiresAt: DateTime.utc(2099, 2, 1),
+                layerGrantIds: const [1],
               ),
             ),
           ),

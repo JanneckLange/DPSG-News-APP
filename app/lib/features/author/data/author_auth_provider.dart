@@ -36,6 +36,9 @@ class AuthorAuthState {
   final List<int> layerGrantIds;
   final List<int> topicGrantIds;
 
+  bool get hasAuthorRights =>
+      layerGrantIds.isNotEmpty || topicGrantIds.isNotEmpty;
+
   AuthorAuthState copyWith({
     bool? isLoggedIn,
     String? token,

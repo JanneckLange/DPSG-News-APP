@@ -3,16 +3,18 @@
 /// Widget-Pump testbar ist.
 class EventsDashboardStats {
   const EventsDashboardStats({
-    required this.nextMonthCount,
+    required this.nextMonthEvents,
     required this.newUpdatesCount,
     required this.newEventsCount,
   });
 
-  final int nextMonthCount;
+  final List<Map<String, dynamic>> nextMonthEvents;
   final int newUpdatesCount;
   final int newEventsCount;
 
-  static const _nextMonthWindow = Duration(days: 31);
+  int get nextMonthCount => nextMonthEvents.length;
+
+  static const _nextMonthWindow = Duration(days: 30);
   static const _newEventsWindow = Duration(days: 30);
 
   factory EventsDashboardStats.fromEvents(
@@ -23,20 +25,24 @@ class EventsDashboardStats {
     final now = DateTime.now();
     final nextMonthEnd = now.add(_nextMonthWindow);
 
-    var nextMonthCount = 0;
+    final nextMonthEvents = <Map<String, dynamic>>[];
     var newUpdatesCount = 0;
     var newEventsCount = 0;
 
     for (final event in events) {
       final id = event['id']?.toString() ?? '';
 
-      final startDate = DateTime.tryParse(event['startDate']?.toString() ?? '')?.toLocal();
-      if (startDate != null && startDate.isAfter(now) && startDate.isBefore(nextMonthEnd)) {
-        nextMonthCount++;
+      final startDate =
+          DateTime.tryParse(event['startDate']?.toString() ?? '')?.toLocal();
+      if (startDate != null &&
+          startDate.isAfter(now) &&
+          startDate.isBefore(nextMonthEnd)) {
+        nextMonthEvents.add(event);
       }
 
       if (savedEventIds.contains(id)) {
-        final lastUpdateAt = DateTime.tryParse(event['lastUpdateAt']?.toString() ?? '');
+        final lastUpdateAt =
+            DateTime.tryParse(event['lastUpdateAt']?.toString() ?? '');
         if (lastUpdateAt != null) {
           final viewed = viewedAt[id];
           if (viewed == null || lastUpdateAt.isAfter(viewed)) {
@@ -54,7 +60,7 @@ class EventsDashboardStats {
     }
 
     return EventsDashboardStats(
-      nextMonthCount: nextMonthCount,
+      nextMonthEvents: nextMonthEvents,
       newUpdatesCount: newUpdatesCount,
       newEventsCount: newEventsCount,
     );
