@@ -32,13 +32,17 @@ class EventsDashboardStats {
     for (final event in events) {
       final id = event['id']?.toString() ?? '';
 
-      final startDate = DateTime.tryParse(event['startDate']?.toString() ?? '')?.toLocal();
-      if (startDate != null && startDate.isAfter(now) && startDate.isBefore(nextMonthEnd)) {
+      final startDate =
+          DateTime.tryParse(event['startDate']?.toString() ?? '')?.toLocal();
+      if (startDate != null &&
+          startDate.isAfter(now) &&
+          startDate.isBefore(nextMonthEnd)) {
         nextMonthEvents.add(event);
       }
 
       if (savedEventIds.contains(id)) {
-        final lastUpdateAt = DateTime.tryParse(event['lastUpdateAt']?.toString() ?? '');
+        final lastUpdateAt =
+            DateTime.tryParse(event['lastUpdateAt']?.toString() ?? '');
         if (lastUpdateAt != null) {
           final viewed = viewedAt[id];
           if (viewed == null || lastUpdateAt.isAfter(viewed)) {

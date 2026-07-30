@@ -35,7 +35,8 @@ class _RemoteEventSourceBase {
         uri: uri,
         durationMs: stopwatch.elapsedMilliseconds,
         statusCode: response.statusCode,
-        error: isError ? StateError('http_status_${response.statusCode}') : null,
+        error:
+            isError ? StateError('http_status_${response.statusCode}') : null,
         responseBody: isError ? response.body : null,
       );
       return response;
