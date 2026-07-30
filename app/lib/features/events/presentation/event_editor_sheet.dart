@@ -9,6 +9,7 @@ import '../../../core/services/sync_service.dart' as sync_service;
 import '../../../shared/utils/date_format_utils.dart';
 import '../../../shared/utils/geoapify_service.dart';
 import '../../../shared/utils/nominatim_service.dart';
+import '../../../shared/utils/url_utils.dart';
 import '../../admin/domain/topic_model.dart';
 import '../../author/data/author_auth_provider.dart';
 import '../../settings/data/dv_tree_provider.dart';
@@ -45,6 +46,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   bool _locationSearchUnavailable = false;
   DateTime? _startDate;
   DateTime? _endDate;
+  DateTime? _publishAt;
+  DateTime? _registrationDeadline;
   int? _selectedLayerId;
   int? _selectedTopicId;
   bool _isPublic = false;
@@ -52,23 +55,58 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   bool _loadingTopics = false;
   bool _saving = false;
   int _currentStep = 0;
-  final List<bool> _stepHasError = [false, false, false];
+  final List<bool> _stepHasError = [false, false, false, false];
+
+  static final RegExp _simpleEmailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+  /// Spiegelt `validateOptionalCtaUrl` aus `server/src/eventValidation.ts`:
+  /// CTA1 erlaubt mailto- oder http(s)-Werte, CTA2 nur http(s). Leere Werte
+  /// sind stets gueltig (optionales Feld).
+  String? _ctaValidationError(String value, {required bool allowMailto}) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return null;
+    if (looksLikeMailto(trimmed)) {
+      if (!allowMailto) {
+        return 'Muss eine gültige http(s)-URL sein.';
+      }
+      final address = extractMailtoAddress(trimmed);
+      return _simpleEmailRegex.hasMatch(address)
+          ? null
+          : 'Ungültige E-Mail-Adresse.';
+    }
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || !isHttpOrHttpsUri(uri)) {
+      return 'Muss eine gültige http(s)-URL oder E-Mail-Adresse sein.';
+    }
+    return null;
+  }
 
   bool _validateAll() {
     // reset
     _stepHasError[0] = false;
     _stepHasError[1] = false;
     _stepHasError[2] = false;
+    _stepHasError[3] = false;
 
-    // step 0: title, layer, startDate
+    // Schritt 0 "Titel & Beschreibung"
     final title = _titleController.text.trim();
-    if (title.isEmpty || _selectedLayerId == null || _startDate == null) {
+    if (title.isEmpty || _descriptionController.text.trim().isEmpty) {
       _stepHasError[0] = true;
     }
 
-    // step 1: description and CTA validity
-    if (_descriptionController.text.trim().isEmpty) {
+    // Schritt 1 "Termin & Ort": Startdatum erforderlich
+    if (_startDate == null) {
       _stepHasError[1] = true;
+    }
+
+    // Schritt 2 "Einstellungen": Layer erforderlich, CTA-Format optional aber
+    // wenn ausgefuellt muss es gueltig sein.
+    final cta1Error =
+        _ctaValidationError(_cta1UrlController.text, allowMailto: true);
+    final cta2Error =
+        _ctaValidationError(_cta2UrlController.text, allowMailto: false);
+    if (_selectedLayerId == null || cta1Error != null || cta2Error != null) {
+      _stepHasError[2] = true;
     }
 
     return !_stepHasError.contains(true);
@@ -107,6 +145,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _cta2UrlController.text = event['cta2Url'] as String? ?? '';
       _startDate = DateTime.tryParse(event['startDate'] as String? ?? '');
       _endDate = DateTime.tryParse(event['endDate'] as String? ?? '');
+      _publishAt = DateTime.tryParse(event['publishAt'] as String? ?? '');
+      _registrationDeadline =
+          DateTime.tryParse(event['registrationDeadline'] as String? ?? '');
     }
     if (_selectedLayerId != null) {
       unawaited(_loadTopicsForLayer(_selectedLayerId!));
@@ -265,7 +306,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
         return;
       }
       // clear previous error markers for preview
-      setState(() => _stepHasError.setAll(0, [false, false, false]));
+      setState(() => _stepHasError.setAll(0, [false, false, false, false]));
     } else {
       // Full validation for publish
       final ok = _validateAll();
@@ -294,6 +335,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       'description': _descriptionController.text.trim(),
       if (_startDate != null) 'startDate': _startDate!.toIso8601String(),
       if (_endDate != null) 'endDate': _endDate!.toIso8601String(),
+      if (_publishAt != null) 'publishAt': _publishAt!.toIso8601String(),
+      if (_registrationDeadline != null)
+        'registrationDeadline': _registrationDeadline!.toIso8601String(),
       if (resolvedLocationAddress != null)
         'locationAddress': resolvedLocationAddress,
       if (_locationLat != null) 'locationLat': _locationLat,
@@ -359,7 +403,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   }
 
   void _continue() {
-    if (_currentStep < 2) {
+    if (_currentStep < 3) {
       setState(() => _currentStep += 1);
     }
   }
@@ -370,6 +414,386 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
     } else {
       Navigator.of(context).pop(false);
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Feldgruppen als eigene Builder-Methoden: eine kuenftige Umsortierung der
+  // Schritte erfordert dadurch nur das Verschieben eines Methodenaufrufs
+  // zwischen den `Step`s in build(), keine Restrukturierung der Widgets
+  // selbst.
+  // ---------------------------------------------------------------------
+
+  List<Widget> _buildTitleField() {
+    return [
+      TextFormField(
+        controller: _titleController,
+        decoration: const InputDecoration(labelText: 'Titel'),
+        validator: (value) => value == null || value.trim().isEmpty
+            ? 'Titel ist erforderlich.'
+            : null,
+      ),
+    ];
+  }
+
+  List<Widget> _buildDescriptionField() {
+    return [
+      TextFormField(
+        controller: _descriptionController,
+        decoration: const InputDecoration(labelText: 'Beschreibung'),
+        minLines: 4,
+        maxLines: 8,
+        validator: (value) => value == null || value.trim().isEmpty
+            ? 'Beschreibung ist erforderlich.'
+            : null,
+      ),
+    ];
+  }
+
+  List<Widget> _buildScheduleFields() {
+    return [
+      ListTile(
+        title: const Text('Startdatum'),
+        subtitle: Text(_formatDateTime(_startDate)),
+        trailing: const Icon(Icons.calendar_today),
+        onTap: () async {
+          final selected = await _pickDateTime(_startDate);
+          if (selected != null) {
+            setState(() => _startDate = selected);
+          }
+        },
+      ),
+      const SizedBox(height: 12),
+      ListTile(
+        title: const Text('Enddatum'),
+        subtitle: Text(_formatDateTime(_endDate)),
+        trailing: const Icon(Icons.calendar_today),
+        onTap: () async {
+          final selected = await _pickDateTime(_endDate ?? _startDate);
+          if (selected != null) {
+            setState(() => _endDate = selected);
+          }
+        },
+      ),
+    ];
+  }
+
+  List<Widget> _buildLocationField() {
+    return [
+      Autocomplete<String>(
+        initialValue: TextEditingValue(text: _locationAddress ?? ''),
+        optionsBuilder: (TextEditingValue textEditingValue) async {
+          final query = textEditingValue.text.trim();
+          if (query.length < 3) {
+            _locationSuggestions = [];
+            return const Iterable<String>.empty();
+          }
+          if (_locationAutocompleteDebounce?.isActive ?? false) {
+            _locationAutocompleteDebounce!.cancel();
+          }
+          final requestId = ++_locationRequestId;
+          final logger = ref.read(loggingServiceProvider);
+          final completer = Completer<Iterable<String>>();
+          _locationAutocompleteDebounce = Timer(
+            const Duration(milliseconds: 500),
+            () async {
+              List<GeoapifyAddress> results = [];
+              var unavailable = false;
+              try {
+                results = await autocompleteAddress(query, logger: logger);
+              } catch (primaryError, primaryStack) {
+                await logger.logServiceError(
+                  'geoapify',
+                  'autocomplete_failed query_len=${query.length}',
+                  error: primaryError,
+                  stackTrace: primaryStack,
+                );
+                try {
+                  results = await autocompleteAddressNominatim(
+                    query,
+                    logger: logger,
+                  );
+                } catch (fallbackError, fallbackStack) {
+                  await logger.logServiceError(
+                    'nominatim',
+                    'autocomplete_fallback_failed query_len=${query.length}',
+                    error: fallbackError,
+                    stackTrace: fallbackStack,
+                  );
+                  unavailable = true;
+                }
+              }
+              if (requestId != _locationRequestId) {
+                // Ein neuerer Request laeuft bereits - dieses veraltete
+                // Ergebnis verwerfen, damit die Vorschlagsliste nicht mit
+                // _locationSuggestions auseinanderlaeuft (Race-Condition
+                // durch Timer.cancel(), das laufende Callbacks nicht
+                // stoppt).
+                completer.complete(const Iterable<String>.empty());
+                return;
+              }
+              _locationSuggestions = results;
+              if (mounted) {
+                setState(() => _locationSearchUnavailable = unavailable);
+              } else {
+                _locationSearchUnavailable = unavailable;
+              }
+              completer.complete(
+                _locationSuggestions.map((address) => address.formatted),
+              );
+            },
+          );
+          return completer.future;
+        },
+        onSelected: (String selection) {
+          final selected = _locationSuggestions.firstWhere(
+            (address) => address.formatted == selection,
+          );
+          setState(() {
+            _locationAddress = selected.formatted;
+            _locationLat = selected.lat;
+            _locationLng = selected.lon;
+          });
+        },
+        fieldViewBuilder: (
+          BuildContext context,
+          TextEditingController textEditingController,
+          FocusNode focusNode,
+          VoidCallback onFieldSubmitted,
+        ) {
+          _locationTextController = textEditingController;
+          return TextFormField(
+            controller: textEditingController,
+            focusNode: focusNode,
+            decoration: InputDecoration(
+              labelText: 'Ort',
+              helperText: _locationSearchUnavailable
+                  ? 'Adresssuche derzeit nicht verfügbar - Adresse kann unten frei eingegeben werden.'
+                  : 'Adresse aus der Vorschlagsliste wählen oder frei eingeben, falls keine Vorschläge erscheinen.',
+              suffixIcon: _locationAddress != null
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'Ort entfernen',
+                      onPressed: () {
+                        setState(() {
+                          _locationAddress = null;
+                          _locationLat = null;
+                          _locationLng = null;
+                          textEditingController.clear();
+                        });
+                      },
+                    )
+                  : null,
+            ),
+          );
+        },
+      ),
+    ];
+  }
+
+  List<Widget> _buildLayerAndTopicFields(
+    AsyncValue<List<LayerModel>> layerTreeAsync,
+    List<int> layerGrantIds,
+    List<int> topicGrantIds,
+  ) {
+    return [
+      layerTreeAsync.when(
+        data: (layers) {
+          final authorizedLayers = layers
+              .where((layer) => layerGrantIds.contains(layer.id))
+              .toList();
+          final optionIds = authorizedLayers.map((layer) => layer.id).toList();
+          if (_selectedLayerId != null &&
+              !optionIds.contains(_selectedLayerId)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _selectedLayerId = null;
+                  _selectedTopicId = null;
+                });
+              }
+            });
+          }
+
+          if (authorizedLayers.isEmpty) {
+            return const Text(
+              'Keine berechtigten Layer vorhanden. Bitte an einen Admin wenden.',
+            );
+          }
+
+          // Genau ein berechtigter Layer -> keine echte Auswahl, Feld
+          // schreibgeschuetzt auf den einzig moeglichen Wert vorbelegen.
+          if (authorizedLayers.length == 1) {
+            final onlyLayer = authorizedLayers.single;
+            if (_selectedLayerId != onlyLayer.id) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() => _selectedLayerId = onlyLayer.id);
+                  unawaited(_loadTopicsForLayer(onlyLayer.id));
+                }
+              });
+            }
+            return DropdownButtonFormField<int>(
+              initialValue: onlyLayer.id,
+              decoration: const InputDecoration(labelText: 'Layer'),
+              items: [
+                DropdownMenuItem(
+                  value: onlyLayer.id,
+                  child: Text(onlyLayer.name),
+                ),
+              ],
+              onChanged: null,
+            );
+          }
+
+          return DropdownButtonFormField<int>(
+            initialValue:
+                optionIds.contains(_selectedLayerId) ? _selectedLayerId : null,
+            decoration: const InputDecoration(labelText: 'Layer'),
+            items: authorizedLayers
+                .map((layer) =>
+                    DropdownMenuItem(value: layer.id, child: Text(layer.name)))
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedLayerId = value;
+                _selectedTopicId = null;
+                _topics = <TopicModel>[];
+                if (value != null) {
+                  final newLayer =
+                      authorizedLayers.firstWhere((layer) => layer.id == value);
+                  if (newLayer.parentId == null) {
+                    _isPublic = false;
+                  }
+                }
+              });
+              if (value != null) {
+                unawaited(_loadTopicsForLayer(value));
+              }
+            },
+            validator: (value) => value == null ? 'Bitte Layer wählen.' : null,
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) =>
+            const Text('Layer-Liste konnte nicht geladen werden.'),
+      ),
+      const SizedBox(height: 12),
+      if (_selectedLayerId != null) _buildTopicDropdown(topicGrantIds),
+    ];
+  }
+
+  Widget _buildOptionalDateListTile({
+    required String label,
+    required DateTime? value,
+    required ValueChanged<DateTime?> onChanged,
+  }) {
+    return ListTile(
+      title: Text(label),
+      subtitle: Text(_formatDateTime(value)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (value != null)
+            IconButton(
+              icon: const Icon(Icons.clear),
+              tooltip: 'Datum entfernen',
+              onPressed: () => onChanged(null),
+            ),
+          const Icon(Icons.calendar_today),
+        ],
+      ),
+      onTap: () async {
+        final selected = await _pickDateTime(value);
+        if (selected != null) onChanged(selected);
+      },
+    );
+  }
+
+  List<Widget> _buildPublishSettingsFields() {
+    return [
+      _buildOptionalDateListTile(
+        label: 'Veröffentlichung ab',
+        value: _publishAt,
+        onChanged: (value) => setState(() => _publishAt = value),
+      ),
+      const SizedBox(height: 12),
+      _buildOptionalDateListTile(
+        label: 'Anmeldeschluss',
+        value: _registrationDeadline,
+        onChanged: (value) => setState(() => _registrationDeadline = value),
+      ),
+      if (_selectedLayerId != null && !_isSelectedLayerRoot) ...[
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('Global bewerben'),
+                value: _isPublic,
+                onChanged: (value) =>
+                    setState(() => _isPublic = value ?? false),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              tooltip: 'Global bewerben',
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Global bewerben'),
+                  content: const Text(
+                    'Alle Events sind öffentlich einsehbar. '
+                    'Wird diese Option aktiviert, wird das '
+                    'Event zusätzlich layerübergreifend '
+                    'beworben (z. B. Dashboard-Kachel).',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Verstanden'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ];
+  }
+
+  List<Widget> _buildCtaFields() {
+    return [
+      const Text('Buttons', style: TextStyle(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 12),
+      const Text(kEventCta1Label,
+          style: TextStyle(fontWeight: FontWeight.w600)),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _cta1UrlController,
+        decoration: const InputDecoration(
+          labelText: 'Link oder E-Mail-Adresse',
+          hintText: 'https://... oder name@example.org',
+        ),
+        validator: (value) =>
+            _ctaValidationError(value ?? '', allowMailto: true),
+      ),
+      const SizedBox(height: 20),
+      const Text(kEventCta2Label,
+          style: TextStyle(fontWeight: FontWeight.w600)),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _cta2UrlController,
+        decoration: const InputDecoration(
+          labelText: 'Link oder E-Mail-Adresse',
+          hintText: 'https://... oder name@example.org',
+        ),
+        validator: (value) =>
+            _ctaValidationError(value ?? '', allowMailto: false),
+      ),
+    ];
   }
 
   @override
@@ -404,7 +828,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
               setState(() => _currentStep = index);
             },
             controlsBuilder: (context, details) {
-              if (_currentStep < 2) {
+              if (_currentStep < 3) {
                 return Padding(
                   padding: const EdgeInsets.only(top: 24),
                   child: Row(
@@ -445,7 +869,7 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
             },
             steps: [
               Step(
-                title: const Text('Eckdaten'),
+                title: const Text('Titel & Beschreibung'),
                 isActive: _currentStep >= 0,
                 state: _stepHasError[0]
                     ? StepState.error
@@ -455,290 +879,14 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(labelText: 'Titel'),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                              ? 'Titel ist erforderlich.'
-                              : null,
-                    ),
+                    ..._buildTitleField(),
                     const SizedBox(height: 12),
-                    Autocomplete<String>(
-                      initialValue:
-                          TextEditingValue(text: _locationAddress ?? ''),
-                      optionsBuilder:
-                          (TextEditingValue textEditingValue) async {
-                        final query = textEditingValue.text.trim();
-                        if (query.length < 3) {
-                          _locationSuggestions = [];
-                          return const Iterable<String>.empty();
-                        }
-                        if (_locationAutocompleteDebounce?.isActive ?? false) {
-                          _locationAutocompleteDebounce!.cancel();
-                        }
-                        final requestId = ++_locationRequestId;
-                        final logger = ref.read(loggingServiceProvider);
-                        final completer = Completer<Iterable<String>>();
-                        _locationAutocompleteDebounce = Timer(
-                          const Duration(milliseconds: 500),
-                          () async {
-                            List<GeoapifyAddress> results = [];
-                            var unavailable = false;
-                            try {
-                              results = await autocompleteAddress(query,
-                                  logger: logger);
-                            } catch (primaryError, primaryStack) {
-                              await logger.logServiceError(
-                                'geoapify',
-                                'autocomplete_failed query_len=${query.length}',
-                                error: primaryError,
-                                stackTrace: primaryStack,
-                              );
-                              try {
-                                results = await autocompleteAddressNominatim(
-                                  query,
-                                  logger: logger,
-                                );
-                              } catch (fallbackError, fallbackStack) {
-                                await logger.logServiceError(
-                                  'nominatim',
-                                  'autocomplete_fallback_failed query_len=${query.length}',
-                                  error: fallbackError,
-                                  stackTrace: fallbackStack,
-                                );
-                                unavailable = true;
-                              }
-                            }
-                            if (requestId != _locationRequestId) {
-                              // Ein neuerer Request laeuft bereits - dieses
-                              // veraltete Ergebnis verwerfen, damit die
-                              // Vorschlagsliste nicht mit _locationSuggestions
-                              // auseinanderlaeuft (Race-Condition durch
-                              // Timer.cancel(), das laufende Callbacks nicht
-                              // stoppt).
-                              completer
-                                  .complete(const Iterable<String>.empty());
-                              return;
-                            }
-                            _locationSuggestions = results;
-                            if (mounted) {
-                              setState(() =>
-                                  _locationSearchUnavailable = unavailable);
-                            } else {
-                              _locationSearchUnavailable = unavailable;
-                            }
-                            completer.complete(
-                              _locationSuggestions
-                                  .map((address) => address.formatted),
-                            );
-                          },
-                        );
-                        return completer.future;
-                      },
-                      onSelected: (String selection) {
-                        final selected = _locationSuggestions.firstWhere(
-                          (address) => address.formatted == selection,
-                        );
-                        setState(() {
-                          _locationAddress = selected.formatted;
-                          _locationLat = selected.lat;
-                          _locationLng = selected.lon;
-                        });
-                      },
-                      fieldViewBuilder: (
-                        BuildContext context,
-                        TextEditingController textEditingController,
-                        FocusNode focusNode,
-                        VoidCallback onFieldSubmitted,
-                      ) {
-                        _locationTextController = textEditingController;
-                        return TextFormField(
-                          controller: textEditingController,
-                          focusNode: focusNode,
-                          decoration: InputDecoration(
-                            labelText: 'Ort',
-                            helperText: _locationSearchUnavailable
-                                ? 'Adresssuche derzeit nicht verfügbar - Adresse kann unten frei eingegeben werden.'
-                                : 'Adresse aus der Vorschlagsliste wählen oder frei eingeben, falls keine Vorschläge erscheinen.',
-                            suffixIcon: _locationAddress != null
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    tooltip: 'Ort entfernen',
-                                    onPressed: () {
-                                      setState(() {
-                                        _locationAddress = null;
-                                        _locationLat = null;
-                                        _locationLng = null;
-                                        textEditingController.clear();
-                                      });
-                                    },
-                                  )
-                                : null,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    ListTile(
-                      title: const Text('Startdatum'),
-                      subtitle: Text(_formatDateTime(_startDate)),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () async {
-                        final selected = await _pickDateTime(_startDate);
-                        if (selected != null) {
-                          setState(() => _startDate = selected);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    ListTile(
-                      title: const Text('Enddatum'),
-                      subtitle: Text(_formatDateTime(_endDate)),
-                      trailing: const Icon(Icons.calendar_today),
-                      onTap: () async {
-                        final selected =
-                            await _pickDateTime(_endDate ?? _startDate);
-                        if (selected != null) {
-                          setState(() => _endDate = selected);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    layerTreeAsync.when(
-                      data: (layers) {
-                        final authorizedLayers = layers
-                            .where((layer) => layerGrantIds.contains(layer.id))
-                            .toList();
-                        final optionIds =
-                            authorizedLayers.map((layer) => layer.id).toList();
-                        if (_selectedLayerId != null &&
-                            !optionIds.contains(_selectedLayerId)) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) {
-                              setState(() {
-                                _selectedLayerId = null;
-                                _selectedTopicId = null;
-                              });
-                            }
-                          });
-                        }
-
-                        if (authorizedLayers.isEmpty) {
-                          return const Text(
-                            'Keine berechtigten Layer vorhanden. Bitte an einen Admin wenden.',
-                          );
-                        }
-
-                        // Genau ein berechtigter Layer -> keine echte Auswahl,
-                        // Feld schreibgeschuetzt auf den einzig moeglichen Wert vorbelegen.
-                        if (authorizedLayers.length == 1) {
-                          final onlyLayer = authorizedLayers.single;
-                          if (_selectedLayerId != onlyLayer.id) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) {
-                                setState(() => _selectedLayerId = onlyLayer.id);
-                                unawaited(_loadTopicsForLayer(onlyLayer.id));
-                              }
-                            });
-                          }
-                          return DropdownButtonFormField<int>(
-                            initialValue: onlyLayer.id,
-                            decoration:
-                                const InputDecoration(labelText: 'Layer'),
-                            items: [
-                              DropdownMenuItem(
-                                value: onlyLayer.id,
-                                child: Text(onlyLayer.name),
-                              ),
-                            ],
-                            onChanged: null,
-                          );
-                        }
-
-                        return DropdownButtonFormField<int>(
-                          initialValue: optionIds.contains(_selectedLayerId)
-                              ? _selectedLayerId
-                              : null,
-                          decoration: const InputDecoration(labelText: 'Layer'),
-                          items: authorizedLayers
-                              .map((layer) => DropdownMenuItem(
-                                  value: layer.id, child: Text(layer.name)))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedLayerId = value;
-                              _selectedTopicId = null;
-                              _topics = <TopicModel>[];
-                              if (value != null) {
-                                final newLayer = authorizedLayers
-                                    .firstWhere((layer) => layer.id == value);
-                                if (newLayer.parentId == null) {
-                                  _isPublic = false;
-                                }
-                              }
-                            });
-                            if (value != null) {
-                              unawaited(_loadTopicsForLayer(value));
-                            }
-                          },
-                          validator: (value) =>
-                              value == null ? 'Bitte Layer wählen.' : null,
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (_, __) => const Text(
-                          'Layer-Liste konnte nicht geladen werden.'),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_selectedLayerId != null)
-                      _buildTopicDropdown(topicGrantIds),
-                    if (_selectedLayerId != null && !_isSelectedLayerRoot) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              controlAffinity: ListTileControlAffinity.leading,
-                              title: const Text('Global bewerben'),
-                              value: _isPublic,
-                              onChanged: (value) =>
-                                  setState(() => _isPublic = value ?? false),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.info_outline),
-                            tooltip: 'Global bewerben',
-                            onPressed: () => showDialog<void>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Global bewerben'),
-                                content: const Text(
-                                  'Alle Events sind öffentlich einsehbar. '
-                                  'Wird diese Option aktiviert, wird das '
-                                  'Event zusätzlich layerübergreifend '
-                                  'beworben (z. B. Dashboard-Kachel).',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(),
-                                    child: const Text('Verstanden'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ..._buildDescriptionField(),
                   ],
                 ),
               ),
               Step(
-                title: const Text('Details'),
+                title: const Text('Termin & Ort'),
                 isActive: _currentStep >= 1,
                 state: _stepHasError[1]
                     ? StepState.error
@@ -748,52 +896,38 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration:
-                          const InputDecoration(labelText: 'Beschreibung'),
-                      minLines: 4,
-                      maxLines: 8,
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                              ? 'Beschreibung ist erforderlich.'
-                              : null,
-                      // Note: per-step validation removed for navigation; validators remain for publish.
-                    ),
+                    ..._buildScheduleFields(),
+                    const SizedBox(height: 12),
+                    ..._buildLocationField(),
+                  ],
+                ),
+              ),
+              Step(
+                title: const Text('Einstellungen'),
+                isActive: _currentStep >= 2,
+                state: _stepHasError[2]
+                    ? StepState.error
+                    : (_currentStep > 2
+                        ? StepState.complete
+                        : StepState.indexed),
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ..._buildLayerAndTopicFields(
+                        layerTreeAsync, layerGrantIds, topicGrantIds),
+                    const SizedBox(height: 12),
+                    ..._buildPublishSettingsFields(),
                     const SizedBox(height: 20),
-                    const Text('Buttons',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    const Text(kEventCta1Label,
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _cta1UrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Link oder E-Mail-Adresse',
-                        hintText: 'https://... oder name@example.org',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(kEventCta2Label,
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _cta2UrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Link oder E-Mail-Adresse',
-                        hintText: 'https://... oder name@example.org',
-                      ),
-                    ),
+                    ..._buildCtaFields(),
                   ],
                 ),
               ),
               Step(
                 title: const Text('Vorschau'),
-                isActive: _currentStep >= 2,
-                state: _stepHasError[2]
+                isActive: _currentStep >= 3,
+                state: _stepHasError[3]
                     ? StepState.error
-                    : (_currentStep == 2
+                    : (_currentStep == 3
                         ? StepState.editing
                         : StepState.indexed),
                 content: Column(
@@ -828,6 +962,8 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                                 Chip(
                                     label: Text(_locationAddress ??
                                         'Ort nicht gesetzt')),
+                                if (_isPublic && !_isSelectedLayerRoot)
+                                  const Chip(label: Text('Global beworben')),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -837,6 +973,14 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
                             ),
                             Text(
                               'Ende: ${_formatDateTime(_endDate)}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            Text(
+                              'Veröffentlichung ab: ${_formatDateTime(_publishAt)}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            Text(
+                              'Anmeldeschluss: ${_formatDateTime(_registrationDeadline)}',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             const SizedBox(height: 16),
