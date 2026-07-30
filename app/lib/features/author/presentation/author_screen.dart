@@ -122,6 +122,21 @@ class AuthorScreen extends ConsumerWidget {
       );
     }
 
+    if (!auth.hasAuthorRights) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Autor')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Dieser Account hat keine Autoren-Rechte für einen DV/Topic.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
+
     if (auth.requiresPasswordChange) {
       return Scaffold(
         appBar: AppBar(title: const Text('Autor')),
