@@ -13,6 +13,45 @@ class _RemoteEventSourceBase {
   final Duration timeout;
   final LoggingService? logger;
 
+  /// Fuehrt [send] aus und protokolliert Start/Ergebnis jeder Anfrage
+  /// einheitlich ueber [logger] - unabhaengig von HTTP-Methode oder
+  /// erwartetem Erfolgsstatuscode. Die Interpretation des Statuscodes
+  /// (welcher Code als Erfolg gilt) sowie das Mapping auf
+  /// [RemoteEventSourceException] bleiben Aufgabe des Aufrufers.
+  Future<http.Response> loggedRequest({
+    required String source,
+    required String method,
+    required Uri uri,
+    required Future<http.Response> Function() send,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      final response = await send();
+      stopwatch.stop();
+      final isError = response.statusCode >= 400;
+      await logger?.logHttpRequestResult(
+        source: source,
+        method: method,
+        uri: uri,
+        durationMs: stopwatch.elapsedMilliseconds,
+        statusCode: response.statusCode,
+        error: isError ? StateError('http_status_${response.statusCode}') : null,
+        responseBody: isError ? response.body : null,
+      );
+      return response;
+    } catch (error) {
+      if (stopwatch.isRunning) stopwatch.stop();
+      await logger?.logHttpRequestResult(
+        source: source,
+        method: method,
+        uri: uri,
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: error,
+      );
+      rethrow;
+    }
+  }
+
   String? _parseServerError(String body) {
     try {
       final decoded = jsonDecode(body);
@@ -27,22 +66,13 @@ class _RemoteEventSourceBase {
 
   Future<ApiHealthStatus> checkHealth() async {
     final uri = baseUrl.replace(path: '/health');
-    final stopwatch = Stopwatch()..start();
 
     try {
-      final response = await _client.get(uri).timeout(timeout);
-      stopwatch.stop();
-
-      await logger?.logHttpRequestResult(
+      final response = await loggedRequest(
         source: 'events.checkHealth',
         method: 'get',
         uri: uri,
-        durationMs: stopwatch.elapsedMilliseconds,
-        statusCode: response.statusCode,
-        error: response.statusCode == 200
-            ? null
-            : StateError('http_status_${response.statusCode}'),
-        responseBody: response.statusCode == 200 ? null : response.body,
+        send: () => _client.get(uri).timeout(timeout),
       );
 
       if (response.statusCode == 200) {
@@ -51,42 +81,18 @@ class _RemoteEventSourceBase {
       return ApiHealthStatus(
           false, 'Server antwortet mit ${response.statusCode}');
     } on TimeoutException catch (error, stackTrace) {
-      if (stopwatch.isRunning) stopwatch.stop();
-      await logger?.logHttpRequestResult(
-        source: 'events.checkHealth',
-        method: 'get',
-        uri: uri,
-        durationMs: stopwatch.elapsedMilliseconds,
-        error: error,
-      );
       throw RemoteEventSourceException(
         'Health check timed out',
         exception: error,
         stackTrace: stackTrace,
       );
     } on SocketException catch (error, stackTrace) {
-      if (stopwatch.isRunning) stopwatch.stop();
-      await logger?.logHttpRequestResult(
-        source: 'events.checkHealth',
-        method: 'get',
-        uri: uri,
-        durationMs: stopwatch.elapsedMilliseconds,
-        error: error,
-      );
       throw RemoteEventSourceException(
         'Unable to reach health endpoint',
         exception: error,
         stackTrace: stackTrace,
       );
     } on http.ClientException catch (error, stackTrace) {
-      if (stopwatch.isRunning) stopwatch.stop();
-      await logger?.logHttpRequestResult(
-        source: 'events.checkHealth',
-        method: 'get',
-        uri: uri,
-        durationMs: stopwatch.elapsedMilliseconds,
-        error: error,
-      );
       throw RemoteEventSourceException(
         'Network error during health check',
         exception: error,

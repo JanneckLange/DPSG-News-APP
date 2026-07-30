@@ -6,13 +6,18 @@ mixin _AuthApi on _RemoteEventSourceBase {
     required String password,
   }) async {
     final uri = baseUrl.replace(path: '/api/auth/login');
-    final response = await _client
-        .post(
-          uri,
-          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-          body: jsonEncode({'username': username, 'password': password}),
-        )
-        .timeout(timeout);
+    final response = await loggedRequest(
+      source: 'auth.loginAuthor',
+      method: 'post',
+      uri: uri,
+      send: () => _client
+          .post(
+            uri,
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+            body: jsonEncode({'username': username, 'password': password}),
+          )
+          .timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to login author: ${response.statusCode} ${response.body}',
@@ -42,13 +47,18 @@ mixin _AuthApi on _RemoteEventSourceBase {
   Future<AuthorLoginSession> refreshAuthorSession(
       {required String refreshToken}) async {
     final uri = baseUrl.replace(path: '/api/auth/refresh');
-    final response = await _client
-        .post(
-          uri,
-          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-          body: jsonEncode({'refreshToken': refreshToken}),
-        )
-        .timeout(timeout);
+    final response = await loggedRequest(
+      source: 'auth.refreshAuthorSession',
+      method: 'post',
+      uri: uri,
+      send: () => _client
+          .post(
+            uri,
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+            body: jsonEncode({'refreshToken': refreshToken}),
+          )
+          .timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to refresh author session: ${response.statusCode} ${response.body}',
@@ -77,10 +87,15 @@ mixin _AuthApi on _RemoteEventSourceBase {
 
   Future<void> logoutAuthor({required String token}) async {
     final uri = baseUrl.replace(path: '/api/auth/logout');
-    final response = await _client.post(
-      uri,
-      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-    ).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'auth.logoutAuthor',
+      method: 'post',
+      uri: uri,
+      send: () => _client.post(
+        uri,
+        headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+      ).timeout(timeout),
+    );
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to logout author: ${response.statusCode} ${response.body}',
@@ -92,10 +107,15 @@ mixin _AuthApi on _RemoteEventSourceBase {
 
   Future<AuthorSessionState> fetchAuthorSession({required String token}) async {
     final uri = baseUrl.replace(path: '/api/auth/me');
-    final response = await _client.get(
-      uri,
-      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
-    ).timeout(timeout);
+    final response = await loggedRequest(
+      source: 'auth.fetchAuthorSession',
+      method: 'get',
+      uri: uri,
+      send: () => _client.get(
+        uri,
+        headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
+      ).timeout(timeout),
+    );
     if (response.statusCode != 200) {
       throw RemoteEventSourceException(
         'Failed to fetch author session: ${response.statusCode} ${response.body}',
@@ -126,16 +146,21 @@ mixin _AuthApi on _RemoteEventSourceBase {
     if (oldPassword != null && oldPassword.isNotEmpty) {
       payload['oldPassword'] = oldPassword;
     }
-    final response = await _client
-        .post(
-          uri,
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $token',
-            HttpHeaders.contentTypeHeader: 'application/json',
-          },
-          body: jsonEncode(payload),
-        )
-        .timeout(timeout);
+    final response = await loggedRequest(
+      source: 'auth.changeAuthorPassword',
+      method: 'post',
+      uri: uri,
+      send: () => _client
+          .post(
+            uri,
+            headers: {
+              HttpHeaders.authorizationHeader: 'Bearer $token',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(timeout),
+    );
     if (response.statusCode != 204) {
       throw RemoteEventSourceException(
         'Failed to change password: ${response.statusCode} ${response.body}',
