@@ -3,20 +3,23 @@ import 'package:dpsg_news_app/features/events/presentation/events_dashboard_stat
 
 void main() {
   group('EventsDashboardStats.fromEvents', () {
-    test('counts events starting within the next 31 days', () {
+    test('counts events starting within the next 30 days', () {
       final now = DateTime.now();
       final withinWindow = now.add(const Duration(days: 10)).toUtc().toIso8601String();
+      final justBeyondWindow = now.add(const Duration(days: 31)).toUtc().toIso8601String();
       final beyondWindow = now.add(const Duration(days: 40)).toUtc().toIso8601String();
       final inThePast = now.subtract(const Duration(days: 1)).toUtc().toIso8601String();
 
       final stats = EventsDashboardStats.fromEvents([
         {'startDate': withinWindow},
         {'startDate': withinWindow},
+        {'startDate': justBeyondWindow},
         {'startDate': beyondWindow},
         {'startDate': inThePast},
       ], {}, {});
 
       expect(stats.nextMonthCount, 2);
+      expect(stats.nextMonthEvents.length, 2);
     });
 
     test('newUpdatesCount only counts saved events with an unseen update', () {

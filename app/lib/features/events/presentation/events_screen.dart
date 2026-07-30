@@ -19,6 +19,7 @@ import '../../../shared/widgets/stat_tile.dart';
 import 'event_detail_screen.dart';
 import 'event_list_tile.dart';
 import 'events_dashboard_stats.dart';
+import 'next_month_events_screen.dart';
 
 final eventsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   final box = HiveService.getEventsBox();
@@ -292,7 +293,17 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
               StatTile(
                 icon: Icons.calendar_month,
                 value: '${stats.nextMonthCount}',
-                label: 'Innerhalb des nächsten Monats',
+                label: 'Innerhalb der nächsten 30 Tage',
+                onTap: stats.nextMonthCount == 0
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            settings: const RouteSettings(
+                                name: 'NextMonthEventsScreen'),
+                            builder: (context) => NextMonthEventsScreen(
+                                events: stats.nextMonthEvents),
+                          ),
+                        ),
               ),
               StatTile(
                 icon: Icons.update,
