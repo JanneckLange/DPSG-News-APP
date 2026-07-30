@@ -61,7 +61,11 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
 
   /// Spiegelt `validateOptionalCtaUrl` aus `server/src/eventValidation.ts`:
   /// CTA1 erlaubt mailto- oder http(s)-Werte, CTA2 nur http(s). Leere Werte
-  /// sind stets gueltig (optionales Feld).
+  /// sind stets gueltig (optionales Feld). Schemalose Domains (z. B.
+  /// "example.com") werden wie beim Oeffnen eines CTA-Links in
+  /// `event_detail_screen.dart` (`_confirmAndOpenLink`) mit einem
+  /// https-Fallback geprueft, damit Client- und Server-Validierung sowie das
+  /// spaetere Oeffnen des Links konsistent denselben Wert akzeptieren.
   String? _ctaValidationError(String value, {required bool allowMailto}) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
@@ -74,8 +78,17 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
           ? null
           : 'Ungültige E-Mail-Adresse.';
     }
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null || !isHttpOrHttpsUri(uri)) {
+    var uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.scheme.isEmpty) {
+      // Dart's Uri.tryParse kodiert Leerzeichen unauffaellig in den Host
+      // statt das Parsen abzulehnen (anders als der Server, der dafuer den
+      // strengeren WHATWG-URL-Parser nutzt) - ohne diese Zusatzpruefung
+      // wuerde z. B. "kein gueltiger wert" als gueltige Domain durchgehen.
+      uri = trimmed.contains(RegExp(r'\s'))
+          ? null
+          : Uri.tryParse('https://$trimmed');
+    }
+    if (uri == null || uri.host.isEmpty || !isHttpOrHttpsUri(uri)) {
       return 'Muss eine gültige http(s)-URL oder E-Mail-Adresse sein.';
     }
     return null;
@@ -94,8 +107,12 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       _stepHasError[0] = true;
     }
 
-    // Schritt 1 "Termin & Ort": Startdatum erforderlich
-    if (_startDate == null) {
+    // Schritt 1 "Termin & Ort": Startdatum erforderlich, Enddatum darf
+    // (falls gesetzt) nicht vor dem Startdatum liegen.
+    final hasInvalidDateRange = _startDate != null &&
+        _endDate != null &&
+        _endDate!.isBefore(_startDate!);
+    if (_startDate == null || hasInvalidDateRange) {
       _stepHasError[1] = true;
     }
 
@@ -308,8 +325,13 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
       // clear previous error markers for preview
       setState(() => _stepHasError.setAll(0, [false, false, false, false]));
     } else {
-      // Full validation for publish
-      final ok = _validateAll();
+      // Full validation for publish. _formKey.currentState.validate() loest
+      // zusaetzlich die eingebaute Inline-Fehleranzeige der TextFormFields
+      // aus (Titel/Beschreibung/CTA1/CTA2) - ohne diesen Aufruf bleiben die
+      // validator-Funktionen wirkungslos und nur die generische SnackBar/das
+      // rote Schritt-Icon zeigen ueberhaupt an, dass etwas fehlt.
+      final formValid = _formKey.currentState?.validate() ?? true;
+      final ok = _validateAll() && formValid;
       if (!ok) {
         // focus first error step
         final first = _stepHasError.indexWhere((e) => e);
@@ -450,6 +472,9 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
   }
 
   List<Widget> _buildScheduleFields() {
+    final hasInvalidDateRange = _startDate != null &&
+        _endDate != null &&
+        _endDate!.isBefore(_startDate!);
     return [
       ListTile(
         title: const Text('Startdatum'),
@@ -474,6 +499,17 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
           }
         },
       ),
+      if (hasInvalidDateRange)
+        Padding(
+          padding: const EdgeInsets.only(top: 4, left: 16),
+          child: Text(
+            'Enddatum darf nicht vor dem Startdatum liegen.',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.error,
+              fontSize: 12,
+            ),
+          ),
+        ),
     ];
   }
 
@@ -819,6 +855,10 @@ class _EventEditorPageState extends ConsumerState<EventEditorPage> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
+          // Bis zum ersten expliziten validate()-Aufruf (Veroeffentlichen)
+          // bleiben unberuehrte Felder fehlerfrei; danach werden Korrekturen
+          // sofort live sichtbar, statt erst beim naechsten Speicherversuch.
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Stepper(
             type: StepperType.vertical,
             currentStep: _currentStep,

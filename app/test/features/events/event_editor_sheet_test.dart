@@ -456,9 +456,124 @@ void main() {
       final cta1Field =
           find.widgetWithText(TextFormField, 'Link oder E-Mail-Adresse').first;
       await tester.ensureVisible(cta1Field);
-      await tester.enterText(cta1Field, 'nicht-gueltig');
+      // Enthaelt bewusst ein Leerzeichen: eine schemalose Domain ohne
+      // Leerzeichen (z. B. "example.com") ist seit der Angleichung an die
+      // Server-Validierung (siehe _ctaValidationError) gueltig.
+      await tester.enterText(cta1Field, 'kein gueltiger wert');
       await tester.pump();
 
+      await tester.ensureVisible(find.text('Vorschau'));
+      await tester.tap(find.text('Vorschau'));
+      await tester.pumpAndSettle();
+      final publishButton =
+          find.widgetWithText(FilledButton, 'Jetzt veröffentlichen');
+      await tester.ensureVisible(publishButton);
+      await tester.tap(publishButton);
+      await tester.pump();
+    });
+
+    expect(
+      find.text('Bitte Fehler in den markierten Schritten beheben.'),
+      findsOneWidget,
+    );
+    expect(remote.capturedEvent, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'akzeptiert eine schemalose Domain als CTA1 (an Server-Validierung angeglichen)',
+      (tester) async {
+    _useTallTestViewport(tester);
+    final remote = _CapturingFakeRemoteEventSource(
+      grantedLayerIds: const [_hamburgLayerId],
+      grantedTopicIds: const [_woelflingeTopicId],
+    );
+
+    await tester.runAsync(() async {
+      await _pumpEditor(
+        tester,
+        grantedLayerIds: const [_hamburgLayerId],
+        grantedTopicIds: const [_woelflingeTopicId],
+        remote: remote,
+        existingDraft: const {
+          'id': 42,
+          'title': 'Sommerlager 2026',
+          'description': 'Eine Woche im Zeltlager.',
+          'layerId': _hamburgLayerId,
+          'startDate': '2026-08-01T10:00:00.000Z',
+        },
+      );
+      await _pumpUntilFound(tester, find.text('Einstellungen'));
+      await _settleBackgroundRefreshes(tester);
+      await tester.ensureVisible(find.text('Einstellungen'));
+      await tester.tap(find.text('Einstellungen'));
+      await tester.pumpAndSettle();
+      final cta1Field =
+          find.widgetWithText(TextFormField, 'Link oder E-Mail-Adresse').first;
+      await tester.ensureVisible(cta1Field);
+      await tester.enterText(cta1Field, 'example.com');
+      await tester.pump();
+
+      await tester.ensureVisible(find.text('Vorschau'));
+      await tester.tap(find.text('Vorschau'));
+      await tester.pumpAndSettle();
+      final publishButton =
+          find.widgetWithText(FilledButton, 'Jetzt veröffentlichen');
+      await tester.ensureVisible(publishButton);
+      await tester.tap(publishButton);
+      await tester.pump();
+    });
+
+    expect(
+      find.text('Bitte Fehler in den markierten Schritten beheben.'),
+      findsNothing,
+    );
+    expect(remote.capturedEvent, isNotNull);
+    // Der Wert wird unveraendert gespeichert (kein automatisches
+    // Voranstellen von "https://") - konsistent mit dem Oeffnen des Links in
+    // event_detail_screen.dart, das denselben Fallback erst beim Oeffnen
+    // anwendet.
+    expect(remote.capturedEvent!['cta1Url'], 'example.com');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'blockiert Veroeffentlichen wenn das Enddatum vor dem Startdatum liegt',
+      (tester) async {
+    _useTallTestViewport(tester);
+    final remote = _CapturingFakeRemoteEventSource(
+      grantedLayerIds: const [_hamburgLayerId],
+      grantedTopicIds: const [_woelflingeTopicId],
+    );
+
+    await tester.runAsync(() async {
+      await _pumpEditor(
+        tester,
+        grantedLayerIds: const [_hamburgLayerId],
+        grantedTopicIds: const [_woelflingeTopicId],
+        remote: remote,
+        existingDraft: const {
+          'id': 42,
+          'title': 'Sommerlager 2026',
+          'description': 'Eine Woche im Zeltlager.',
+          'layerId': _hamburgLayerId,
+          'startDate': '2026-08-10T10:00:00.000Z',
+          'endDate': '2026-08-01T10:00:00.000Z',
+        },
+      );
+      await _pumpUntilFound(tester, find.text('Titel'));
+      await _settleBackgroundRefreshes(tester);
+      await tester.ensureVisible(find.text('Termin & Ort'));
+      await tester.tap(find.text('Termin & Ort'));
+      await tester.pumpAndSettle();
+    });
+
+    expect(
+      find.text('Enddatum darf nicht vor dem Startdatum liegen.'),
+      findsOneWidget,
+    );
+
+    await tester.runAsync(() async {
       await tester.ensureVisible(find.text('Vorschau'));
       await tester.tap(find.text('Vorschau'));
       await tester.pumpAndSettle();
