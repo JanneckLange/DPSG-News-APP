@@ -142,7 +142,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
 
     Widget buildContent(List<Map<String, dynamic>> events) {
       final filteredEvents = selectedLayerIds.isEmpty
-          ? events
+          ? const <Map<String, dynamic>>[]
           : events
               .where((event) => selectedLayerIds
                   .contains((event['layerId'] as num?)?.toInt()))
@@ -155,12 +155,26 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
       final listView = filteredEvents.isEmpty
           ? ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(height: 48),
-                EmptyState(
-                  icon: Icons.event_busy,
-                  message: 'Keine Events verfügbar.',
-                ),
+              children: [
+                const SizedBox(height: 48),
+                selectedLayerIds.isEmpty
+                    ? EmptyState(
+                        icon: Icons.event_busy,
+                        message:
+                            'Bitte wähle mindestens einen DV/Topic aus, um Events zu sehen.',
+                        actionLabel: 'DV/Topic wählen',
+                        onAction: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            settings:
+                                const RouteSettings(name: 'DvSelectionScreen'),
+                            builder: (context) => const DvSelectionScreen(),
+                          ),
+                        ),
+                      )
+                    : const EmptyState(
+                        icon: Icons.event_busy,
+                        message: 'Keine Events verfügbar.',
+                      ),
               ],
             )
           : ListView.builder(
