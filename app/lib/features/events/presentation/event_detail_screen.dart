@@ -20,9 +20,11 @@ import '../../../shared/widgets/location_map_view.dart';
 import '../../../shared/widgets/safe_markdown_body.dart';
 import '../../../shared/widgets/section_card.dart';
 import '../../admin/domain/topic_model.dart';
+import '../data/outgoing_event_transfer_status_provider.dart';
 import '../domain/event_cta_labels.dart';
 import 'event_editor_sheet.dart';
 import 'widgets/event_history_dialog.dart';
+import 'widgets/transfer_target_author_dialog.dart';
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({super.key, required this.event});
@@ -451,6 +453,51 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     }
   }
 
+  /// Bietet das eigene Event einer Zielperson zur Uebertragung an (#22/#24).
+  /// Wirksam wird die Uebertragung erst, wenn die Zielperson zustimmt.
+  Future<void> _transferEvent() async {
+    final eventId = _eventIdAsInt;
+    final token = ref.read(authorAuthProvider).token;
+    if (eventId == null || token == null) return;
+
+    List<Map<String, dynamic>> eligibleAuthors;
+    try {
+      eligibleAuthors = await ref
+          .read(sync_service.remoteEventSourceProvider)
+          .fetchEligibleTransferAuthors(token: token, eventId: eventId);
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+      return;
+    }
+    if (!mounted) return;
+
+    final targetAuthorId = await showTransferTargetAuthorDialog(
+      context,
+      authors: eligibleAuthors,
+    );
+    if (targetAuthorId == null) return;
+
+    try {
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .createEventTransferRequest(
+                  token: token,
+                  eventId: eventId,
+                  toAuthorId: targetAuthorId,
+                ),
+          );
+      ref.invalidate(outgoingEventTransferRequestProvider(eventId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Übertragungsanfrage gesendet.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+    }
+  }
+
   Future<void> _showHistoryDialog() async {
     final eventId = _eventIdAsInt;
     if (eventId == null) return;
@@ -516,6 +563,28 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
 
     final canEditEvent = _canEditEvent;
     final canDeleteEvent = _canDeleteEvent;
+    // Bewusst getrennt von canEditEvent: Ein scope-berechtigter Admin darf
+    // zwar bearbeiten/loeschen, aber nur der tatsaechliche Eigentuemer darf
+    // ein Event zum Uebertragen anbieten (Admin-Direktuebertragung laeuft
+    // ueber einen eigenen, separaten Weg, #23). Beide Seiten explizit auf
+    // != null pruefen statt direkt zu vergleichen: sonst waere ein
+    // verwaistes Event (authorId: null, z.B. nach Autor-Loeschung) fuer
+    // einen nicht eingeloggten Betrachter (authorId ebenfalls null)
+    // faelschlich "isOwnEvent".
+    final eventAuthorId = (widget.event['authorId'] as num?)?.toInt();
+    final viewerAuthorId = ref.watch(authorAuthProvider).authorId;
+    final isOwnEvent = _eventIdAsInt != null &&
+        eventAuthorId != null &&
+        viewerAuthorId != null &&
+        eventAuthorId == viewerAuthorId;
+    // valueOrNull statt value: value wirft bei AsyncError erneut - ein
+    // Ladefehler bei diesem sekundaeren Status soll die Detailansicht nicht
+    // abstuerzen lassen, sondern den Chip einfach nicht anzeigen.
+    final outgoingRequest = isOwnEvent && _eventIdAsInt != null
+        ? ref
+            .watch(outgoingEventTransferRequestProvider(_eventIdAsInt!))
+            .valueOrNull
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -532,7 +601,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             onPressed: _saving ? null : _toggleSaved,
             tooltip: _isSaved ? 'Gemerkt' : 'Merken',
           ),
-          if (canEditEvent || canDeleteEvent)
+          if (canEditEvent || canDeleteEvent || isOwnEvent)
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
@@ -541,6 +610,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   _deleteEvent();
                 } else if (value == 'history') {
                   _showHistoryDialog();
+                } else if (value == 'transfer') {
+                  _transferEvent();
                 }
               },
               itemBuilder: (context) => [
@@ -549,6 +620,9 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 if (canEditEvent)
                   const PopupMenuItem(
                       value: 'history', child: Text('Änderungsprotokoll')),
+                if (isOwnEvent)
+                  const PopupMenuItem(
+                      value: 'transfer', child: Text('Übertragen')),
                 if (canDeleteEvent)
                   const PopupMenuItem(value: 'delete', child: Text('Löschen')),
               ],
@@ -569,6 +643,14 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   label: 'Thema',
                   value: topic,
                   color: AppTheme.stufenfarbeFor(topic),
+                ),
+              if (outgoingRequest != null &&
+                  outgoingRequest['status'] == 'pending')
+                LabeledChip(
+                  icon: Icons.swap_horiz,
+                  label: 'Übertragung',
+                  value: 'ausstehend',
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
             ],
           ),

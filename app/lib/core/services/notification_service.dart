@@ -246,11 +246,32 @@ class NotificationService {
       log('FCM token refreshed: $token');
       if (token.isNotEmpty) {
         await refreshTopicSubscriptions();
+        // Ein neuer FCM-Token hat keine Topic-Abos mehr - das persoenliche
+        // Autoren-Topic (Uebertragungsanfragen) liegt bewusst ausserhalb von
+        // refreshTopicSubscriptions()/subscribedTopics (siehe subscribeToAuthorTopic)
+        // und muss deshalb hier separat erneuert werden.
+        final authorId = _ref.read(settingsRepositoryProvider).getAuthorId();
+        if (authorId != null) {
+          await subscribeToAuthorTopic(authorId);
+        }
       }
     }, onError: (error, stack) {
       log('Failed to refresh FCM token: $error');
       log('$stack');
     });
+  }
+
+  /// Persoenliches Topic pro Autor fuer gezielte Benachrichtigungen (z.B.
+  /// eingehende Event-Uebertragungsanfragen, #22), die kein Layer/Topic-Abo
+  /// treffen wuerden. Bewusst getrennt von refreshTopicSubscriptions()/
+  /// subscribedTopics verwaltet, damit ein Refresh der Einstellungs-basierten
+  /// Themen dieses Abo nicht versehentlich mit entfernt.
+  Future<void> subscribeToAuthorTopic(int authorId) async {
+    await _subscribeToTopics(['author_$authorId']);
+  }
+
+  Future<void> unsubscribeFromAuthorTopic(int authorId) async {
+    await _unsubscribeFromTopics(['author_$authorId']);
   }
 
   void _listenToMessageOpenedApp() {

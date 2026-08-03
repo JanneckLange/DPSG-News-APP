@@ -29,6 +29,7 @@ export {
   getAuthorEvents,
   updateAuthorEventById,
   updateEventById,
+  transferEventAuthorById,
   deleteAuthorEventById,
   deleteAllEvents,
   clearEvents,
@@ -102,5 +103,19 @@ export {
   recordEventHistory,
   getEventHistory,
 } from './eventHistory';
+
+export type { EventTransferRequest, EventTransferRequestStatus, EventTransferRequestWithDetails } from './eventTransfers';
+export {
+  mapEventTransferRequestRow,
+  createEventTransferRequest,
+  getEventTransferRequestById,
+  getPendingEventTransferRequestForEvent,
+  getEventTransferRequestsForEvent,
+  getIncomingEventTransferRequests,
+  getIncomingEventTransferRequestsWithDetails,
+  resolveEventTransferRequest,
+  acceptEventTransferRequest,
+  clearEventTransferRequests,
+} from './eventTransfers';
 
 export type { AuthorRecord } from './types';

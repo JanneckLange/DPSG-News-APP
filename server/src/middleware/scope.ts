@@ -119,15 +119,26 @@ export async function filterAuthorsForAdmin(
   return visible;
 }
 
+type EventGrantHolder = { layerGrantIds?: number[]; topicGrantIds?: number[] } | undefined;
+
+// Reine Grant-Pruefung ohne Response-Kopplung, damit sie sowohl fuer den
+// eingeloggten Autor (requireEventGrant) als auch fuer eine beliebige
+// Zielperson (Event-Uebertragung, #22/#23) verwendet werden kann.
+export function authorHasEventGrant(author: EventGrantHolder, layerId: number, topicId: number | undefined): boolean {
+  if (!author?.layerGrantIds?.includes(layerId)) {
+    return false;
+  }
+  if (typeof topicId === 'number' && !author.topicGrantIds?.includes(topicId)) {
+    return false;
+  }
+  return true;
+}
+
 // Autoren duerfen Events nur auf explizit zugewiesenen Layern/Topics erstellen
 // (Rechtematrix aus #1: "create post: own layer/topic", unabhaengig vom Admin-Status).
 export function requireEventGrant(res: Response, layerId: number, topicId: number | undefined): boolean {
   const author = res.locals.author as AuthorIdentity | undefined;
-  if (!author?.layerGrantIds?.includes(layerId)) {
-    res.status(403).json({ error: 'Forbidden' });
-    return false;
-  }
-  if (typeof topicId === 'number' && !author.topicGrantIds?.includes(topicId)) {
+  if (!authorHasEventGrant(author, layerId, topicId)) {
     res.status(403).json({ error: 'Forbidden' });
     return false;
   }

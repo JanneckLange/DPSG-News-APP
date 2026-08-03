@@ -50,10 +50,20 @@ describe('diffEventFields', () => {
     expect(diffEventFields(before, after)).toEqual([]);
   });
 
-  it('ignores untracked fields like id, authorId, createdAt, modifiedAt', () => {
-    const before = makeEvent({ id: 1, authorId: 42, createdAt: 'a', modifiedAt: 'b' });
-    const after = makeEvent({ id: 2, authorId: 99, createdAt: 'c', modifiedAt: 'd' });
+  it('ignores untracked fields like id, createdAt, modifiedAt', () => {
+    const before = makeEvent({ id: 1, createdAt: 'a', modifiedAt: 'b' });
+    const after = makeEvent({ id: 2, createdAt: 'c', modifiedAt: 'd' });
     expect(diffEventFields(before, after)).toEqual([]);
+  });
+
+  // authorId wird bewusst getrackt (anders als id/createdAt/modifiedAt), damit
+  // Event-Uebertragungen (#22/#23) als Historie-Eintrag sichtbar werden.
+  it('detects an authorId change (event transfer)', () => {
+    const before = makeEvent({ authorId: 42 });
+    const after = makeEvent({ authorId: 99 });
+    expect(diffEventFields(before, after)).toEqual([
+      { field: 'authorId', oldValue: 42, newValue: 99 },
+    ]);
   });
 
   it('detects boolean field changes', () => {

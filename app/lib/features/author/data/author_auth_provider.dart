@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/app_navigation_service.dart';
 import '../../../core/services/error_toast_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
 import '../../events/data/remote_event_source.dart';
@@ -130,6 +131,12 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       layerGrantIds: _repository.getAuthorLayerGrantIds(),
       topicGrantIds: _repository.getAuthorTopicGrantIds(),
     );
+    final authorId = state.authorId;
+    if (authorId != null) {
+      unawaited(_ref
+          .read(notificationServiceProvider)
+          .subscribeToAuthorTopic(authorId));
+    }
     final token = await getValidAccessToken();
     if (token == null) {
       _notifySessionExpired();
@@ -171,10 +178,14 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     final session =
         await _remote.loginAuthor(username: username, password: password);
     await _persistSession(session);
+    unawaited(_ref
+        .read(notificationServiceProvider)
+        .subscribeToAuthorTopic(session.authorId));
   }
 
   Future<void> logout() async {
     final token = state.token;
+    final authorId = state.authorId;
     try {
       if (token != null && token.isNotEmpty) {
         await _remote.logoutAuthor(token: token);
@@ -183,6 +194,11 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
       await _secureStorage.clearAuthorTokens();
       await _repository.clearAuthorSession();
       state = AuthorAuthState.signedOut();
+      if (authorId != null) {
+        unawaited(_ref
+            .read(notificationServiceProvider)
+            .unsubscribeFromAuthorTopic(authorId));
+      }
     }
   }
 
