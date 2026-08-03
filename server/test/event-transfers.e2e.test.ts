@@ -64,6 +64,37 @@ async function createOwnEvent(token: string, title: string): Promise<number> {
   return response.body.event.id as number;
 }
 
+describe('Eligible authors for event transfer API e2e (#24)', () => {
+  it('lists only active authors with matching grants, excluding the current owner', async () => {
+    await createAuthorForTesting({ username: 'eligible-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const eligible = await createAuthorForTesting({ username: 'eligible-match', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'eligible-no-grant', password: 'secret-123', layerGrantIds: [] });
+    const ownerToken = await loginAuthor('eligible-owner', 'secret-123');
+    const eventId = await createOwnEvent(ownerToken, 'Zielpersonen-Auswahl');
+
+    const response = await request(app)
+      .get(`/api/events/${eventId}/eligible-authors`)
+      .set('authorization', `Bearer ${ownerToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.authors).toEqual([{ id: eligible.id, username: 'eligible-match' }]);
+  });
+
+  it('forbids a non-owner from listing eligible authors', async () => {
+    await createAuthorForTesting({ username: 'eligible-owner-2', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'eligible-stranger', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('eligible-owner-2', 'secret-123');
+    const strangerToken = await loginAuthor('eligible-stranger', 'secret-123');
+    const eventId = await createOwnEvent(ownerToken, 'Nicht meins');
+
+    const response = await request(app)
+      .get(`/api/events/${eventId}/eligible-authors`)
+      .set('authorization', `Bearer ${strangerToken}`);
+
+    expect(response.status).toBe(403);
+  });
+});
+
 describe('Event transfer requests API e2e', () => {
   it('lets an author offer an own event to an eligible target author and sends a push notification', async () => {
     await createAuthorForTesting({ username: 'from-author', password: 'secret-123', layerGrantIds: [koelnLayerId] });

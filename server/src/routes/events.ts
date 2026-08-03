@@ -22,6 +22,7 @@ import {
   getLayerById,
   getPendingEventTransferRequestForEvent,
   getTopics,
+  listAuthors,
   recordEventHistory,
   resolveEventTransferRequest,
   transferEventAuthorById,
@@ -554,6 +555,46 @@ eventsRouter.delete('/api/events/:id/updates/:updateId', async (req: Request, re
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to delete event update' });
+  }
+});
+
+// Autoren mit passenden Layer/Topic-Rechten fuer die Zielperson-Auswahl beim
+// Anbieten eines eigenen Events (#24). Bewusst schlank (nur id/username) statt
+// des vollen Admin-Nutzerlistenendpunkts, damit normale Autoren keinen Zugriff
+// auf Admin-only-Felder anderer Konten bekommen.
+eventsRouter.get('/api/events/:id/eligible-authors', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid event id');
+    }
+    const events = await getEvents(undefined, { includeUnpublished: true });
+    const current = events.find((event) => event.id === id);
+    if (!current) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (!requireOwnEvent(res, current.authorId)) {
+      return;
+    }
+    if (current.layerId == null) {
+      return res.json({ authors: [] });
+    }
+
+    const allAuthors = await listAuthors();
+    const eligible = allAuthors
+      .filter((candidate) => candidate.isActive && candidate.id !== current.authorId && authorHasEventGrant(candidate, current.layerId as number, current.topicId))
+      .map((candidate) => ({ id: candidate.id, username: candidate.username }));
+
+    res.json({ authors: eligible });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to load eligible authors' });
   }
 });
 
