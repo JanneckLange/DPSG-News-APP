@@ -111,6 +111,12 @@ class AuthorScreen extends ConsumerWidget {
       ref.invalidate(incomingEventTransferRequestsProvider);
       ref.invalidate(ownEventsProvider);
       await ref.read(sync_service.syncServiceProvider).syncEvents(force: true);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Event "${request['eventTitle']}" übernommen.')),
+        );
+      }
     } catch (error) {
       if (context.mounted) showErrorToast(ref, describeRemoteError(error));
     }
