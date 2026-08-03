@@ -12,6 +12,7 @@ import '../../events/presentation/event_editor_sheet.dart';
 import '../../events/presentation/event_list_tile.dart';
 import '../../settings/data/dv_tree_provider.dart';
 import '../data/author_auth_provider.dart';
+import '../data/incoming_event_transfer_requests_provider.dart';
 import '../data/own_events_provider.dart';
 import 'author_change_password_screen.dart';
 import 'author_dashboard_stats.dart';
@@ -62,10 +63,74 @@ class AuthorScreen extends ConsumerWidget {
   Future<void> _refresh(WidgetRef ref) async {
     ref.invalidate(ownEventsProvider);
     ref.invalidate(ownDraftsProvider);
+    ref.invalidate(incomingEventTransferRequestsProvider);
     await Future.wait([
       ref.read(ownEventsProvider.future),
       ref.read(ownDraftsProvider.future),
+      ref.read(incomingEventTransferRequestsProvider.future),
     ]);
+  }
+
+  /// Nimmt eine eingehende Uebertragungsanfrage an - erst danach gehoert das
+  /// Event tatsaechlich dem eigenen Konto (#22/#24).
+  Future<void> _acceptTransferRequest(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> request,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Event übernehmen'),
+        content: Text(
+            'Möchtest du die Autorenschaft für "${request['eventTitle']}" von ${request['fromAuthorUsername']} übernehmen?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Übernehmen'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    try {
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .acceptEventTransferRequest(
+                  token: token,
+                  requestId: (request['id'] as num).toInt(),
+                ),
+          );
+      ref.invalidate(incomingEventTransferRequestsProvider);
+      ref.invalidate(ownEventsProvider);
+      await ref.read(sync_service.syncServiceProvider).syncEvents(force: true);
+    } catch (error) {
+      if (context.mounted) showErrorToast(ref, describeRemoteError(error));
+    }
+  }
+
+  Future<void> _rejectTransferRequest(
+    BuildContext context,
+    WidgetRef ref,
+    int requestId,
+  ) async {
+    try {
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .rejectEventTransferRequest(token: token, requestId: requestId),
+          );
+      ref.invalidate(incomingEventTransferRequestsProvider);
+    } catch (error) {
+      if (context.mounted) showErrorToast(ref, describeRemoteError(error));
+    }
   }
 
   List<StatTile> _buildStatTiles(
@@ -161,6 +226,12 @@ class AuthorScreen extends ConsumerWidget {
 
     final eventsAsync = ref.watch(ownEventsProvider);
     final draftsAsync = ref.watch(ownDraftsProvider);
+    // valueOrNull statt value: value wirft bei AsyncError erneut - ein
+    // Ladefehler bei dieser sekundaeren Liste soll den Autoren-Bereich nicht
+    // abstuerzen lassen, sondern die Liste einfach leer bleiben.
+    final incomingRequests =
+        ref.watch(incomingEventTransferRequestsProvider).valueOrNull ??
+            const <Map<String, dynamic>>[];
 
     Widget body;
     if (eventsAsync.isLoading || draftsAsync.isLoading) {
@@ -185,6 +256,38 @@ class AuthorScreen extends ConsumerWidget {
       body = ListView(
         children: [
           DashboardStatRow(tiles: _buildStatTiles(context, stats)),
+          if (incomingRequests.isNotEmpty)
+            ExpansionTile(
+              title: Text(
+                  'Eingehende Übertragungsanfragen (${incomingRequests.length})'),
+              initiallyExpanded: true,
+              children: [
+                for (final request in incomingRequests)
+                  ListTile(
+                    leading: const Icon(Icons.swap_horiz),
+                    title: Text(request['eventTitle'] as String? ?? ''),
+                    subtitle:
+                        Text('Von ${request['fromAuthorUsername'] ?? ''}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.check),
+                          tooltip: 'Annehmen',
+                          onPressed: () =>
+                              _acceptTransferRequest(context, ref, request),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Ablehnen',
+                          onPressed: () => _rejectTransferRequest(
+                              context, ref, (request['id'] as num).toInt()),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           if (events.isEmpty && drafts.isEmpty)
             EmptyState(
               icon: Icons.event_note,
