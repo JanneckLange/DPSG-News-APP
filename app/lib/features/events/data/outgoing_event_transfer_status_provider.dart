@@ -13,7 +13,9 @@ final outgoingEventTransferRequestProvider = FutureProvider.autoDispose
   if (!auth.isLoggedIn || auth.requiresPasswordChange) {
     return null;
   }
-  final requests = await ref.read(authorAuthProvider.notifier).callAuthenticated(
+  final requests = await ref
+      .read(authorAuthProvider.notifier)
+      .callAuthenticated(
         (token) => ref
             .read(sync_service.remoteEventSourceProvider)
             .fetchOutgoingEventTransferRequests(token: token, eventId: eventId),

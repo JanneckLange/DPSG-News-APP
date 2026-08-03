@@ -18,8 +18,8 @@ Future<int?> showTransferTargetAuthorDialog(
         if (authors.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Text(
-                'Keine berechtigte Zielperson für dieses Event gefunden.'),
+            child:
+                Text('Keine berechtigte Zielperson für dieses Event gefunden.'),
           ),
         for (final author in authors)
           SimpleDialogOption(

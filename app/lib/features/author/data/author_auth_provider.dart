@@ -133,8 +133,9 @@ class AuthorAuthNotifier extends StateNotifier<AuthorAuthState> {
     );
     final authorId = state.authorId;
     if (authorId != null) {
-      unawaited(
-          _ref.read(notificationServiceProvider).subscribeToAuthorTopic(authorId));
+      unawaited(_ref
+          .read(notificationServiceProvider)
+          .subscribeToAuthorTopic(authorId));
     }
     final token = await getValidAccessToken();
     if (token == null) {

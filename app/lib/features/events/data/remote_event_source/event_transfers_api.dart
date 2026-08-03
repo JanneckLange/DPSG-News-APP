@@ -108,8 +108,8 @@ mixin _EventTransfersApi on _RemoteEventSourceBase {
     required String token,
     required int requestId,
   }) async {
-    final uri =
-        baseUrl.replace(path: '/api/events/transfer-requests/$requestId/accept');
+    final uri = baseUrl.replace(
+        path: '/api/events/transfer-requests/$requestId/accept');
     final response = await loggedRequest(
       source: 'eventTransfers.acceptEventTransferRequest',
       method: 'post',
@@ -132,8 +132,8 @@ mixin _EventTransfersApi on _RemoteEventSourceBase {
     required String token,
     required int requestId,
   }) async {
-    final uri =
-        baseUrl.replace(path: '/api/events/transfer-requests/$requestId/reject');
+    final uri = baseUrl.replace(
+        path: '/api/events/transfer-requests/$requestId/reject');
     final response = await loggedRequest(
       source: 'eventTransfers.rejectEventTransferRequest',
       method: 'post',

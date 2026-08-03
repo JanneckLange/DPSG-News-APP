@@ -535,8 +535,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
       if (!layerGrantIds.contains(layerId)) return false;
       if (topicId != null) {
         final topicGrantIds = List<int>.from(
-            (candidate['topicGrantIds'] as List<dynamic>? ??
-                    const <dynamic>[])
+            (candidate['topicGrantIds'] as List<dynamic>? ?? const <dynamic>[])
                 .map((value) => (value as num).toInt()));
         if (!topicGrantIds.contains(topicId)) return false;
       }
