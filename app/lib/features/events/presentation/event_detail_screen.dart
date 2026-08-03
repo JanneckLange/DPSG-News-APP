@@ -566,10 +566,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     // Bewusst getrennt von canEditEvent: Ein scope-berechtigter Admin darf
     // zwar bearbeiten/loeschen, aber nur der tatsaechliche Eigentuemer darf
     // ein Event zum Uebertragen anbieten (Admin-Direktuebertragung laeuft
-    // ueber einen eigenen, separaten Weg, #23).
+    // ueber einen eigenen, separaten Weg, #23). Beide Seiten explizit auf
+    // != null pruefen statt direkt zu vergleichen: sonst waere ein
+    // verwaistes Event (authorId: null, z.B. nach Autor-Loeschung) fuer
+    // einen nicht eingeloggten Betrachter (authorId ebenfalls null)
+    // faelschlich "isOwnEvent".
+    final eventAuthorId = (widget.event['authorId'] as num?)?.toInt();
+    final viewerAuthorId = ref.watch(authorAuthProvider).authorId;
     final isOwnEvent = _eventIdAsInt != null &&
-        (widget.event['authorId'] as num?)?.toInt() ==
-            ref.watch(authorAuthProvider).authorId;
+        eventAuthorId != null &&
+        viewerAuthorId != null &&
+        eventAuthorId == viewerAuthorId;
     // valueOrNull statt value: value wirft bei AsyncError erneut - ein
     // Ladefehler bei diesem sekundaeren Status soll die Detailansicht nicht
     // abstuerzen lassen, sondern den Chip einfach nicht anzeigen.
