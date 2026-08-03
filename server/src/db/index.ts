@@ -103,4 +103,16 @@ export {
   getEventHistory,
 } from './eventHistory';
 
+export type { EventTransferRequest, EventTransferRequestStatus } from './eventTransfers';
+export {
+  mapEventTransferRequestRow,
+  createEventTransferRequest,
+  getEventTransferRequestById,
+  getPendingEventTransferRequestForEvent,
+  getEventTransferRequestsForEvent,
+  getIncomingEventTransferRequests,
+  resolveEventTransferRequest,
+  clearEventTransferRequests,
+} from './eventTransfers';
+
 export type { AuthorRecord } from './types';

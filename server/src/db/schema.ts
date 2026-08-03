@@ -197,6 +197,23 @@ export async function connect(): Promise<void> {
     );
   `);
   await client.query(`CREATE INDEX IF NOT EXISTS event_history_event_id_idx ON event_history(event_id);`);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS event_transfer_requests (
+      id SERIAL PRIMARY KEY,
+      event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      from_author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+      to_author_id INTEGER NOT NULL REFERENCES authors(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      resolved_at TIMESTAMPTZ
+    );
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS event_transfer_requests_event_id_idx ON event_transfer_requests(event_id);`);
+  await client.query(`CREATE INDEX IF NOT EXISTS event_transfer_requests_to_author_id_idx ON event_transfer_requests(to_author_id) WHERE status = 'pending';`);
+  // Nur eine aktive Anfrage pro Event: eine neue Anfrage storniert die vorherige
+  // (siehe eventTransfers.ts), dieser Index erzwingt die Invariante zusaetzlich
+  // auf DB-Ebene gegen Race-Conditions zwischen zwei gleichzeitigen Anfragen.
+  await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS event_transfer_requests_one_pending_per_event ON event_transfer_requests(event_id) WHERE status = 'pending';`);
   await cleanupExpiredSessions(true);
   await cleanupExpiredDrafts(true);
   await ensureBootstrapAuthor();
