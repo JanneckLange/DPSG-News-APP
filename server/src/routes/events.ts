@@ -833,6 +833,17 @@ eventsRouter.post('/api/events/:id/transfer', async (req: Request, res: Response
       return respondBadRequest(req, res, 'Target author is not eligible for this event');
     }
 
+    // Eine offene Autor-Anfrage fuer dieses Event wird durch die Direktuebertragung
+    // obsolet - bewusst VOR dem Autorenwechsel storniert: wuerde die Zielperson der
+    // alten Anfrage genau in diesem Moment noch annehmen, greift deren eigene
+    // WHERE status = 'pending'-Bedingung (siehe acceptEventTransferRequest) nicht
+    // mehr und die Annahme schlaegt sauber mit 409 fehl, statt die Direktuebertragung
+    // im Anschluss wieder zu ueberschreiben.
+    const pendingRequest = await getPendingEventTransferRequestForEvent(id);
+    if (pendingRequest) {
+      await resolveEventTransferRequest(pendingRequest.id, 'cancelled');
+    }
+
     const updated = await transferEventAuthorById(id, toAuthorId);
     if (!updated) {
       return res.status(404).json({ error: 'Event not found' });
@@ -843,13 +854,6 @@ eventsRouter.post('/api/events/:id/transfer', async (req: Request, res: Response
       await recordEventHistory(id, admin.id, current, updated);
     } catch (historyError) {
       logRequestError(historyError, res.locals.requestId);
-    }
-
-    // Eine offene Autor-Anfrage fuer dieses Event ist durch die Direktuebertragung
-    // obsolet geworden.
-    const pendingRequest = await getPendingEventTransferRequestForEvent(id);
-    if (pendingRequest) {
-      await resolveEventTransferRequest(pendingRequest.id, 'cancelled');
     }
 
     res.json({ event: updated });
