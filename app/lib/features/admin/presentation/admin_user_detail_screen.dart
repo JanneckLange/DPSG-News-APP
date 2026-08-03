@@ -8,6 +8,7 @@ import '../../settings/data/dv_tree_provider.dart';
 import '../../settings/domain/layer_model.dart';
 import '../../../core/services/error_toast_service.dart';
 import '../../../core/services/sync_service.dart' as sync_service;
+import '../../events/presentation/widgets/transfer_target_author_dialog.dart';
 import '../domain/topic_model.dart';
 import 'admin_otp_dialog.dart';
 import 'widgets/layer_multi_select_dialog.dart';
@@ -500,6 +501,77 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
     }
   }
 
+  /// Admin-Direktuebertragung ohne Zustimmung der Zielperson (#23/#25).
+  /// Zielpersonen werden client-seitig aus der bereits geladenen
+  /// Admin-Nutzerliste gefiltert (Layer/Topic-Grants) - der eligible-authors-
+  /// Endpunkt aus #24 ist bewusst nur dem Event-Eigentuemer vorbehalten und
+  /// hier nicht nutzbar. Die eigentliche Berechtigungspruefung erfolgt
+  /// server-seitig beim Transfer-Aufruf.
+  Future<void> _transferContribution(Map<String, dynamic> event) async {
+    final eventId = (event['id'] as num?)?.toInt();
+    final layerId = (event['layerId'] as num?)?.toInt();
+    if (eventId == null || layerId == null) return;
+    final topicId = (event['topicId'] as num?)?.toInt();
+    final currentAuthorId = (event['authorId'] as num?)?.toInt();
+
+    List<Map<String, dynamic>> allUsers;
+    try {
+      allUsers = await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .fetchAdminUsers(token: token),
+          );
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+      return;
+    }
+
+    final eligibleAuthors = allUsers.where((candidate) {
+      if (candidate['isActive'] != true) return false;
+      if ((candidate['id'] as num?)?.toInt() == currentAuthorId) return false;
+      final layerGrantIds = List<int>.from(
+          (candidate['layerGrantIds'] as List<dynamic>? ?? const <dynamic>[])
+              .map((value) => (value as num).toInt()));
+      if (!layerGrantIds.contains(layerId)) return false;
+      if (topicId != null) {
+        final topicGrantIds = List<int>.from(
+            (candidate['topicGrantIds'] as List<dynamic>? ??
+                    const <dynamic>[])
+                .map((value) => (value as num).toInt()));
+        if (!topicGrantIds.contains(topicId)) return false;
+      }
+      return true;
+    }).toList();
+
+    if (!mounted) return;
+    final targetAuthorId = await showTransferTargetAuthorDialog(
+      context,
+      authors: eligibleAuthors,
+      title: 'Event direkt übertragen an',
+    );
+    if (targetAuthorId == null) return;
+
+    try {
+      await ref.read(authorAuthProvider.notifier).callAuthenticated(
+            (token) => ref
+                .read(sync_service.remoteEventSourceProvider)
+                .transferEventDirectly(
+                  token: token,
+                  eventId: eventId,
+                  toAuthorId: targetAuthorId,
+                ),
+          );
+      await _loadContributions();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Event übertragen.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) showErrorToast(ref, describeRemoteError(error));
+    }
+  }
+
   Future<void> _openContribution(Map<String, dynamic> event) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -622,6 +694,7 @@ class _AdminUserDetailScreenState extends ConsumerState<AdminUserDetailScreen> {
                   layerName: ref.watch(layerNamesByIdProvider)[
                           (event['layerId'] as num?)?.toInt()] ??
                       'Kein DV',
+                  onTransfer: () => _transferContribution(event),
                   onTap: () => _openContribution(event),
                 ),
               ),

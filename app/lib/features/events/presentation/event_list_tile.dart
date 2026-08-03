@@ -23,6 +23,7 @@ class EventListTile extends StatelessWidget {
     this.showNewBadge = false,
     this.onEdit,
     this.onDelete,
+    this.onTransfer,
     this.onTap,
   });
 
@@ -38,12 +39,13 @@ class EventListTile extends StatelessWidget {
   final bool showNewBadge;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onTransfer;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final hasActions = onEdit != null || onDelete != null;
+    final hasActions = onEdit != null || onDelete != null || onTransfer != null;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -157,6 +159,12 @@ class EventListTile extends StatelessWidget {
                 ),
               if (onEdit != null)
                 IconButton(icon: const Icon(Icons.edit), onPressed: onEdit),
+              if (onTransfer != null)
+                IconButton(
+                  icon: const Icon(Icons.swap_horiz),
+                  tooltip: 'Übertragen',
+                  onPressed: onTransfer,
+                ),
               if (onDelete != null)
                 IconButton(icon: const Icon(Icons.delete), onPressed: onDelete),
               if (!hasActions)
