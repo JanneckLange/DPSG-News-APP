@@ -134,3 +134,40 @@ export async function sendEventUpdateNotification({ eventId, eventTitle, message
   console.log('FCM event update notification sent successfully', { messageId: result });
   return result;
 }
+
+export type EventTransferRequestNotificationPayload = {
+  toAuthorId: number;
+  eventTitle: string;
+  fromAuthorUsername: string;
+};
+
+// Autoren haben kein Layer/Topic-Abo, das eine eingehende Uebertragungsanfrage
+// erreichen wuerde - dafuer abonniert die App ein persoenliches Topic pro Autor
+// (siehe notification_service.dart), das hier gezielt adressiert wird.
+export async function sendEventTransferRequestNotification({ toAuthorId, eventTitle, fromAuthorUsername }: EventTransferRequestNotificationPayload): Promise<string> {
+  if (!firebaseMessagingEnabled) {
+    console.warn('Skipping FCM event transfer request notification because Firebase is disabled.');
+    return 'firebase-disabled';
+  }
+
+  const message: Message = {
+    topic: `author_${toAuthorId}`,
+    notification: {
+      title: 'Neue Uebertragungsanfrage',
+      body: `${fromAuthorUsername} moechte dir das Event "${eventTitle}" uebertragen.`,
+    },
+    data: {
+      eventTitle,
+      type: 'event_transfer_request',
+    },
+  };
+
+  console.log('Sending FCM event transfer request notification', {
+    topic: message.topic,
+    title: message.notification?.title,
+  });
+
+  const result = await getMessaging().send(message);
+  console.log('FCM event transfer request notification sent successfully', { messageId: result });
+  return result;
+}

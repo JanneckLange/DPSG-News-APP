@@ -203,6 +203,17 @@ export async function deleteAuthorEventById(id: number, authorId: number): Promi
   return (result.rowCount ?? 0) > 0;
 }
 
+// Schreibt ausschliesslich author_id um (Event-Uebertragung, #22/#23) - anders
+// als updateEventById/updateAuthorEventById wird kein vollstaendiges EventInput
+// verlangt, da sich an den restlichen Feldern nichts aendert.
+export async function transferEventAuthorById(id: number, authorId: number): Promise<Event | null> {
+  const result = await ensureClient().query<EventRow>(
+    `UPDATE events SET author_id = $1, modified_at = NOW() WHERE id = $2 RETURNING *`,
+    [authorId, id]
+  );
+  return result.rows[0] ? mapEventRow(result.rows[0]) : null;
+}
+
 export async function deleteAllEvents(): Promise<number> {
   const result = await ensureClient().query('DELETE FROM events');
   return result.rowCount ?? 0;

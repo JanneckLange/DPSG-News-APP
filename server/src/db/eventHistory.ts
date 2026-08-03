@@ -16,6 +16,7 @@ const TRACKED_FIELDS: (keyof Event)[] = [
   'isPublic',
   'publishAt',
   'registrationDeadline',
+  'authorId',
 ];
 
 export type FieldChange = {
