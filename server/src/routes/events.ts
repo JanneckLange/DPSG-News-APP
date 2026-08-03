@@ -20,9 +20,11 @@ import {
   getEvents,
   getIncomingEventTransferRequestsWithDetails,
   getLayerById,
+  getPendingEventTransferRequestForEvent,
   getTopics,
   recordEventHistory,
   resolveEventTransferRequest,
+  transferEventAuthorById,
   updateAuthorEventById,
   updateEventById,
   updateEventUpdateById,
@@ -745,6 +747,74 @@ eventsRouter.get('/api/events/:id/transfer-requests', async (req: Request, res: 
   } catch (error) {
     logRequestError(error, res.locals.requestId);
     res.status(500).json({ error: 'Unable to load transfer requests' });
+  }
+});
+
+// Admin-Direktuebertragung ohne Zustimmung der Zielperson (#23). Bewusst
+// requireLayerScope statt requireManageableWithinLayerScope: Letzteres wuerde
+// auch dem Event-Eigentuemer selbst Zugriff geben, was hier explizit NICHT
+// gewollt ist - Autoren duerfen ein Event nur ueber den Anfrage/Annahme-Flow
+// (#22) abgeben, nur Admins mit Layer-Scope duerfen direkt (force) uebertragen.
+eventsRouter.post('/api/events/:id/transfer', async (req: Request, res: Response) => {
+  try {
+    if (!await requireAuthorAuth(req, res)) {
+      return;
+    }
+    if (!requirePasswordChangeCompleted(res)) {
+      return;
+    }
+    const id = Number(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return respondBadRequest(req, res, 'Invalid event id');
+    }
+    const toAuthorId = Number((req.body as { toAuthorId?: unknown }).toAuthorId);
+    if (!Number.isInteger(toAuthorId) || toAuthorId <= 0) {
+      return respondBadRequest(req, res, 'Invalid toAuthorId');
+    }
+
+    const events = await getEvents(undefined, { includeUnpublished: true });
+    const current = events.find((event) => event.id === id);
+    if (!current) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    if (current.layerId == null) {
+      return respondBadRequest(req, res, 'Event has no layer assigned');
+    }
+    if (!await requireLayerScope(res, current.layerId)) {
+      return;
+    }
+    if (toAuthorId === current.authorId) {
+      return respondBadRequest(req, res, 'Cannot transfer an event to its current author');
+    }
+
+    const targetAuthor = await getAuthorById(toAuthorId);
+    if (!targetAuthor || !authorHasEventGrant(targetAuthor, current.layerId, current.topicId)) {
+      return respondBadRequest(req, res, 'Target author is not eligible for this event');
+    }
+
+    const updated = await transferEventAuthorById(id, toAuthorId);
+    if (!updated) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const admin = res.locals.author as AuthorIdentity;
+    try {
+      await recordEventHistory(id, admin.id, current, updated);
+    } catch (historyError) {
+      logRequestError(historyError, res.locals.requestId);
+    }
+
+    // Eine offene Autor-Anfrage fuer dieses Event ist durch die Direktuebertragung
+    // obsolet geworden.
+    const pendingRequest = await getPendingEventTransferRequestForEvent(id);
+    if (pendingRequest) {
+      await resolveEventTransferRequest(pendingRequest.id, 'cancelled');
+    }
+
+    res.json({ event: updated });
+  } catch (error) {
+    logRequestError(error, res.locals.requestId);
+    res.status(500).json({ error: 'Unable to transfer event' });
   }
 });
 

@@ -298,3 +298,118 @@ describe('Event transfer requests API e2e', () => {
     });
   });
 });
+
+describe('Admin direct event transfer API e2e (#23)', () => {
+  it('lets an admin with matching layer scope transfer an event immediately, without consent', async () => {
+    await createAuthorForTesting({ username: 'direct-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const targetAuthor = await createAuthorForTesting({ username: 'direct-target', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'direct-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('direct-owner', 'secret-123');
+    const adminToken = await loginAuthor('direct-admin', 'admin-123');
+    const eventId = await createOwnEvent(ownerToken, 'Direkt uebertragen');
+
+    const response = await request(app)
+      .post(`/api/events/${eventId}/transfer`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ toAuthorId: targetAuthor.id });
+
+    expect(response.status).toBe(200);
+    expect(response.body.event.authorId).toBe(targetAuthor.id);
+
+    const historyResponse = await request(app)
+      .get(`/api/events/${eventId}/history`)
+      .set('authorization', `Bearer ${adminToken}`);
+    const change = historyResponse.body.history[0].changes.find((c: { field: string }) => c.field === 'authorId');
+    expect(change).toMatchObject({ newValue: targetAuthor.id });
+  });
+
+  it('forbids an admin without matching layer scope from transferring the event', async () => {
+    await createAuthorForTesting({ username: 'scope-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const targetAuthor = await createAuthorForTesting({ username: 'scope-target', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'scope-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [hamburgLayerId] });
+    const ownerToken = await loginAuthor('scope-owner', 'secret-123');
+    const adminToken = await loginAuthor('scope-admin', 'admin-123');
+    const eventId = await createOwnEvent(ownerToken, 'Ausserhalb des Scopes');
+
+    const response = await request(app)
+      .post(`/api/events/${eventId}/transfer`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ toAuthorId: targetAuthor.id });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("forbids the event owner from using the direct-transfer endpoint on their own event", async () => {
+    const owner = await createAuthorForTesting({ username: 'owner-direct-attempt', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const targetAuthor = await createAuthorForTesting({ username: 'owner-direct-target', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('owner-direct-attempt', 'secret-123');
+    const eventId = await createOwnEvent(ownerToken, 'Eigentuemer versucht Direktuebertragung');
+
+    const response = await request(app)
+      .post(`/api/events/${eventId}/transfer`)
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({ toAuthorId: targetAuthor.id });
+
+    expect(response.status).toBe(403);
+
+    const ownEventsResponse = await request(app)
+      .get('/api/author/events')
+      .set('authorization', `Bearer ${ownerToken}`);
+    expect(ownEventsResponse.body.events.find((e: { id: number }) => e.id === eventId).authorId).toBe(owner.id);
+  });
+
+  it('rejects a target author without the required layer grant', async () => {
+    await createAuthorForTesting({ username: 'direct-owner-2', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const ungrantedTarget = await createAuthorForTesting({ username: 'direct-ungranted-target', password: 'secret-123', layerGrantIds: [] });
+    await createAuthorForTesting({ username: 'direct-admin-2', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('direct-owner-2', 'secret-123');
+    const adminToken = await loginAuthor('direct-admin-2', 'admin-123');
+    const eventId = await createOwnEvent(ownerToken, 'Kein Grant fuer Direktziel');
+
+    const response = await request(app)
+      .post(`/api/events/${eventId}/transfer`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ toAuthorId: ungrantedTarget.id });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('cancels an open author-initiated request for the same event on direct transfer', async () => {
+    await createAuthorForTesting({ username: 'race-owner', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const offeredTarget = await createAuthorForTesting({ username: 'race-offered-target', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    const directTarget = await createAuthorForTesting({ username: 'race-direct-target', password: 'secret-123', layerGrantIds: [koelnLayerId] });
+    await createAuthorForTesting({ username: 'race-admin', password: 'admin-123', isAdmin: true, adminLayerIds: [koelnLayerId] });
+    const ownerToken = await loginAuthor('race-owner', 'secret-123');
+    const adminToken = await loginAuthor('race-admin', 'admin-123');
+    const eventId = await createOwnEvent(ownerToken, 'Wettlauf Anfrage vs Direktuebertragung');
+
+    const created = await request(app)
+      .post(`/api/events/${eventId}/transfer-requests`)
+      .set('authorization', `Bearer ${ownerToken}`)
+      .send({ toAuthorId: offeredTarget.id });
+    const requestId = created.body.request.id as number;
+
+    const directResponse = await request(app)
+      .post(`/api/events/${eventId}/transfer`)
+      .set('authorization', `Bearer ${adminToken}`)
+      .send({ toAuthorId: directTarget.id });
+    expect(directResponse.status).toBe(200);
+    expect(directResponse.body.event.authorId).toBe(directTarget.id);
+
+    // Der Event-Eigentuemer hat sich durch die Direktuebertragung geaendert -
+    // die Anfrage-Historie ist jetzt nur noch fuer den neuen Eigentuemer sichtbar.
+    const directTargetToken = await loginAuthor('race-direct-target', 'secret-123');
+    const statusResponse = await request(app)
+      .get(`/api/events/${eventId}/transfer-requests`)
+      .set('authorization', `Bearer ${directTargetToken}`);
+    expect(statusResponse.status).toBe(200);
+    expect(statusResponse.body.requests.find((r: { id: number }) => r.id === requestId).status).toBe('cancelled');
+
+    const offeredTargetToken = await loginAuthor('race-offered-target', 'secret-123');
+    const acceptResponse = await request(app)
+      .post(`/api/events/transfer-requests/${requestId}/accept`)
+      .set('authorization', `Bearer ${offeredTargetToken}`)
+      .send();
+    expect(acceptResponse.status).toBe(409);
+  });
+});
