@@ -27,3 +27,9 @@ dpsgnews.scout-link.de {
     header_up X-Real-IP {remote_host}
   }
 }
+
+# Weitere Sites auf demselben vServer (z. B. namiapp.scout-link.de vom
+# NaMi-Statistikserver) legen ihre Site-Bloecke per eigenem Deploy unter
+# /opt/caddy-sites ab. Dieses Caddyfile wird bei jedem News-Deploy
+# ueberschrieben, deshalb erfolgt die Einbindung per import.
+import /etc/caddy/sites/*.caddy
