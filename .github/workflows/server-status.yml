@@ -1,0 +1,111 @@
+name: Server Status
+
+on:
+  schedule:
+    # Taeglich 06:00 UTC. Geplante Workflows laufen nur auf dem Default-Branch.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+env:
+  NEWS_HOST: dpsgnews.scout-link.de
+  MIN_CERT_VALID_DAYS: 14
+
+jobs:
+  status:
+    name: Check DPSG News server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run status checks
+        id: checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          failures=()
+          warnings=()
+          summary() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          summary "## DPSG News ${NEWS_HOST}"
+
+          # 1) Server erreichbar (ueber Caddy)
+          health="$(curl -fsS --max-time 15 "https://${NEWS_HOST}/health" || true)"
+          if [ -z "$health" ]; then
+            failures+=("/health nicht erreichbar oder nicht 200 (Server oder Caddy down)")
+          else
+            summary '```json'; summary "$health"; summary '```'
+            [ "$(jq -r .status <<<"$health")" = "ok" ] || failures+=("Health-Status ist nicht ok")
+
+            # 3) Laufende Version entspricht dem letzten erfolgreichen Deploy
+            running_sha="$(jq -r '.build.gitShaShort // empty' <<<"$health")"
+            deployed_sha="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow server-deploy-main.yml \
+              --branch main --status success --limit 1 --json headSha --jq '.[0].headSha // empty' || true)"
+            if [ -z "$deployed_sha" ]; then
+              warnings+=("Kein erfolgreicher Deploy-Lauf auf main gefunden")
+            elif [ "${deployed_sha:0:12}" != "$running_sha" ]; then
+              failures+=("Laufende Version ${running_sha} entspricht nicht dem letzten Deploy ${deployed_sha:0:12}")
+            fi
+          fi
+
+          # 2) Postgres: /api/layers liest aus der Datenbank
+          layers_status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://${NEWS_HOST}/api/layers" || true)"
+          [ "$layers_status" = "200" ] || failures+=("/api/layers liefert ${layers_status} (Datenbank pruefen)")
+
+          # 4) TLS-Zertifikat und HTTPS-Weiterleitung (Caddy)
+          cert_end="$(echo | timeout 20 openssl s_client -servername "$NEWS_HOST" -connect "${NEWS_HOST}:443" 2>/dev/null \
+            | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)"
+          if [ -z "$cert_end" ]; then
+            failures+=("TLS-Zertifikat nicht lesbar")
+          else
+            cert_days=$(( ( $(date -u -d "$cert_end" +%s) - $(date -u +%s) ) / 86400 ))
+            summary "- TLS-Zertifikat gueltig bis ${cert_end} (${cert_days} Tage)"
+            [ "$cert_days" -ge "$MIN_CERT_VALID_DAYS" ] \
+              || failures+=("TLS-Zertifikat laeuft in ${cert_days} Tagen ab")
+          fi
+          redirect="$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 15 "http://${NEWS_HOST}/health" || true)"
+          case "$redirect" in
+            30[178]\ https://*) ;;
+            *) failures+=("HTTP leitet nicht auf HTTPS weiter (${redirect})") ;;
+          esac
+
+          # 5) Datenbanken und App-Port duerfen von aussen nicht erreichbar sein
+          for port in 5432 27017 3000; do
+            if timeout 10 nc -z -w 5 "$NEWS_HOST" "$port" 2>/dev/null; then
+              failures+=("Port ${port} ist oeffentlich erreichbar")
+            fi
+          done
+
+          for warning in "${warnings[@]}"; do summary "- Warnung: ${warning}"; echo "::warning::${warning}"; done
+          if [ "${#failures[@]}" -gt 0 ]; then
+            {
+              echo "report<<EOF"
+              for failure in "${failures[@]}"; do echo "- ${failure}"; done
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            for failure in "${failures[@]}"; do summary "- Fehler: ${failure}"; echo "::error::${failure}"; done
+            exit 1
+          fi
+          summary "- Alle Pruefungen erfolgreich"
+
+      - name: Open or update status issue
+        if: failure() && steps.checks.outputs.report != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT: ${{ steps.checks.outputs.report }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -eu
+          gh label create server-status --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "Automatischer Status-Check des News-Servers" 2>/dev/null || true
+          body="$(printf 'Status-Check vom %s fehlgeschlagen:\n\n%s\n\nLauf: %s' "$(date -u +%FT%TZ)" "$REPORT" "$RUN_URL")"
+          issue="$(gh issue list --repo "$GITHUB_REPOSITORY" --label server-status --state open \
+            --limit 1 --json number --jq '.[0].number // empty')"
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --label server-status \
+              --title "News-Server: Status-Check fehlgeschlagen" --body "$body"
+          fi
