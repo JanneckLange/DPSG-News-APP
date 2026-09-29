@@ -38,6 +38,7 @@ services:
     volumes:
       - /opt/dpsg-news/Caddyfile:/etc/caddy/Caddyfile:ro
       - /opt/dpsg-news/robots.txt:/usr/share/caddy/robots.txt:ro
+      - /opt/caddy-sites:/etc/caddy/sites:ro
       - caddy-data:/data
       - caddy-config:/config
 
